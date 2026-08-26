@@ -47,7 +47,7 @@
     </div>
   </header>
 
-  <nav class="tabs" id="tabs" aria-label="Hlavní navigace"></nav>
+  <nav class="tabs" id="tabs" aria-label="Hlavní navigace"><span class="nav-label">COMMAND</span></nav>
 
   <main>
     <section id="today" class="section active">
@@ -68,7 +68,7 @@
         <div class="card kpi-card"><div class="kpi-label">Hodnota pipeline</div><div id="kValue" class="kpi">0 Kč</div><span class="kpi-caption">potenciál</span></div>
         <div class="card kpi-card"><div class="kpi-label">Follow-up dnes</div><div id="kDue" class="kpi">0</div><span class="kpi-caption">k vyřízení</span></div>
         <div class="card kpi-card danger-kpi"><div class="kpi-label">Po termínu</div><div id="kOverdue" class="kpi">0</div><span class="kpi-caption">vyžaduje akci</span></div>
-        <div class="card full"><div class="card-head"><div><div class="section-kicker">PRIORITY</div><h2>Dnešní priority</h2></div><button class="btn small" id="dailyBrief">AI denní plán</button></div><div id="todayFocus" class="list"></div></div>
+        <div class="card full"><div class="card-head"><div><div class="section-kicker">PRIORITY</div><h2>Dnešní priority</h2></div><button class="btn small" id="dailyBrief">AI denní plán</button></div><div id="todayFocus" class="list" aria-live="polite"></div></div>
         <div class="card full"><div class="card-head"><div><div class="section-kicker">PORTFOLIO</div><h2>Všechny projekty</h2></div><span class="pill subtle">1 dashboard</span></div><div id="portfolioSummary" class="portfolio-grid"></div></div>
         <div class="card full"><div class="card-head"><div><div class="section-kicker">AI OUTPUT</div><h2>Výsledek agenta</h2></div><span id="aiRunProject" class="pill subtle">—</span></div><pre id="aiOut" class="output"></pre></div>
       </div>

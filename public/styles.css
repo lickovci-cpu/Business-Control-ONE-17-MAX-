@@ -177,3 +177,7 @@ body[data-workspace="merch"]{--bg:#0b1017;--surface:#121b26;--surface2:#172536;-
 /* Final stability pass: compact lead metadata stays readable in the kanban. */
 .lead-meta{margin-top:5px;color:var(--muted2);font-size:10px;overflow-wrap:anywhere}
 @media(max-width:760px){.crm-form input,.crm-form select{min-height:44px}.lead-meta{font-size:10px}}
+/* Finalization: navigation hierarchy and consistent action focus. */
+.nav-label{align-self:center;padding:0 4px;color:var(--muted2);font:900 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em}
+.tabs button[data-tab="today"]{order:-2}.tabs button[data-tab="crm"],.tabs button[data-tab="sales"],.tabs button[data-tab="content"]{order:-1}
+@media(max-width:760px){.nav-label{display:none}.tabs{justify-content:flex-start}.tabs button{min-width:64px;justify-content:center}.tabs button[data-tab="today"]{order:0}.tabs button[data-tab="crm"]{order:1}.tabs button[data-tab="sales"]{order:2}.tabs button[data-tab="content"]{order:3}.tabs button[data-tab="settings"]{order:4}}
