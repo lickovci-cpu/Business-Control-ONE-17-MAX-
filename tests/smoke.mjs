@@ -24,3 +24,5 @@ console.log('SMOKE OK — 17 MAX auth, project isolation, Control Room, Sales Co
 
 assert(html.includes('id="metaCenterText"') && html.includes('id="metaCopyDiag"'));
 assert(app.includes('function renderMetaCenter') && app.includes('function metaDiagnostic'));
+assert.ok(app.includes("theme:'nrsm'") && app.includes('function applyWorkspace'));
+assert.ok(html.includes('id="workspaceName"') && html.includes('id="workspaceSignature"') && html.includes('workspace-switcher'));

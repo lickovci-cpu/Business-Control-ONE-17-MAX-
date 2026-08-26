@@ -31,10 +31,10 @@
 <div class="wrap" id="appShell">
   <header class="top">
     <div class="brand-wrap">
-      <div class="brand-row"><span class="brand-mark">BC</span><div><div class="brand">Business Control ONE <span>17 MAX</span></div><div class="brand-sub">AI Business OS · rychlý mobilní režim · cloud sync</div></div></div>
+      <div class="brand-row"><span class="brand-mark">BC</span><div><div class="brand">Business Control ONE <span>17 MAX</span></div><div class="brand-sub"><span id="workspaceLabel">WORKSPACE</span> · rychlý mobilní režim · cloud sync</div></div></div>
     </div>
     <div class="top-controls">
-      <select id="project" aria-label="Aktivní projekt"></select>
+      <div class="workspace-switcher"><span class="workspace-label">WORKSPACE</span><select id="project" aria-label="Aktivní pracovní prostor"></select></div>
       <select id="aiProvider" aria-label="AI provider">
         <option value="auto">AI: Auto / free-first</option>
         <option value="gemini">Gemini</option>
@@ -54,7 +54,8 @@
       <div class="hero">
         <div class="hero-copy">
           <div class="eyebrow">AI COMMAND CENTER</div>
-          <h1>Řízení firmy na jednom místě.</h1>
+          <div id="workspaceSignature" class="workspace-signature">BUSINESS CONTROL ONE</div>
+          <h1><span id="workspaceName">WORKSPACE</span> / řídicí centrum.</h1>
           <p class="muted">Zadej cíl. Business Control připraví konkrétní další kroky pro aktivní projekt a drží CRM, obsah i follow-up v jednom toku.</p>
         </div>
         <textarea id="cmd" class="command" placeholder="Např. Vyber dnešní 3 nejvýnosnější priority, připrav follow-up leadům a návrh příspěvku z realizace FVE."></textarea>
