@@ -1,0 +1,13 @@
+{
+  "name": "business-control-one",
+  "version": "17.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "check": "node scripts/check.mjs",
+    "test": "node tests/smoke.mjs"
+  },
+  "dependencies": {
+    "@vercel/blob": "^1.0.2"
+  }
+}

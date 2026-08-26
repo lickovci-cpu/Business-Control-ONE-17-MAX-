@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#050914">
+  <meta name="color-scheme" content="dark">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Business Control ONE 17 MAX – AI Business OS pro řízení projektů, CRM, obsahu a komunikace.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <title>Business Control ONE 17 MAX</title>
+</head>
+<body>
+<div id="authGate" class="auth-gate hidden" aria-live="polite">
+  <div class="auth-card">
+    <div class="auth-logo"><span class="brand-mark">BC</span><span>BUSINESS CONTROL ONE</span></div>
+    <div class="eyebrow">SECURE ACCESS</div>
+    <h1>Odemknout Business OS</h1>
+    <p class="muted">Heslo zůstává pouze na serveru. Po přihlášení vznikne zabezpečená HttpOnly session.</p>
+    <label class="field-label" for="loginPassword">Přístupové heslo</label>
+    <input id="loginPassword" type="password" autocomplete="current-password" placeholder="APP_PASSWORD">
+    <button id="loginBtn" class="btn primary auth-submit">Přihlásit</button>
+    <div id="loginMsg" class="status-line"></div>
+  </div>
+</div>
+
+<div class="wrap" id="appShell">
+  <header class="top">
+    <div class="brand-wrap">
+      <div class="brand-row"><span class="brand-mark">BC</span><div><div class="brand">Business Control ONE <span>17 MAX</span></div><div class="brand-sub">AI Business OS · rychlý mobilní režim · cloud sync</div></div></div>
+    </div>
+    <div class="top-controls">
+      <select id="project" aria-label="Aktivní projekt"></select>
+      <select id="aiProvider" aria-label="AI provider">
+        <option value="auto">AI: Auto / free-first</option>
+        <option value="gemini">Gemini</option>
+        <option value="openrouter">OpenRouter</option>
+        <option value="claude">Claude</option>
+        <option value="custom">Custom API</option>
+      </select>
+      <span id="cloud" class="pill"><span class="status-dot"></span>Kontrola</span>
+      <span id="autosaveState" class="pill subtle">Auto-save</span>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs" aria-label="Hlavní navigace"></nav>
+
+  <main>
+    <section id="today" class="section active">
+      <div class="hero">
+        <div class="hero-copy">
+          <div class="eyebrow">AI COMMAND CENTER</div>
+          <h1>Řízení firmy na jednom místě.</h1>
+          <p class="muted">Zadej cíl. Business Control připraví konkrétní další kroky pro aktivní projekt a drží CRM, obsah i follow-up v jednom toku.</p>
+        </div>
+        <textarea id="cmd" class="command" placeholder="Např. Vyber dnešní 3 nejvýnosnější priority, připrav follow-up leadům a návrh příspěvku z realizace FVE."></textarea>
+        <div class="action-row"><button class="btn primary" id="runCmd">Spustit AI agenta</button><button class="btn secondary" id="aiCrmAudit">AI audit CRM</button></div>
+      </div>
+      <div class="grid kpi-grid">
+        <div class="card kpi-card"><div class="kpi-label">FB příspěvky</div><div id="kPosts" class="kpi">–</div><span class="kpi-caption">aktivní projekt</span></div>
+        <div class="card kpi-card"><div class="kpi-label">Komentáře</div><div id="kComments" class="kpi">–</div><span class="kpi-caption">nové reakce</span></div>
+        <div class="card kpi-card"><div class="kpi-label">CRM leady</div><div id="kLeads" class="kpi">0</div><span class="kpi-caption">v pipeline</span></div>
+        <div class="card kpi-card"><div class="kpi-label">Hodnota pipeline</div><div id="kValue" class="kpi">0 Kč</div><span class="kpi-caption">potenciál</span></div>
+        <div class="card kpi-card"><div class="kpi-label">Follow-up dnes</div><div id="kDue" class="kpi">0</div><span class="kpi-caption">k vyřízení</span></div>
+        <div class="card kpi-card danger-kpi"><div class="kpi-label">Po termínu</div><div id="kOverdue" class="kpi">0</div><span class="kpi-caption">vyžaduje akci</span></div>
+        <div class="card full"><div class="card-head"><div><div class="section-kicker">PRIORITY</div><h2>Dnešní priority</h2></div><button class="btn small" id="dailyBrief">AI denní plán</button></div><div id="todayFocus" class="list"></div></div>
+        <div class="card full"><div class="card-head"><div><div class="section-kicker">PORTFOLIO</div><h2>Všechny projekty</h2></div><span class="pill subtle">1 dashboard</span></div><div id="portfolioSummary" class="portfolio-grid"></div></div>
+        <div class="card full"><div class="card-head"><div><div class="section-kicker">AI OUTPUT</div><h2>Výsledek agenta</h2></div><span id="aiRunProject" class="pill subtle">—</span></div><pre id="aiOut" class="output"></pre></div>
+      </div>
+    </section>
+
+    <section id="control" class="section">
+      <div class="section-title"><div><div class="section-kicker">BUSINESS CONTROL 15</div><h1>Řídicí místnost</h1><p class="muted">Jeden přehled pro dnešní obchod, zakázky, cash, obsah a technický stav. Nic neposílá automaticky.</p></div><button class="btn primary" id="controlRefresh">Přepočítat stav</button></div>
+      <div class="grid kpi-grid">
+        <div class="card kpi-card"><div class="kpi-label">Akce dnes</div><div id="controlActions" class="kpi">0</div><span class="kpi-caption">follow-up + zakázky + obsah</span></div>
+        <div class="card kpi-card"><div class="kpi-label">Obchodní tlak</div><div id="controlSalesPressure" class="kpi">0 %</div><span class="kpi-caption">kolik pipeline je potřeba řešit</span></div>
+        <div class="card kpi-card"><div class="kpi-label">Cash riziko</div><div id="controlCashRisk" class="kpi">0 Kč</div><span class="kpi-caption">po splatnosti</span></div>
+        <div class="card kpi-card"><div class="kpi-label">Obsahová mezera</div><div id="controlContentGap" class="kpi">0</div><span class="kpi-caption">dní bez připraveného obsahu</span></div>
+        <div class="card kpi-card"><div class="kpi-label">Data / backup</div><div id="controlDataHealth" class="kpi">OK</div><span class="kpi-caption">lokální stav</span></div>
+        <div class="card kpi-card"><div class="kpi-label">Meta</div><div id="controlMeta" class="kpi">Kontrola</div><span class="kpi-caption">publikace pouze po potvrzení</span></div>
+        <div class="card full"><div class="card-head"><div><div class="section-kicker">ACTION QUEUE</div><h2>Co má nejvyšší dopad</h2></div><button class="btn small" id="controlBrief">AI denní brief</button></div><div id="controlQueue" class="list"></div></div>
+        <div class="card wide"><div class="card-head"><div><div class="section-kicker">BUSINESS HYGIENE</div><h2>Co je potřeba doplnit</h2></div></div><div id="controlHygiene" class="list"></div></div>
+        <div class="card"><div class="section-kicker">SYSTEM</div><h2>Technický stav</h2><div id="controlSystem" class="list"></div></div>
+        <div class="card full"><div class="card-head"><div><div class="section-kicker">PROJECT PULSE</div><h2>Projekty</h2></div></div><div id="controlProjects" class="portfolio-grid"></div></div>
+      </div>
+    </section>
+
+    <section id="worker" class="section">
+      <div class="section-title"><div><div class="section-kicker">BC CONTENT WORKER</div><h1>Samostatný pracovník pro obsah</h1><p class="muted">Zadání → plán → Post · Stories · Carousel · Reel → připraveno pro schválení a publikaci. Tokeny zůstávají na serveru.</p></div><span id="workerState" class="pill subtle">Připraven</span></div>
+      <div class="grid">
+        <div class="card wide">
+          <div class="card-head"><div><div class="section-kicker">COMMAND</div><h2>Co má pracovník dnes udělat?</h2></div><span class="pill subtle">AI orchestrátor</span></div>
+          <div class="row"><input id="workerGoal" placeholder="Např. získat 2 nové FVE B2B leady tento týden"><input id="workerOffer" placeholder="Služba / nabídka"><input id="workerAudience" placeholder="Publikum"></div>
+          <div class="row"><select id="workerDays"><option value="1">Dnes</option><option value="3">3 dny</option><option value="7" selected>7 dní</option></select><label class="toggle-row"><input id="workerAutoPrepare" type="checkbox" checked><span>Po vytvoření automaticky připravit nejlepší Post + Reel draft</span></label></div>
+          <div class="action-row"><button class="btn primary" id="workerRun">Spustit pracovníka</button><button class="btn" id="workerRefresh">Obnovit stav</button><button class="btn" id="workerExport">Exportovat balíček</button></div>
+          <div id="workerStatus" class="status-line">Pracovník zatím neběžel.</div>
+        </div>
+        <div class="card">
+          <div class="section-kicker">OUTPUT</div><h2>Aktuální výstup</h2>
+          <div id="workerSummary" class="list spaced"><div class="item">Po spuštění tady uvidíš plán a obchodní cíl.</div></div>
+        </div>
+        <div class="card full">
+          <div class="card-head"><div><div class="section-kicker">READY QUEUE</div><h2>Co je připravené k akci</h2></div><span id="workerReadyCount" class="pill subtle">0</span></div>
+          <div id="workerQueue" class="list spaced"><div class="item">Zatím prázdné.</div></div>
+        </div>
+        <div class="card full">
+          <div class="section-kicker">WORKER RULES</div><div class="check-grid"><div class="check-card">Fakta pouze z projektu a dostupných podkladů</div><div class="check-card">Žádné vymyšlené ceny / certifikace / reference</div><div class="check-card">Publikace zůstává za potvrzením</div><div class="check-card">Meta token zůstává server-side</div><div class="check-card">Každý výstup dostane cíl + CTA</div><div class="check-card">Výsledky se zapisují zpět do projektu</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="content" class="section">
+      <div class="section-title"><div><div class="section-kicker">CONTENT ENGINE</div><h1>Obsah a publikace</h1></div><span id="metaProjectState" class="pill subtle">Meta: kontrola</span></div>
+      <div id="metaConnectionPanel" class="meta-connection hidden"></div>
+      <div class="card meta-center">
+        <div class="meta-orb"><span>META</span></div>
+        <div class="meta-center-copy"><div class="section-kicker">META CENTER · TEST</div><h2>Stav připojení</h2><p id="metaCenterText" class="muted">Kontroluji připojení…</p><div id="metaCenterDetails" class="meta-details"></div></div>
+        <div class="meta-center-actions"><button class="btn small" id="metaCheckNow">Zkontrolovat</button><button class="btn small" id="metaCopyDiag">Kopírovat diagnostiku</button></div>
+      </div>
+      <div class="grid">
+        <div class="card wide">
+          <div class="card-head"><h2>Editor příspěvku</h2><span class="pill subtle">FB</span></div>
+          <textarea id="postText" placeholder="Text příspěvku"></textarea>
+          <div id="postPhotoCount" class="inline-status">Bez fotky – bude publikován pouze text.</div>
+          <div class="row"><input id="postWhen" type="datetime-local"><button class="btn" id="schedule">Naplánovat</button><button class="btn primary" id="publish">Publikovat</button></div>
+          <p class="muted">Publikace používá pouze Meta účet aktivního projektu. Finální akce vždy vyžaduje potvrzení.</p>
+        </div>
+        <div class="card"><div class="section-kicker">CONTENT FACTORY</div><h2>Rychlý obsah</h2><div class="quick-content-grid"><button class="btn quickContent" data-format="post">FB / IG Post</button><button class="btn quickContent" data-format="story">3× Story</button><button class="btn quickContent" data-format="carousel">5× Carousel</button><button class="btn primary" id="quickReel">Reel</button></div><div id="quickContentOut" class="list spaced"></div></div>
+        <div class="card full campaign-studio"><div class="card-head"><div><div class="section-kicker">CAMPAIGN FACTORY</div><h2>Jedno zadání → celá mini-kampaň</h2></div><span class="pill subtle">Post · Stories · Carousel · Reel</span></div><div class="row"><input id="campaignGoal" placeholder="Cíl: např. získat FVE subdodávky"><input id="campaignOffer" placeholder="Nabídka / služba"><input id="campaignAudience" placeholder="Publikum: např. FVE realizační firmy"></div><button class="btn primary full-btn" id="campaignGenerate">Vytvořit kompletní kampaň</button><div id="campaignOut" class="campaign-out"><div class="item">Zatím bez kampaně.</div></div></div>
+        <div class="card full"><div class="card-head"><div><div class="section-kicker">7 DNÍ</div><h2>AI obsahový plán</h2></div><button class="btn primary" id="week">Vytvořit 7 nápadů</button></div><div id="weekOut" class="list spaced"></div></div>
+        <div class="card full"><div class="section-kicker">KALENDÁŘ</div><h2>Obsahový kalendář</h2><div id="calendar" class="cal"></div></div>
+      </div>
+    </section>
+
+    <section id="reels" class="section">
+      <div class="section-title"><div><div class="section-kicker">REELS STUDIO</div><h1>Krátká videa, která mají cíl</h1><p class="muted">AI připraví hook, záběry, text na obrazovce, voiceover, střih i popisek. Publikace na Instagram je dostupná z veřejného HTTPS videa.</p></div><span id="reelMetaState" class="pill subtle">Meta: kontrola</span></div>
+      <div id="reelMetaPanel" class="meta-connection hidden"></div>
+      <div class="grid">
+        <div class="card wide">
+          <div class="card-head"><div><div class="section-kicker">CREATOR</div><h2>Reel zadání</h2></div><span class="pill subtle">9:16</span></div>
+          <div class="row"><input id="reelGoal" placeholder="Cíl: např. získat FVE subdodávku / ukázat realizaci"><select id="reelTemplate"><option value="proof">Proof of work</option><option value="subcontract">FVE subdodávka</option><option value="service">Servis / oprava</option><option value="carport">Carport</option><option value="beforeafter">Před / po</option><option value="education">Rychlé vysvětlení</option></select><select id="reelDuration"><option value="15">15 s</option><option value="30" selected>30 s</option><option value="45">45 s</option><option value="60">60 s</option></select><select id="reelStyle"><option value="realizace">Realizace / proof of work</option><option value="before-after">Před / po</option><option value="process">Postup práce</option><option value="service">Servis / problém → řešení</option><option value="offer">Nabídka služby</option><option value="education">Krátké vysvětlení</option></select></div>
+          <div class="reel-media-strip"><span id="reelPhotoState" class="pill subtle">0 vybraných fotek</span><button class="btn small" id="reelUsePhotos">Použít vybrané</button><button class="btn small" id="reelAutoPhotos">AI vybrat záběry</button><button class="btn small" id="reelOpenMedia">Otevřít Fotky</button></div>
+          <textarea id="reelBrief" placeholder="Co má Reel říct? Např. 195 panelů, velká střecha, ukázat konstrukci a panely. Používej jen fakta, která opravdu máme."></textarea>
+          <div class="action-row"><button class="btn primary" id="reelGenerate">AI vytvořit Reel</button><button class="btn" id="reelHooksBtn">5 hooků</button><button class="btn" id="reelToPost">Popisek do Obsahu</button><button class="btn" id="reelExportKit">Export Reel kitu</button></div><div id="reelHooks" class="hook-grid"></div>
+        </div>
+        <div class="card"><div class="section-kicker">PUBLISH</div><h2>Instagram Reel</h2><label class="btn file-label reel-local-file" for="reelVideoFile">Vybrat hotové video v telefonu</label><input id="reelVideoFile" class="hidden-file" type="file" accept="video/mp4,video/quicktime,video/webm"><video id="reelVideoPreview" class="reel-preview hidden" controls playsinline preload="metadata"></video><div id="reelLocalVideoState" class="inline-status">Lokální video slouží k náhledu. Pro přímou Meta publikaci vlož veřejnou HTTPS adresu.</div><input id="reelVideoUrl" type="url" inputmode="url" placeholder="https://.../video.mp4"><textarea id="reelCaption" class="reel-caption" placeholder="Popisek Reelu"></textarea><label class="toggle-row"><input id="reelShareFeed" type="checkbox" checked><span>Sdílet i do hlavního feedu</span></label><button class="btn primary full-btn" id="reelPublish">Publikovat Reel</button><div id="reelPublishState" class="status-line">Video musí být dostupné přes veřejnou HTTPS adresu.</div></div>
+        <div class="card full"><div class="card-head"><div><div class="section-kicker">STORYBOARD</div><h2>Střihový plán</h2></div><div class="head-actions"><span id="reelScore" class="pill subtle">Score —</span><button class="btn small" id="reelCopyPlan">Kopírovat plán</button></div></div><div id="reelStoryboard" class="reel-storyboard"><div class="media-empty"><strong>Zatím bez scénáře.</strong><span>Zadej cíl a nech AI připravit realizovatelný Reel z dostupných záběrů.</span></div></div></div>
+        <div class="card full reel-composer-card"><div class="card-head"><div><div class="section-kicker">REEL COMPOSER 3</div><h2>9:16 náhled z vybraných fotek</h2></div><div class="head-actions"><button class="btn small" id="reelPreviewBuild">Sestavit náhled</button><button class="btn small" id="reelPreviewPlay">Přehrát</button><button class="btn small" id="reelPreviewNext">Další</button><button class="btn small" id="reelPreviewExport">Export storyboardu</button></div></div><div class="reel-composer"><div id="reelPhone" class="reel-phone"><div id="reelPhoneMedia" class="reel-phone-media"><div class="reel-phone-empty">Vyber fotky a vytvoř Reel plán.</div></div><div class="reel-safe-top"></div><div id="reelPhoneText" class="reel-phone-text"></div><div class="reel-safe-bottom"></div></div><div class="reel-composer-side"><div id="reelPreviewState" class="inline-status">Náhled je lokální a nic nepublikuje.</div><div id="reelTimeline" class="reel-timeline"><div class="item">Po sestavení uvidíš scénu po scéně.</div></div><p class="muted">Tento náhled pomáhá zkontrolovat pořadí, text a rytmus. Pro finální video použij exportovaný storyboard ve střihači; aplikace nevydává lokální náhled za hotové MP4.</p></div></div></div>
+        <div class="card"><div class="section-kicker">SHOT LIST</div><h2>Co ještě dotočit</h2><p class="muted">AI sem dá jen záběry, které v dostupných fotkách chybí.</p><div id="reelCaptureList" class="capture-list"><div class="item">Nejdřív vytvoř Reel plán.</div></div></div>
+        <div class="card"><div class="section-kicker">REEL CHECK</div><h2>Kontrola před zveřejněním</h2><div class="check-grid"><div class="check-card">Hook do 2 s</div><div class="check-card">Skutečný důkaz práce</div><div class="check-card">Krátký text</div><div class="check-card">Jedno CTA</div><div class="check-card">Bez neověřených tvrzení</div><div class="check-card">9:16 / titulky v safe zóně</div></div></div>
+        <div class="card full"><div class="card-head"><div><div class="section-kicker">LIVE META</div><h2>Poslední Instagram Reels</h2></div><button class="btn small" id="reelRefreshRecent">Obnovit</button></div><div id="reelRecent" class="reel-recent"><div class="item">Načte se až po otevření Reels a platném Meta připojení.</div></div></div>
+      </div>
+    </section>
+
+    <section id="media" class="section">
+      <div class="section-title"><div><div class="section-kicker">MEDIA ENGINE</div><h1>Fotky bez zpomalování telefonu</h1><p class="muted">Náhledy se generují až ve chvíli, kdy je skutečně vidíš. Originály zůstávají nedotčené.</p></div><span id="mediaProject" class="pill subtle">—</span></div>
+      <div class="grid"><div class="card full media-shell">
+        <div class="media-toolbar">
+          <div class="media-actions"><button class="btn primary" id="pickFolder">Vybrat složku / fotky</button><button class="btn" id="analyze">AI analyzovat vybrané</button><button class="btn" id="mediaTopAnalyzed">Vybrat TOP 10</button></div>
+          <div class="media-searches"><input id="mediaLocalSearch" type="search" autocomplete="off" placeholder="Filtrovat fotky podle názvu…"><input id="mediaQuery" placeholder="AI výběr: např. velká FVE, detail konstrukce"><button class="btn" id="findMedia">AI najít 10</button></div>
+          <input id="mediaFolderFallback" class="hidden-file" type="file" accept="image/jpeg,image/png,image/webp" multiple webkitdirectory>
+        </div>
+        <div class="media-statusbar"><span id="mediaStats" class="pill subtle">Žádná složka</span><span id="mediaSelectionStats" class="pill subtle">Vybráno 0 / 10</span><span class="performance-note">Úsporné náhledy · lazy decode · omezená paměť</span></div>
+        <div id="mediaGrid" class="media-grid"></div>
+        <button id="mediaLoadMore" class="btn load-more hidden">Načíst další náhledy</button>
+        <pre id="mediaOut" class="output compact"></pre>
+      </div></div>
+    </section>
+
+    <section id="comms" class="section">
+      <div class="section-title"><div><div class="section-kicker">COMMS</div><h1>Komunikační centrum</h1></div><span id="commProject" class="pill subtle">—</span></div>
+      <div class="grid">
+        <div class="card wide">
+          <div class="row"><select id="commChannel"><option value="email">E-mail</option><option value="whatsapp">WhatsApp</option><option value="rcs">RCS</option></select><input id="commTo" placeholder="E-mail nebo telefon včetně +420"><input id="commSubject" placeholder="Předmět e-mailu"></div>
+          <textarea id="commText" placeholder="Text zprávy"></textarea>
+          <div class="row"><input id="commWhen" type="datetime-local"><button class="btn" id="commAi">AI napsat stručně</button><button class="btn" id="commQueue">Naplánovat</button><button class="btn primary" id="commSend">Odeslat teď</button></div>
+          <p class="muted">Před odesláním se zobrazí finální náhled. Fronta i potvrzení jsou oddělené podle projektu.</p>
+        </div>
+        <div class="card"><div class="section-kicker">KANÁLY</div><h2>Stav připojení</h2><div id="commStatus" class="list"></div></div>
+        <div class="card full"><div class="card-head"><div><div class="section-kicker">OUTBOX</div><h2>Fronta odesílání</h2></div><button class="btn small" id="commRefresh">Obnovit</button></div><div id="outbox" class="list"></div></div>
+      </div>
+    </section>
+
+    <section id="inbox" class="section">
+      <div class="section-title"><div><div class="section-kicker">INBOX</div><h1>Komentáře a nové příležitosti</h1></div></div>
+      <div class="grid">
+        <div class="card wide"><div class="card-head"><h2>Komentáře</h2><button class="btn" id="loadInbox">Načíst komentáře</button></div><div id="inboxList" class="list"></div></div>
+        <div class="card"><div class="section-kicker">TRIAGE</div><h2>AI přehled</h2><p class="muted">Komentář lze převést do CRM. Kontaktní údaj se AI neposílá automaticky.</p><div id="inboxStats" class="list"></div></div>
+      </div>
+    </section>
+
+    <section id="crm" class="section">
+      <div class="section-title"><div><div class="section-kicker">SALES</div><h1>CRM pipeline</h1></div><button class="btn" id="crmAudit">AI priority</button></div>
+      <div class="grid"><div class="card full">
+        <div class="row crm-form"><input id="leadName" placeholder="Jméno / firma"><input id="leadContact" placeholder="Kontakt"><input id="leadValue" inputmode="numeric" placeholder="Hodnota Kč"><input id="leadSource" placeholder="Zdroj"><input id="leadFollow" type="date"><input id="leadNote" placeholder="Poptávka / poznámka"><button class="btn primary" id="addLead">Přidat</button><button class="btn hidden" id="cancelLeadEdit">Zrušit úpravu</button></div>
+        <div class="row filters-row"><input id="crmSearch" placeholder="Hledat v CRM"><select id="crmStageFilter"><option value="all">Všechny fáze</option><option value="0">Nový</option><option value="1">Kontaktován</option><option value="2">Nabídka</option><option value="3">Zakázka</option><option value="4">Uzavřeno</option></select></div>
+        <div id="kanban" class="kanban"></div><pre id="crmOut" class="output compact"></pre>
+      </div></div>
+    </section>
+
+    <section id="sales" class="section">
+      <div class="section-title"><div><div class="section-kicker">SALES COMMAND</div><h1>Prodej, nabídky a cash cíl</h1><p class="muted">Jedno místo pro follow-up, váženou pipeline a nabídky. Ceny se nikdy nedoplňují automaticky bez tvého vstupu.</p></div><button class="btn" id="salesRefresh">Přepočítat</button></div>
+      <div class="grid">
+        <div class="card kpi-card"><div class="kpi-label">Vážená pipeline</div><div id="salesWeighted" class="kpi">0 Kč</div><span class="kpi-caption">podle fáze leadu</span></div>
+        <div class="card kpi-card"><div class="kpi-label">Zakázky tento měsíc</div><div id="salesWon" class="kpi">0 Kč</div><span class="kpi-caption">lead ve fázi Zakázka</span></div>
+        <div class="card kpi-card"><div class="kpi-label">Měsíční cíl</div><div id="salesTarget" class="kpi">0 Kč</div><span class="kpi-caption">nastavuješ ty</span></div>
+        <div class="card kpi-card"><div class="kpi-label">Mezera k cíli</div><div id="salesGap" class="kpi">0 Kč</div><span class="kpi-caption">cíl mínus zakázky</span></div>
+        <div class="card wide"><div class="card-head"><div><div class="section-kicker">FOLLOW-UP QUEUE</div><h2>Co musí ven dnes</h2></div><button class="btn small" id="salesBatchFollow">AI připravit dávku</button></div><div id="salesQueue" class="list"></div></div>
+        <div class="card"><div class="section-kicker">TARGET</div><h2>Měsíční obchodní cíl</h2><input id="monthlyTarget" inputmode="numeric" placeholder="Např. 150000"><button class="btn primary full-btn" id="saveMonthlyTarget">Uložit cíl</button><p class="muted">Cíl je interní plán, ne veřejné tvrzení ani cenová nabídka.</p></div>
+        <div class="card wide"><div class="card-head"><div><div class="section-kicker">DEAL COACH</div><h2>AI další nejlepší krok</h2></div><span id="dealCoachScore" class="pill subtle">Lead —</span></div><select id="dealCoachLead"></select><div class="action-row"><button class="btn primary" id="dealCoachRun">AI rozebrat obchod</button><button class="btn" id="dealCoachToComms">Připravit komunikaci</button><button class="btn" id="dealCoachQuote">Připravit nabídku</button></div><pre id="dealCoachOut" class="output compact"></pre></div>
+        <div class="card"><div class="section-kicker">CRM PORTABILITY</div><h2>Import / export leadů</h2><button class="btn full-btn" id="exportLeadsCsv">Export CSV</button><label class="btn file-label full-btn" for="importLeadsCsv">Import CSV</label><input id="importLeadsCsv" class="hidden-file" type="file" accept="text/csv,.csv"><p class="muted">Import očekává sloupce name, contact, value, source, followUp, note. Neodesílá nic na internet.</p></div>
+        <div class="card full"><div class="card-head"><div><div class="section-kicker">QUOTE BUILDER</div><h2>Nabídky bez vymyšlených cen</h2></div><span class="pill warn">Cena pouze z tvého vstupu</span></div><div class="row"><select id="quoteLead"></select><input id="quoteTitle" placeholder="Název nabídky"><input id="quoteAmount" inputmode="numeric" placeholder="Cena Kč – volitelné"><input id="quoteValidDays" inputmode="numeric" value="14" placeholder="Platnost dní"></div><textarea id="quoteScope" placeholder="Rozsah prací / co je součástí"></textarea><textarea id="quoteNote" placeholder="Podmínky, co chybí ověřit, doprava, materiál, termín…"></textarea><div class="action-row"><button class="btn" id="quoteAiScope">AI návrh rozsahu</button><button class="btn primary" id="quoteSave">Uložit nabídku</button><button class="btn" id="quoteExportCurrent">Export aktuální</button></div><div id="quoteList" class="quote-list"></div></div>
+      </div>
+    </section>
+
+    <section id="jobs" class="section">
+      <div class="section-title"><div><div class="section-kicker">DELIVERY OS</div><h1>Zakázky, checklist a platby</h1><p class="muted">Od vyhraného leadu k realizaci. Elektro zapojení a revize zůstávají jen jako externí spolupráce, ne vlastní oprávnění.</p></div><button class="btn" id="jobsRefresh">Obnovit</button></div>
+      <div class="grid">
+        <div class="card kpi-card"><div class="kpi-label">Aktivní zakázky</div><div id="jobsActive" class="kpi">0</div><span class="kpi-caption">plán + probíhá</span></div>
+        <div class="card kpi-card"><div class="kpi-label">Dokončeno</div><div id="jobsDone" class="kpi">0</div><span class="kpi-caption">evidence projektu</span></div>
+        <div class="card kpi-card"><div class="kpi-label">Platby do 30 dní</div><div id="jobsCash30" class="kpi">0 Kč</div><span class="kpi-caption">zadané splatnosti</span></div>
+        <div class="card kpi-card"><div class="kpi-label">Platby po splatnosti</div><div id="jobsOverdueCash" class="kpi">0 Kč</div><span class="kpi-caption">neuhrazené</span></div>
+        <div class="card full"><div class="card-head"><div><div class="section-kicker">NEW JOB</div><h2>Založit zakázku</h2></div><button class="btn small" id="jobFromLead">Načíst z vyhraného leadu</button></div><div class="row"><select id="jobLead"></select><input id="jobName" placeholder="Název zakázky"><select id="jobTemplate"><option value="fve_mount">FVE konstrukce + panely</option><option value="fve_service">FVE servis / úprava</option><option value="cleaning">Mytí panelů</option><option value="birdnet">Sítě proti ptactvu</option><option value="carport">Carport – montážní část</option><option value="service_local">Lokální služba / tepování</option><option value="ecommerce">E-shop / výroba na objednávku</option><option value="custom">Vlastní</option></select><input id="jobLocation" placeholder="Místo / obec"><input id="jobDate" type="date"><input id="jobRevenue" inputmode="numeric" placeholder="Očekávaná tržba Kč – volitelné"><input id="jobPaymentDue" type="date"></div><textarea id="jobNote" placeholder="Rozsah, doprava, materiál, chybí / ověřit…"></textarea><button class="btn primary full-btn" id="jobCreate">Vytvořit zakázku + checklist</button></div>
+        <div class="card full"><div class="card-head"><div><div class="section-kicker">EXECUTION BOARD</div><h2>Realizace</h2></div><select id="jobStatusFilter"><option value="all">Všechny stavy</option><option value="planned">Plán</option><option value="in_progress">Probíhá</option><option value="waiting">Čeká</option><option value="done">Hotovo</option></select></div><div id="jobBoard" class="job-board"></div></div>
+        <div class="card wide"><div class="card-head"><div><div class="section-kicker">CASH WATCH</div><h2>Co čekáme zaplatit</h2></div></div><div id="cashWatch" class="list"></div></div>
+        <div class="card"><div class="section-kicker">MOBILE FIELD MODE</div><h2>Stabilita na stavbě</h2><div class="note-grid compact-notes"><div class="item"><strong>Checklist offline</strong><span>Stav úkolů zůstane lokálně i bez signálu.</span></div><div class="item"><strong>Fotky odděleně</strong><span>Originály nejsou ukládány do localStorage.</span></div><div class="item"><strong>Předání</strong><span>Po dokončení exportuj záznam zakázky do JSON.</span></div></div></div>
+      </div>
+    </section>
+
+    <section id="analytics" class="section">
+      <div class="section-title"><div><div class="section-kicker">INSIGHTS</div><h1>Analytika</h1></div><button class="btn" id="refreshAnalytics">Obnovit</button></div>
+      <div class="grid">
+        <div class="card wide"><h2>Výkon obsahu</h2><div id="analyticsList" class="list"></div></div>
+        <div class="card"><h2>Co se AI učí</h2><div id="learning" class="list"></div></div>
+        <div class="card full"><h2>Reklamy za 30 dní</h2><div id="ads" class="list"></div></div>
+      </div>
+    </section>
+
+    <section id="shop" class="section">
+      <div class="section-title"><div><div class="section-kicker">COMMERCE</div><h1>E-shop centrum</h1></div></div>
+      <div class="grid">
+        <div class="card wide"><div class="row"><input id="prodName" placeholder="Produkt"><input id="prodPrice" inputmode="decimal" placeholder="Prodejní cena"><input id="prodCost" inputmode="decimal" placeholder="Náklad"><input id="prodUrl" placeholder="URL"><select id="prodStatus"><option value="test">Test</option><option value="live">Live</option><option value="paused">Pozastaveno</option></select><button class="btn primary" id="addProd">Přidat</button></div><div id="products" class="list"></div></div>
+        <div class="card"><div class="section-kicker">AUDIT</div><h2>AI produktový audit</h2><button class="btn full-btn" id="productAudit">Audit aktivních produktů</button><pre id="productOut" class="output compact"></pre></div>
+      </div>
+    </section>
+
+
+<section id="autopilot" class="section">
+  <div class="section-head"><div><div class="section-kicker">EXECUTION OS</div><h1>Autopilot</h1><p class="muted">Prioritizace skutečných úkolů. Nic se neposílá ani nemění bez tvého potvrzení.</p></div></div>
+  <div class="grid">
+    <div class="card wide">
+      <div class="card-head"><h2>Co má největší dopad teď</h2><span id="autopilotSummary" class="status-line"></span></div>
+      <div id="autopilotQueue" class="list"></div>
+    </div>
+    <div class="card">
+      <div class="section-kicker">PRAVIDLA</div><h2>Bezpečné provedení</h2>
+      <div class="note-grid compact-notes">
+        <div class="item"><strong>Lead</strong><span>Nejdřív kvalifikace a další krok.</span></div>
+        <div class="item"><strong>Nabídka</strong><span>Cena pouze z uživatelem zadaných údajů.</span></div>
+        <div class="item"><strong>Obsah</strong><span>Publikace vždy vyžaduje potvrzení.</span></div>
+        <div class="item"><strong>FVE</strong><span>Žádné vymyšlené reference, certifikace ani oprávnění.</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+<section id="settings" class="section">
+      <div class="section-title"><div><div class="section-kicker">SYSTEM</div><h1>Nastavení</h1></div></div>
+      <div class="grid">
+        <div class="card wide"><h2>Projekty</h2><div id="projectCards" class="project-cards"></div></div>
+        <div class="card"><h2>Server / AI</h2><div id="health"></div><div class="row"><select id="aiProviderSettings"><option value="auto">Auto / free-first</option><option value="gemini">Gemini</option><option value="openrouter">OpenRouter</option><option value="claude">Claude</option><option value="custom">Custom</option></select><button class="btn" id="logoutBtn">Odhlásit panel</button></div></div>
+        <div class="card wide"><h2>Business Cloud účet</h2><p class="muted">Supabase sync využívá RLS: data vidí pouze přihlášený uživatel uvnitř své organizace.</p><div class="row"><input id="cloudEmail" type="email" autocomplete="email" placeholder="E-mail"><input id="cloudPassword" type="password" autocomplete="current-password" placeholder="Heslo"><button class="btn" id="cloudLogin">Přihlásit cloud</button><button class="btn" id="cloudRegister">Registrace</button></div><div class="row"><input id="cloudOrgName" placeholder="Název firmy (pokud ještě není založena)"><button class="btn" id="cloudCreateOrg">Založit organizaci</button></div><div class="row"><button class="btn" id="cloudPull">Načíst z cloudu</button><button class="btn primary" id="cloudPush">Uložit do cloudu</button><button class="btn danger" id="cloudForcePush">Vynutit přepsání cloudu</button></div><div id="cloudAccountState" class="status-line"></div></div>
+        <div class="card"><div class="section-kicker">STABILITA</div><h2>Mobilní režim MAX</h2><div class="note-grid compact-notes"><div class="item"><strong>Fotky</strong><span>Lazy náhledy, max 2 dekódování současně</span></div><div class="item"><strong>Recovery</strong><span>3 kompaktní body, katalog fotek je omezen</span></div><div class="item"><strong>API</strong><span>70 s timeout, žádné nekonečné čekání</span></div></div></div>
+        <div class="card"><div class="section-kicker">PWA / TELEFON</div><h2>Upozornění a úložiště</h2><div class="action-stack"><button class="btn" id="enableNotifications">Zapnout upozornění při otevření</button><button class="btn" id="requestPersistentStorage">Požádat o trvalé úložiště</button><button class="btn" id="checkAppUpdate">Zkontrolovat aktualizaci</button></div><div id="pwaState" class="status-line"></div><p class="muted">Bez serverového push kanálu nejde slíbit upozornění při úplně zavřené aplikaci. Tato verze upozorní bezpečně při otevření / návratu do PWA.</p></div>
+        <div class="card"><h2>Záloha</h2><div class="action-stack"><button class="btn" id="exportBackup">Export JSON</button><label class="btn file-label" for="importBackup">Import JSON</label><input id="importBackup" class="hidden-file" type="file" accept="application/json"><button class="btn" id="installPwa">Nainstalovat aplikaci</button></div></div>
+        <div class="card"><div class="card-head"><h2>Recovery</h2><button class="btn small" id="saveRecovery">Uložit bod</button></div><div id="recoveryList" class="list"></div></div>
+        <div class="card full"><h2>Aktivita projektu</h2><div id="activityLog" class="list"></div></div>
+        <div class="card full"><h2>Bezpečnost a náklady</h2><div id="securityNotes" class="note-grid"></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

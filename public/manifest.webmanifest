@@ -1,0 +1,24 @@
+{
+  "name": "Business Control ONE 15 MAX",
+  "short_name": "BC ONE 15",
+  "description": "AI Business OS pro prodej, zakázky, CRM, nabídky, Reels, média, komunikaci a cashflow.",
+  "id": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#050000",
+  "theme_color": "#050000",
+  "categories": [
+    "business",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

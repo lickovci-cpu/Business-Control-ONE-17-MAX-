@@ -1,0 +1,43 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "name": "business-control-one",
+  "version": 2,
+  "fluid": true,
+  "functions": {
+    "api/ai.js": { "maxDuration": 60 },
+    "api/meta-photo.js": { "maxDuration": 60 },
+    "api/cron.js": { "maxDuration": 60 },
+    "api/*.js": { "maxDuration": 30 }
+  },
+  "rewrites": [
+    { "source": "/", "destination": "/public/index.html" },
+    { "source": "/app.js", "destination": "/public/app.js" },
+    { "source": "/styles.css", "destination": "/public/styles.css" },
+    { "source": "/manifest.webmanifest", "destination": "/public/manifest.webmanifest" },
+    { "source": "/sw.js", "destination": "/public/sw.js" },
+    { "source": "/icon.svg", "destination": "/public/icon.svg" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
+        { "key": "Cross-Origin-Resource-Policy", "value": "same-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
+        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; media-src 'self' blob: https:; connect-src 'self' https://vjzzvopwecmwuccdidzq.supabase.co; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; manifest-src 'self'" }
+      ]
+    },
+    {
+      "source": "/public/index.html",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+    },
+    {
+      "source": "/(app.js|styles.css|sw.js|manifest.webmanifest)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    }
+  ]
+}
