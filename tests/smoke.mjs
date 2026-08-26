@@ -16,7 +16,7 @@ const html=await fs.readFile('public/index.html','utf8');
 for(const marker of ['Business Control ONE 17 MAX','id="todayFocus"','id="recoveryList"','id="portfolioSummary"','id="mediaLocalSearch"','id="reels"','id="reelStoryboard"','id="reelPhone"','id="sales"','id="salesQueue"','id="quoteList"','id="jobs"','id="jobBoard"','id="cashWatch"','id="enableNotifications"','id="control"','id="controlQueue"','id="controlProjects"','id="worker"','id="workerRun"','id="workerQueue"'])assert.ok(html.includes(marker),marker);
 const sw=await fs.readFile('public/sw.js','utf8');assert.ok(sw.includes('bc16-1-test-shell-v2'));assert.ok(sw.includes("url.pathname.startsWith('/api/')"));assert.ok(sw.includes('notificationclick'));
 const session=await fs.readFile('api/session.js','utf8');assert.ok(session.includes('MAX_ATTEMPTS=8'));assert.ok(session.includes('LOCK_MS=3*60*1000'));assert.ok(session.includes('Retry-After'));
-const health=await fs.readFile('api/health.js','utf8');assert.ok(health.includes("version:'17-max'"));
+const health=await fs.readFile('api/health.js','utf8');assert.ok(health.includes("version:'17-max'"));assert.ok(health.includes('if(!auth(req))return noauth(res);'));
 const ai=await fs.readFile('api/ai.js','utf8');assert.ok(ai.includes("task==='salescoach'"));assert.ok(ai.includes("task==='quote'"));
 const comms=await fs.readFile('api/comms.js','utf8');assert.ok(comms.includes('PROJECT_MISMATCH'));
 const rcs=await fs.readFile('api/_comms.js','utf8');assert.ok(rcs.includes('RCS_USE_GLOBAL_ENDPOINT'));
