@@ -1,0 +1,22 @@
+import {readdir,readFile} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
+import path from 'node:path';
+const roots=['api','public','scripts','tests'];
+let js=[];
+for(const root of roots){for(const f of await readdir(root)){if(f.endsWith('.js')||f.endsWith('.mjs'))js.push(path.join(root,f));}}
+for(const f of js)execFileSync(process.execPath,['--check',f],{stdio:'pipe'});
+JSON.parse(await readFile('package.json','utf8'));JSON.parse(await readFile('vercel.json','utf8'));JSON.parse(await readFile('public/manifest.webmanifest','utf8'));
+const html=await readFile('public/index.html','utf8'),ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]),dupes=ids.filter((x,i)=>ids.indexOf(x)!==i);
+if(dupes.length)throw new Error('Duplicate IDs: '+[...new Set(dupes)].join(', '));
+if(/style\s*=/.test(html))throw new Error('Inline style attribute would conflict with CSP.');
+const sw=await readFile('public/sw.js','utf8');
+if(!sw.includes("bc16-1-test-shell-v2")||!sw.includes("url.pathname.startsWith('/api/')")||!sw.includes('notificationclick'))throw new Error('Service worker strategy missing.');
+const app=await readFile('public/app.js','utf8');
+for(const marker of ['MEDIA_THUMB_CACHE','IntersectionObserver','ensureMediaFile','clearThumbCache','generateReel','renderMetaConnection','generateCampaign','leadFollowKit','autoSelectReelPhotos','truthGuard','renderSales','pipelineStats','quoteSave','dealCoachRun','renderJobs','JOB_TEMPLATES','renderCashWatch','buildReelPreview','renderControlRoom','controlRoomData','maybeDueNotification','requestPersistentStorage','runContentWorker','renderWorker','lastContentWorker'])if(!app.includes(marker))throw new Error('V15 marker missing: '+marker);
+const literalIds=[...app.matchAll(/\$\('#([A-Za-z0-9_-]+)'\)/g)].map(m=>m[1]);
+const missing=[...new Set(literalIds.filter(id=>!ids.includes(id)))];
+if(missing.length)throw new Error('JS references missing HTML ids: '+missing.join(', '));
+const vercel=JSON.parse(await readFile('vercel.json','utf8'));const csp=vercel.headers?.flatMap(x=>x.headers||[]).find(x=>x.key==='Content-Security-Policy')?.value||'';
+if(!csp.includes("media-src 'self' blob: https:"))throw new Error('CSP media-src missing for local Reel preview.');
+const comms=await readFile('api/_comms.js','utf8');if(!comms.includes('regional'))throw new Error('RCS endpoint mode missing.');
+console.log(`CHECK OK — ${js.length} JS files, ${ids.length} unique UI ids, V11 Sales + Delivery + Reels Composer + PWA checks enabled.`);

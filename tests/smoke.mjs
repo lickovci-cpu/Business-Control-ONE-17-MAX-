@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+process.env.APP_PASSWORD='test-password';process.env.APP_CONFIRM_SECRET='confirm-test';process.env.APP_SESSION_SECRET='session-test';
+process.env.META_PAGE_TOKEN='legacy-fve-token';process.env.META_PAGE_ID='117';
+const lib=await import('../api/_lib.js');
+const conf=await import('../api/_confirm.js');
+const meta=await import('../api/_meta-config.js');
+const token=lib.createSessionToken();assert.equal(lib.verifySessionToken(token),true);assert.equal(lib.verifySessionToken(token+'x'),false);
+const payload={project:'jihoceske',message:'test'},ct=conf.createConfirmation('meta:publish',payload);assert.equal(conf.verifyConfirmation(ct,'meta:publish',payload),true);assert.throws(()=>conf.verifyConfirmation(ct,'meta:publish',{...payload,project:'mazliprint'}));
+assert.equal(meta.metaConfig('jihoceske').configured,true);assert.equal(meta.metaConfig('mazliprint').configured,false);assert.throws(()=>lib.projectKey('evil'));
+const fakeReq={headers:{cookie:`bc_session=${encodeURIComponent(token)}`}};assert.equal(lib.auth(fakeReq),true);
+const noCookie={headers:{'x-app-key':'test-password'}};assert.equal(lib.auth(noCookie),true);
+const fs=await import('node:fs/promises');
+const app=await fs.readFile('public/app.js','utf8');
+for(const marker of ['state.project!==runProject','app_snapshots','leadScore','RECOVERY_KEY','dailyBrief','recordActivity','startEditLead','leadToComms','scheduleDraftSave','maybeAutoRecovery','renderPortfolio','MEDIA_THUMB_CACHE','IntersectionObserver','ensureMediaFile','clearThumbCache','useFallbackFiles','generateReel','publishReel','renderMetaConnection','generateCampaign','leadFollowKit','autoSelectReelPhotos','truthGuard','pipelineStats','renderSales','quoteSave','dealCoachRun','JOB_TEMPLATES','createJob','renderCashWatch','buildReelPreview','exportReelStoryboard','maybeDueNotification','requestPersistentStorage','runContentWorker','renderWorker','lastContentWorker'])assert.ok(app.includes(marker),marker);
+const html=await fs.readFile('public/index.html','utf8');
+for(const marker of ['Business Control ONE 17 MAX','id="todayFocus"','id="recoveryList"','id="portfolioSummary"','id="mediaLocalSearch"','id="reels"','id="reelStoryboard"','id="reelPhone"','id="sales"','id="salesQueue"','id="quoteList"','id="jobs"','id="jobBoard"','id="cashWatch"','id="enableNotifications"','id="control"','id="controlQueue"','id="controlProjects"','id="worker"','id="workerRun"','id="workerQueue"'])assert.ok(html.includes(marker),marker);
+const sw=await fs.readFile('public/sw.js','utf8');assert.ok(sw.includes('bc16-1-test-shell-v2'));assert.ok(sw.includes("url.pathname.startsWith('/api/')"));assert.ok(sw.includes('notificationclick'));
+const session=await fs.readFile('api/session.js','utf8');assert.ok(session.includes('MAX_ATTEMPTS=8'));assert.ok(session.includes('LOCK_MS=3*60*1000'));assert.ok(session.includes('Retry-After'));
+const health=await fs.readFile('api/health.js','utf8');assert.ok(health.includes("version:'17-max'"));
+const ai=await fs.readFile('api/ai.js','utf8');assert.ok(ai.includes("task==='salescoach'"));assert.ok(ai.includes("task==='quote'"));
+const comms=await fs.readFile('api/comms.js','utf8');assert.ok(comms.includes('PROJECT_MISMATCH'));
+const rcs=await fs.readFile('api/_comms.js','utf8');assert.ok(rcs.includes('RCS_USE_GLOBAL_ENDPOINT'));
+console.log('SMOKE OK — 17 MAX auth, project isolation, Control Room, Sales Command, Quote Builder, Delivery OS, Reels Composer 3, cloud sync and mobile-safe media.');
+
+assert(html.includes('id="metaCenterText"') && html.includes('id="metaCopyDiag"'));
+assert(app.includes('function renderMetaCenter') && app.includes('function metaDiagnostic'));

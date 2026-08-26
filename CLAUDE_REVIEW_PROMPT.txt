@@ -1,0 +1,19 @@
+Mám přiložený projekt Business Control ONE 7.0. Potřebuji od tebe JEDEN úsporný technický audit, protože nechci plýtvat kredity.
+
+Pravidla:
+- Nezačínej obecným vysvětlováním a neptej se na doplňující otázky, pokud nejde o skutečný blokátor.
+- Neopakuj obsah projektu ani moje zadání.
+- Projdi celý přiložený ZIP jedním průchodem.
+- Zaměř se jen na chyby, které mohou způsobit nefunkčnost, bezpečnostní problém, zbytečné náklady nebo špatné chování na Vercelu/Meta/Gmail/WhatsApp/RCS.
+- Zkontroluj hlavně: serverless kompatibilitu, OAuth/token handling, Meta Graph API, Gmail API, WhatsApp Cloud API, Google RCS for Business, frontu/cron, potvrzení před odesláním, multi-AI router, Gemini/Claude/OpenRouter fallbacky, práci s až 10 fotkami, PWA/cache a migraci bc6→bc7.
+- Výchozí režim musí být levný: nepoužívat placený Claude automaticky bez výslovného povolení. Nevytvářej řešení, které vyžaduje nové placené služby, pokud existuje bezplatná varianta.
+- Nevymýšlej API schopnosti. Pokud něco potřebuje externí účet, schválení nebo placený tarif, označ to jasně.
+- Pokud najdeš problém, navrhni nejmenší bezpečnou opravu. Pokud můžeš upravit soubory přímo, uprav je. Pokud ne, vrať přesný unified diff.
+- Neměň části, které fungují, jen kvůli stylu.
+- Odpověď maximálně cca 2000 slov.
+
+Výstup pouze v tomto pořadí:
+1. CRITICAL – jen skutečné blokátory.
+2. IMPORTANT – maximálně 10 bodů.
+3. PATCH – přesné změny/diff.
+4. VERDICT – jednou větou, zda je projekt připravený na první produkční test.
