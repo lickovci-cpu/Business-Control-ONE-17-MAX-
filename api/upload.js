@@ -9,5 +9,5 @@ export default async function handler(req,res){
     if(!/^(image\/(jpeg|png|webp|gif)|video\/(mp4|webm|quicktime)|application\/pdf)$/i.test(type))return res.status(415).json({error:'UNSUPPORTED_MEDIA_TYPE'});
     const chunks=[];let size=0;for await(const c of req){size+=c.length;if(size>MAX_UPLOAD)return res.status(413).json({error:'FILE_TOO_LARGE',maxBytes:MAX_UPLOAD});chunks.push(c)}
     const blob=await put(`business-control/${Date.now()}-${name}`,Buffer.concat(chunks),{access:'public',addRandomSuffix:true,contentType:type});res.json(blob);
-  }catch(e){res.status(500).json({error:e.message});}
+  }catch(e){res.status(500).json({error:'UPLOAD_FAILED'});}
 }
