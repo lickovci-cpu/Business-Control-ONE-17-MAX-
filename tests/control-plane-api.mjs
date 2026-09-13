@@ -64,7 +64,8 @@ assert.equal(directSchedule.value.error,'CONFIRMATION_REQUIRED');
 
 const directPhoto=response();
 const photoManifest=Buffer.from(JSON.stringify([{mime:'image/jpeg',size:1,sha256:'00'}])).toString('base64url');
-await metaPhoto.default({method:'POST',headers:{'x-app-key':'test-password','x-project':'jihoceske','x-photo-manifest':photoManifest,'x-photo-index':'0','content-type':'image/jpeg','x-confirm-token':''},async*(){yield Buffer.from([0])}},directPhoto);
+const photoReq={method:'POST',headers:{'x-app-key':'test-password','x-project':'jihoceske','x-photo-manifest':photoManifest,'x-photo-index':'0','content-type':'image/jpeg','x-confirm-token':''},async *[Symbol.asyncIterator](){yield Buffer.from([0]);}};
+await metaPhoto.default(photoReq,directPhoto);
 assert.equal(directPhoto.statusCode,400);
 assert.equal(directPhoto.value.error,'CONTROL_APPROVAL_REQUIRED');
 
