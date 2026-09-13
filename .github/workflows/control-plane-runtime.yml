@@ -9,7 +9,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   runtime:
@@ -29,4 +29,28 @@ jobs:
       - name: smoke
         run: node tests/smoke.mjs
       - name: control-plane
-        run: node tests/control-plane.mjs
+        id: control_plane
+        continue-on-error: true
+        run: |
+          node tests/control-plane.mjs 2>&1 | tee control-plane-runtime.log
+          exit ${PIPESTATUS[0]}
+      - name: Capture failure
+        if: steps.control_plane.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "HEAD=${GITHUB_SHA}"
+            echo "RUN=${GITHUB_RUN_ID}"
+            echo "JOB=${GITHUB_JOB}"
+            echo
+            cat control-plane-runtime.log
+          } > RUNTIME-FAILURE.txt
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add RUNTIME-FAILURE.txt
+          git commit -m "ci: record control-plane runtime failure [skip ci]"
+          git push
+      - name: Fail control-plane stage
+        if: steps.control_plane.outcome == 'failure'
+        run: exit 1
