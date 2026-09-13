@@ -26,5 +26,7 @@ jobs:
         run: npm install --ignore-scripts
       - name: npm run check
         run: npm run check
-      - name: npm test
-        run: npm test
+      - name: smoke
+        run: node tests/smoke.mjs
+      - name: control-plane
+        run: node tests/control-plane.mjs
