@@ -1,138 +1,27 @@
 import {createHash,randomUUID} from 'node:crypto';
 import {kvGet,kvSet,kvSetNxEx,kvLpush,kvLtrim,kvMget,kvLrange} from './_lib.js';
 import {createConfirmation,verifyConfirmation,getConfirmationData} from './_confirm.js';
-
-const TASK_PREFIX='business-control:task:';
-const APPROVAL_PREFIX='business-control:approval:';
-const TASK_INDEX='business-control:tasks:index';
-const AUDIT_PREFIX='business-control:audit:';
-const MAX_AUDIT=500;
-
+const TASK_PREFIX='business-control:task:',APPROVAL_PREFIX='business-control:approval:',TASK_INDEX='business-control:tasks:index',AUDIT_PREFIX='business-control:audit:',MAX_AUDIT=500;
 export const TASK_STATES=Object.freeze(['QUEUED','PLANNING','WAITING_APPROVAL','APPROVED','EXECUTING','DONE','BLOCKED','FAILED','CANCELLED']);
-export const MUTATING_ACTIONS=Object.freeze(new Set([
-  'comms:send','comms:queue','comms:retry','comms:cancel',
-  'meta:photo-upload','meta:publish','meta:publish-photos','meta:schedule','meta:schedule-photos','meta:reel-publish'
-]));
-
-const taskKey=id=>`${TASK_PREFIX}${id}`;
-const approvalKey=id=>`${APPROVAL_PREFIX}${id}`;
-const auditKey=id=>`${AUDIT_PREFIX}${id}`;
-
-function stable(v){
-  if(Array.isArray(v))return '['+v.map(stable).join(',')+']';
-  if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}';
-  return JSON.stringify(v);
-}
+export const MUTATING_ACTIONS=Object.freeze(new Set(['comms:send','comms:queue','comms:retry','comms:cancel','meta:photo-upload','meta:publish','meta:publish-photos','meta:schedule','meta:schedule-photos','meta:reel-publish']));
+const taskKey=id=>`${TASK_PREFIX}${id}`,approvalKey=id=>`${APPROVAL_PREFIX}${id}`,auditKey=id=>`${AUDIT_PREFIX}${id}`;
+function stable(v){if(Array.isArray(v))return '['+v.map(stable).join(',')+']';if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}';return JSON.stringify(v);}
 function fingerprint(v){return createHash('sha256').update(stable(v)).digest('hex');}
 function now(){return new Date().toISOString();}
 function actor(req,extra={}){return String(extra.actor||req?.headers?.['x-bco-actor']||'agent').slice(0,120);}
-
-async function audit(task,event,details={}){
-  const entry={id:randomUUID(),taskId:task.id,project:task.project,at:now(),event,actor:details.actor||task.actor||'system',attempt:task.attempt||0,taskRevision:task.revision||0,details};
-  await kvSet(auditKey(entry.id),entry);
-  await kvLpush(TASK_INDEX+':audit',entry.id);await kvLtrim(TASK_INDEX+':audit',0,MAX_AUDIT-1);
-  return entry;
-}
-async function saveTask(task){
-  task.updatedAt=now();task.revision=(task.revision||0)+1;
-  const ok=await kvSet(taskKey(task.id),task);
-  if(!ok){const e=new Error('CONTROL_STORAGE_NOT_CONFIGURED');e.status=503;throw e;}
-  await kvLpush(TASK_INDEX,task.id);await kvLtrim(TASK_INDEX,0,999);
-  return task;
-}
+async function audit(task,event,details={}){const entry={id:randomUUID(),taskId:task.id,project:task.project,at:now(),event,actor:details.actor||task.actor||'system',attempt:task.attempt||0,taskRevision:task.revision||0,details};await kvSet(auditKey(entry.id),entry);await kvLpush(TASK_INDEX+':audit',entry.id);await kvLtrim(TASK_INDEX+':audit',0,MAX_AUDIT-1);return entry;}
+async function saveTask(task){task.updatedAt=now();task.revision=(task.revision||0)+1;const ok=await kvSet(taskKey(task.id),task);if(!ok){const e=new Error('CONTROL_STORAGE_NOT_CONFIGURED');e.status=503;throw e;}await kvLpush(TASK_INDEX,task.id);await kvLtrim(TASK_INDEX,0,999);return task;}
 export async function getTask(id){return kvGet(taskKey(id));}
-export async function listTasks(project,limit=100){
-  const ids=await kvLrange(TASK_INDEX,0,Math.min(999,Math.max(1,limit*3)-1));
-  if(!ids.length)return [];
-  const rows=await kvMget(ids.map(taskKey));const seen=new Set();
-  return rows.map(x=>{if(!x)return null;try{return typeof x==='string'?JSON.parse(x):x}catch{return null}}).filter(x=>x&&x.project===project&&!seen.has(x.id)&&seen.add(x.id)).slice(0,limit);
-}
-export async function createTask({project,agent,action,payload,actor:who='agent',evidenceRequired=true}){
-  if(!project)throw new Error('INVALID_PROJECT');
-  const mutating=MUTATING_ACTIONS.has(String(action));
-  const task={id:randomUUID(),project:String(project),agent:String(agent||'unknown'),action:String(action||''),payload,payloadHash:fingerprint(payload),actor:String(who),status:mutating?'WAITING_APPROVAL':'QUEUED',attempt:0,revision:0,evidenceRequired:Boolean(evidenceRequired),evidence:[],createdAt:now(),updatedAt:now()};
-  await saveTask(task);await audit(task,'TASK_CREATED',{actor:who,mutating});
-  return task;
-}
-export async function requestApproval(taskId,req){
-  const task=await getTask(taskId);if(!task)throw new Error('TASK_NOT_FOUND');
-  if(task.status!=='WAITING_APPROVAL')throw new Error('APPROVAL_NOT_ALLOWED');
-  const token=createConfirmation(`control:${task.action}`,{taskId:task.id,project:task.project,action:task.action,payloadHash:task.payloadHash},900);
-  const approvalId=randomUUID();
-  const approval={id:approvalId,taskId:task.id,project:task.project,action:task.action,payloadHash:task.payloadHash,tokenHash:fingerprint(token),createdAt:now(),expiresAt:new Date(Date.now()+15*60*1000).toISOString(),status:'PENDING',actor:actor(req)};
-  if(!await kvSet(approvalKey(approvalId),approval)){const e=new Error('CONTROL_STORAGE_NOT_CONFIGURED');e.status=503;throw e;}
-  task.approvalId=approvalId;await saveTask(task);await audit(task,'APPROVAL_REQUESTED',{approvalId,actor:approval.actor});
-  return {task,approvalId,approvalToken:token};
-}
-export async function consumeApproval(taskId,token,req){
-  const decoded=getConfirmationData(token),effectiveTaskId=String(taskId||decoded.taskId||'');
-  if(decoded.taskId&&effectiveTaskId!==String(decoded.taskId))throw new Error('APPROVAL_TASK_MISMATCH');
-  const task=await getTask(effectiveTaskId);if(!task)throw new Error('TASK_NOT_FOUND');
-  if(task.status!=='WAITING_APPROVAL')throw new Error('TASK_NOT_APPROVABLE');
-  if(!task.approvalId)throw new Error('APPROVAL_REQUIRED');
-  const approval=await kvGet(approvalKey(task.approvalId));if(!approval)throw new Error('APPROVAL_NOT_FOUND');
-  if(approval.status!=='PENDING')throw new Error('APPROVAL_ALREADY_USED');
-  if(new Date(approval.expiresAt).getTime()<=Date.now())throw new Error('APPROVAL_EXPIRED');
-  verifyConfirmation(token,`control:${task.action}`,{taskId:task.id,project:task.project,action:task.action,payloadHash:task.payloadHash});
-  if(approval.tokenHash!==fingerprint(token))throw new Error('APPROVAL_TOKEN_MISMATCH');
-  const consumed=await kvSetNxEx(`business-control:approval-used:${approval.id}`,'1',16*60);
-  if(!consumed)throw new Error('APPROVAL_ALREADY_USED');
-  approval.status='CONSUMED';approval.consumedAt=now();await kvSet(approvalKey(approval.id),approval);
-  task.status='APPROVED';task.approvedAt=now();await saveTask(task);await audit(task,'APPROVAL_CONSUMED',{approvalId:approval.id,actor:actor(req)});
-  return task;
-}
-export async function startAttempt(taskId,req){
-  const task=await getTask(taskId);if(!task)throw new Error('TASK_NOT_FOUND');
-  if(task.status!=='APPROVED')throw new Error('TASK_NOT_APPROVED');
-  task.status='EXECUTING';task.attempt=(task.attempt||0)+1;task.attemptId=randomUUID();task.attemptStartedAt=now();await saveTask(task);await audit(task,'ATTEMPT_STARTED',{attemptId:task.attemptId,actor:actor(req)});return task;
-}
-export async function completeTask(taskId,evidence,req){
-  const task=await getTask(taskId);if(!task)throw new Error('TASK_NOT_FOUND');
-  if(task.status!=='EXECUTING')throw new Error('TASK_NOT_EXECUTING');
-  const ev=Array.isArray(evidence)?evidence.filter(Boolean).slice(0,20):[];
-  if(task.evidenceRequired&&!ev.length)throw new Error('EVIDENCE_REQUIRED');
-  task.evidence=ev;task.status='DONE';task.completedAt=now();await saveTask(task);await audit(task,'TASK_DONE',{actor:actor(req),evidenceCount:ev.length});return task;
-}
-export async function blockTask(taskId,reason,nextStep,req){
-  const task=await getTask(taskId);if(!task)throw new Error('TASK_NOT_FOUND');
-  if(!String(reason||'').trim()||!String(nextStep||'').trim())throw new Error('BLOCK_REASON_AND_NEXT_STEP_REQUIRED');
-  if(!['QUEUED','PLANNING','WAITING_APPROVAL','APPROVED','EXECUTING','FAILED'].includes(task.status))throw new Error('TASK_NOT_BLOCKABLE');
-  task.status='BLOCKED';task.blockReason=String(reason).slice(0,1000);task.nextStep=String(nextStep).slice(0,1000);await saveTask(task);await audit(task,'TASK_BLOCKED',{actor:actor(req),reason:task.blockReason,nextStep:task.nextStep});return task;
-}
-export async function failAttempt(taskId,error,req){
-  const task=await getTask(taskId);if(!task)throw new Error('TASK_NOT_FOUND');
-  if(task.status!=='EXECUTING')throw new Error('TASK_NOT_EXECUTING');
-  task.status='FAILED';task.lastError=String(error||'UNKNOWN_ERROR').slice(0,1500);await saveTask(task);await audit(task,'ATTEMPT_FAILED',{actor:actor(req),error:task.lastError});return task;
-}
-export function controlPayload(task){return {taskId:task.id,project:task.project,action:task.action,payloadHash:task.payloadHash};}
+export async function listTasks(project,limit=100){const ids=await kvLrange(TASK_INDEX,0,Math.min(999,Math.max(1,limit*3)-1));if(!ids.length)return[];const rows=await kvMget(ids.map(taskKey)),seen=new Set();return rows.map(x=>{if(!x)return null;try{return typeof x==='string'?JSON.parse(x):x}catch{return null}}).filter(x=>x&&x.project===project&&!seen.has(x.id)&&seen.add(x.id)).slice(0,limit);}
+export async function createTask({project,agent,action,payload,actor:who='agent',evidenceRequired=true}){if(!project)throw new Error('INVALID_PROJECT');const mutating=MUTATING_ACTIONS.has(String(action));const task={id:randomUUID(),project:String(project),agent:String(agent||'unknown'),action:String(action||''),payload,payloadHash:fingerprint(payload),actor:String(who),status:mutating?'WAITING_APPROVAL':'QUEUED',attempt:0,revision:0,evidenceRequired:Boolean(evidenceRequired),evidence:[],createdAt:now(),updatedAt:now()};await saveTask(task);await audit(task,'TASK_CREATED',{actor:who,mutating});return task;}
+export async function requestApproval(taskId,req){const task=await getTask(taskId);if(!task)throw new Error('TASK_NOT_FOUND');if(task.status!=='WAITING_APPROVAL')throw new Error('APPROVAL_NOT_ALLOWED');const token=createConfirmation(`control:${task.action}`,{taskId:task.id,project:task.project,action:task.action,payloadHash:task.payloadHash},900),approvalId=randomUUID(),approval={id:approvalId,taskId:task.id,project:task.project,action:task.action,payloadHash:task.payloadHash,tokenHash:fingerprint(token),createdAt:now(),expiresAt:new Date(Date.now()+15*60*1000).toISOString(),status:'PENDING',actor:actor(req)};if(!await kvSet(approvalKey(approvalId),approval)){const e=new Error('CONTROL_STORAGE_NOT_CONFIGURED');e.status=503;throw e;}task.approvalId=approvalId;await saveTask(task);await audit(task,'APPROVAL_REQUESTED',{approvalId,actor:approval.actor});return{task,approvalId,approvalToken:token};}
+export async function consumeApproval(taskId,token,req){const decoded=getConfirmationData(token),effectiveTaskId=String(taskId||decoded.taskId||'');if(decoded.taskId&&effectiveTaskId!==String(decoded.taskId))throw new Error('APPROVAL_TASK_MISMATCH');const task=await getTask(effectiveTaskId);if(!task)throw new Error('TASK_NOT_FOUND');if(task.status!=='WAITING_APPROVAL')throw new Error('TASK_NOT_APPROVABLE');if(!task.approvalId)throw new Error('APPROVAL_REQUIRED');const approval=await kvGet(approvalKey(task.approvalId));if(!approval)throw new Error('APPROVAL_NOT_FOUND');if(approval.status!=='PENDING')throw new Error('APPROVAL_ALREADY_USED');if(new Date(approval.expiresAt).getTime()<=Date.now())throw new Error('APPROVAL_EXPIRED');verifyConfirmation(token,`control:${task.action}`,{taskId:task.id,project:task.project,action:task.action,payloadHash:task.payloadHash});if(approval.tokenHash!==fingerprint(token))throw new Error('APPROVAL_TOKEN_MISMATCH');const consumed=await kvSetNxEx(`business-control:approval-used:${approval.id}`,'1',16*60);if(!consumed)throw new Error('APPROVAL_ALREADY_USED');approval.status='CONSUMED';approval.consumedAt=now();await kvSet(approvalKey(approval.id),approval);task.status='APPROVED';task.approvedAt=now();await saveTask(task);await audit(task,'APPROVAL_CONSUMED',{approvalId:approval.id,actor:actor(req)});return task;}
+export async function startAttempt(taskId,req){const task=await getTask(taskId);if(!task)throw new Error('TASK_NOT_FOUND');if(task.status!=='APPROVED')throw new Error('TASK_NOT_APPROVED');task.status='EXECUTING';task.attempt=(task.attempt||0)+1;task.attemptId=randomUUID();task.attemptStartedAt=now();await saveTask(task);await audit(task,'ATTEMPT_STARTED',{attemptId:task.attemptId,actor:actor(req)});return task;}
+export async function completeTask(taskId,evidence,req){const task=await getTask(taskId);if(!task)throw new Error('TASK_NOT_FOUND');if(task.status!=='EXECUTING')throw new Error('TASK_NOT_EXECUTING');const ev=Array.isArray(evidence)?evidence.filter(Boolean).slice(0,20):[];if(task.evidenceRequired&&!ev.length)throw new Error('EVIDENCE_REQUIRED');task.evidence=ev;task.status='DONE';task.completedAt=now();await saveTask(task);await audit(task,'TASK_DONE',{actor:actor(req),evidenceCount:ev.length});return task;}
+export async function blockTask(taskId,reason,nextStep,req){const task=await getTask(taskId);if(!task)throw new Error('TASK_NOT_FOUND');if(!String(reason||'').trim()||!String(nextStep||'').trim())throw new Error('BLOCK_REASON_AND_NEXT_STEP_REQUIRED');if(!['QUEUED','PLANNING','WAITING_APPROVAL','APPROVED','EXECUTING','FAILED'].includes(task.status))throw new Error('TASK_NOT_BLOCKABLE');task.status='BLOCKED';task.blockReason=String(reason).slice(0,1000);task.nextStep=String(nextStep).slice(0,1000);await saveTask(task);await audit(task,'TASK_BLOCKED',{actor:actor(req),reason:task.blockReason,nextStep:task.nextStep});return task;}
+export async function failAttempt(taskId,error,req){const task=await getTask(taskId);if(!task)throw new Error('TASK_NOT_FOUND');if(task.status!=='EXECUTING')throw new Error('TASK_NOT_EXECUTING');task.status='FAILED';task.lastError=String(error||'UNKNOWN_ERROR').slice(0,1500);await saveTask(task);await audit(task,'ATTEMPT_FAILED',{actor:actor(req),error:task.lastError});return task;}
+export function controlPayload(task){return{taskId:task.id,project:task.project,action:task.action,payloadHash:task.payloadHash};}
 export function isMutatingAction(action){return MUTATING_ACTIONS.has(String(action));}
-export async function authorizeMutation({action,project,payload,confirmationToken,agent='system',req}){
-  if(!isMutatingAction(action))throw new Error('ACTION_NOT_MUTATING');
-  if(!confirmationToken)throw new Error('CONFIRMATION_REQUIRED');
-  const task=await createTask({project,agent,action,payload,actor:actor(req),evidenceRequired:true});
-  try{
-    verifyConfirmation(confirmationToken,action,payload);
-    const used=await kvSetNxEx(`business-control:legacy-approval:${fingerprint(confirmationToken)}`,'1',16*60);
-    if(!used)throw new Error('APPROVAL_ALREADY_USED');
-    task.approvalId='legacy-confirmation';task.status='APPROVED';task.approvedAt=now();await saveTask(task);await audit(task,'APPROVAL_CONSUMED',{approvalId:'legacy-confirmation',actor:actor(req),mode:'existing-confirmation'});
-    return task;
-  }catch(e){
-    await blockTask(task.id,'Approval rejected or invalid',String(e.message||'REQUEST_NEW_APPROVAL'),req).catch(()=>{});
-    throw e;
-  }
-}
-export async function runControlledMutation({action,project,payload,confirmationToken,agent,req,execute}){
-  if(!confirmationToken)throw new Error('CONFIRMATION_REQUIRED');
-  const decoded=getConfirmationData(confirmationToken);let task;
-  if(decoded.a===`control:${action}`){
-    task=await consumeApproval(decoded.taskId,confirmationToken,req);
-    if(task.project!==project||task.payloadHash!==fingerprint(payload))throw new Error('APPROVAL_PAYLOAD_MISMATCH');
-  }else task=await authorizeMutation({action,project,payload,confirmationToken,agent,req});
-  await startAttempt(task.id,req);
-  try{
-    const result=await execute(task);
-    const evidence=Array.isArray(result?.evidence)?result.evidence:[{type:'action_result',action,success:true,referenceId:result?.id||result?.resultId||null}];
-    const done=await completeTask(task.id,evidence,req);return {result,task:done};
-  }catch(e){await failAttempt(task.id,e?.message||'ACTION_FAILED',req).catch(()=>{});throw e;}
-}
-export function policyDecision(action){const mutating=isMutatingAction(action);return {allowed:true,mutating,approvalRequired:mutating,reason:mutating?'MUTATING_ACTION_REQUIRES_APPROVAL':'READ_OR_DRAFT_ACTION'};}
+export async function authorizeMutation({action,project,payload,confirmationToken,agent='system',req}){if(!isMutatingAction(action))throw new Error('ACTION_NOT_MUTATING');if(!confirmationToken)throw new Error('CONFIRMATION_REQUIRED');const task=await createTask({project,agent,action,payload,actor:actor(req),evidenceRequired:true});try{verifyConfirmation(confirmationToken,action,payload);const used=await kvSetNxEx(`business-control:legacy-approval:${fingerprint(confirmationToken)}`,'1',16*60);if(!used)throw new Error('APPROVAL_ALREADY_USED');task.approvalId='legacy-confirmation';task.status='APPROVED';task.approvedAt=now();await saveTask(task);await audit(task,'APPROVAL_CONSUMED',{approvalId:'legacy-confirmation',actor:actor(req),mode:'existing-confirmation'});return task;}catch(e){await blockTask(task.id,'Approval rejected or invalid',String(e.message||'REQUEST_NEW_APPROVAL'),req).catch(()=>{});throw e;}}
+export async function runControlledMutation({action,project,payload,confirmationToken,agent,req,execute}){if(!confirmationToken)throw new Error('CONFIRMATION_REQUIRED');const decoded=getConfirmationData(confirmationToken);let task;if(decoded.a===`control:${action}`){task=await getTask(decoded.taskId);if(!task)throw new Error('TASK_NOT_FOUND');if(task.project!==project||task.payloadHash!==fingerprint(payload))throw new Error('APPROVAL_PAYLOAD_MISMATCH');task=await consumeApproval(decoded.taskId,confirmationToken,req);}else task=await authorizeMutation({action,project,payload,confirmationToken,agent,req});await startAttempt(task.id,req);try{const result=await execute(task),evidence=Array.isArray(result?.evidence)?result.evidence:[{type:'action_result',action,success:true,referenceId:result?.id||result?.resultId||null}],done=await completeTask(task.id,evidence,req);return{result,task:done};}catch(e){await failAttempt(task.id,e?.message||'ACTION_FAILED',req).catch(()=>{});throw e;}}
+export function policyDecision(action){const mutating=isMutatingAction(action);return{allowed:true,mutating,approvalRequired:mutating,reason:mutating?'MUTATING_ACTION_REQUIRES_APPROVAL':'READ_OR_DRAFT_ACTION'};}
