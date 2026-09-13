@@ -9,7 +9,7 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   runtime:
@@ -31,20 +31,6 @@ jobs:
       - name: control-plane
         run: node tests/control-plane.mjs
       - name: control-plane-api
-        id: api
-        continue-on-error: true
-        run: node tests/control-plane-api.mjs 2>&1 | tee control-plane-api.log; exit ${PIPESTATUS[0]}
-      - name: Capture API failure
-        if: steps.api.outcome == 'failure'
-        run: |
-          cat control-plane-api.log > API-FAILURE.txt
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add API-FAILURE.txt
-          git commit -m "ci: record API gate failure [skip ci]"
-          git push
-      - name: Fail API gate
-        if: steps.api.outcome == 'failure'
-        run: exit 1
+        run: node tests/control-plane-api.mjs
       - name: npm test
         run: npm test
