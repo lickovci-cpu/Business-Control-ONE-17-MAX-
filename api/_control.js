@@ -9,7 +9,7 @@ function stable(v){if(Array.isArray(v))return '['+v.map(stable).join(',')+']';if
 function fingerprint(v){return createHash('sha256').update(stable(v)).digest('hex');}
 function now(){return new Date().toISOString();}
 function actor(req,extra={}){return String(extra.actor||req?.headers?.['x-bco-actor']||'agent').slice(0,120);}
-function assertProject(task,project){if(project!==undefined&&task.project!==String(project)){const e=new Error('PROJECT_MISMATCH');e.status=409;throw e;}return task;}
+function assertProject(task,project){if(!task)return task;if(project!==undefined&&task.project!==String(project)){const e=new Error('PROJECT_MISMATCH');e.status=409;throw e;}return task;}
 async function audit(task,event,details={}){const entry={id:randomUUID(),taskId:task.id,project:task.project,at:now(),event,actor:details.actor||task.actor||'system',attempt:task.attempt||0,attemptId:task.attemptId||null,taskRevision:task.revision||0,details};await kvSet(auditKey(entry.id),entry);await kvLpush(TASK_INDEX+':audit',entry.id);await kvLtrim(TASK_INDEX+':audit',0,MAX_AUDIT-1);return entry;}
 async function saveTask(task){task.updatedAt=now();task.revision=(task.revision||0)+1;const ok=await kvSet(taskKey(task.id),task);if(!ok){const e=new Error('CONTROL_STORAGE_NOT_CONFIGURED');e.status=503;throw e;}await kvLpush(TASK_INDEX,task.id);await kvLtrim(TASK_INDEX,0,999);return task;}
 export async function getTask(id){return kvGet(taskKey(id));}
