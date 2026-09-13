@@ -67,6 +67,6 @@ const photoManifest=Buffer.from(JSON.stringify([{mime:'image/jpeg',size:1,sha256
 const photoReq={method:'POST',headers:{'x-app-key':'test-password','x-project':'jihoceske','x-photo-manifest':photoManifest,'x-photo-index':'0','content-type':'image/jpeg','x-confirm-token':''},async *[Symbol.asyncIterator](){yield Buffer.from([0]);}};
 await metaPhoto.default(photoReq,directPhoto);
 assert.equal(directPhoto.statusCode,400);
-assert.equal(directPhoto.value.error,'CONTROL_APPROVAL_REQUIRED');
+assert.equal(directPhoto.value.error,'CONFIRMATION_REQUIRED');
 
 console.log('CONTROL PLANE API OK — direct control/comms/Meta/photo mutations require auth and approval; project isolation enforced.');
