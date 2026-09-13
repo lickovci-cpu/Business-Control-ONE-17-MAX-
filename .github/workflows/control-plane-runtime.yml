@@ -30,5 +30,7 @@ jobs:
         run: node tests/smoke.mjs
       - name: control-plane
         run: node tests/control-plane.mjs
+      - name: control-plane-api
+        run: node tests/control-plane-api.mjs
       - name: npm test
         run: npm test
