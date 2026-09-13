@@ -35,31 +35,36 @@ const payload={project:'jihoceske',channel:'email',to:'test@example.com',text:'h
 
 const task=await control.createTask({project:'jihoceske',agent:'sales',action:'comms:send',payload,actor:'test'});
 assert.equal(task.status,'WAITING_APPROVAL');
-const approval=await control.requestApproval(task.id,req);
+assert.throws(()=>control.requestApproval(task.id,req,'mazliprint'),/PROJECT_MISMATCH/);
+const approval=await control.requestApproval(task.id,req,'jihoceske');
 assert.equal(approval.task.id,task.id);
 assert.equal(confirm.verifyConfirmation(approval.approvalToken,'control:comms:send',{taskId:task.id,project:'jihoceske',action:'comms:send',payloadHash:task.payloadHash}),true);
-const approved=await control.consumeApproval(task.id,approval.approvalToken,req);
+assert.throws(()=>control.consumeApproval(task.id,approval.approvalToken,req,'mazliprint'),/PROJECT_MISMATCH/);
+const approved=await control.consumeApproval(task.id,approval.approvalToken,req,'jihoceske');
 assert.equal(approved.status,'APPROVED');
-await assert.rejects(()=>control.consumeApproval(task.id,approval.approvalToken,req),/(APPROVAL_ALREADY_USED|TASK_NOT_APPROVABLE)/);
+await assert.rejects(()=>control.consumeApproval(task.id,approval.approvalToken,req,'jihoceske'),/(APPROVAL_ALREADY_USED|TASK_NOT_APPROVABLE)/);
 
-const attempt=await control.startAttempt(task.id,req);
+const attempt=await control.startAttempt(task.id,req,'jihoceske');
 assert.equal(attempt.status,'EXECUTING');
-await assert.rejects(()=>control.completeTask(task.id,[],req),/EVIDENCE_REQUIRED/);
-const done=await control.completeTask(task.id,[{type:'message_sent',referenceId:'msg-1'}],req);
+assert.ok(attempt.attemptId);
+await assert.rejects(()=>control.startAttempt(task.id,req,'jihoceske'),/ATTEMPT_ALREADY_RUNNING|TASK_NOT_APPROVED/);
+await assert.rejects(()=>control.completeTask(task.id,[],req,'jihoceske'),/EVIDENCE_REQUIRED/);
+const done=await control.completeTask(task.id,[{type:'message_sent',referenceId:'msg-1'}],req,'jihoceske');
 assert.equal(done.status,'DONE');
 
 const legacy=confirm.createConfirmation('comms:send',payload,900);
 const ran=await control.runControlledMutation({action:'comms:send',project:'jihoceske',payload,confirmationToken:legacy,agent:'sales',req,execute:async()=>({id:'x'})});
 assert.equal(ran.task.status,'DONE');
+assert.ok(ran.task.attemptId);
 await assert.rejects(()=>control.runControlledMutation({action:'comms:send',project:'jihoceske',payload,confirmationToken:legacy,agent:'sales',req,execute:async()=>({id:'x'})}),/APPROVAL_ALREADY_USED/);
 
 const mismatch=confirm.createConfirmation('comms:send',{...payload,text:'different'},900);
 await assert.rejects(()=>control.runControlledMutation({action:'comms:send',project:'jihoceske',payload,confirmationToken:mismatch,agent:'sales',req,execute:async()=>({id:'x'})}),/CONFIRMATION_PAYLOAD_CHANGED/);
 
 const blocked=await control.createTask({project:'jihoceske',agent:'sales',action:'comms:send',payload,actor:'test'});
-const blockedTask=await control.blockTask(blocked.id,'Meta není dostupná','Obnovit token',req);
+const blockedTask=await control.blockTask(blocked.id,'Meta není dostupná','Obnovit token',req,'jihoceske');
 assert.equal(blockedTask.status,'BLOCKED');
 assert.equal(blockedTask.blockReason,'Meta není dostupná');
 assert.equal(blockedTask.nextStep,'Obnovit token');
 
-console.log('CONTROL PLANE OK — lifecycle, evidence, approval binding, one-time consumption, replay protection, payload binding and BLOCKED state.');
+console.log('CONTROL PLANE OK — lifecycle, evidence, approval binding, one-time consumption, replay protection, project isolation, attempt lineage and BLOCKED state.');
