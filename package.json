@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "check": "node scripts/check.mjs",
-    "test": "node tests/smoke.mjs"
+    "test": "node tests/smoke.mjs && node tests/control-plane.mjs"
   },
   "dependencies": {
     "@vercel/blob": "^1.0.2"
