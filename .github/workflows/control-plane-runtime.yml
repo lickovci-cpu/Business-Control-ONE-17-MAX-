@@ -18,11 +18,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
       - name: Install dependencies
         run: npm install --ignore-scripts
       - name: npm run check
