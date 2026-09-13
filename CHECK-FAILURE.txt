@@ -1,0 +1,58 @@
+
+> business-control-one@17.0.0 check
+> node scripts/check.mjs
+
+node:internal/errors:983
+  const err = new Error(message);
+              ^
+
+Error: Command failed: /usr/local/bin/node --check tests/control-plane-api.mjs
+/home/runner/work/Business-Control-ONE-17-MAX-/Business-Control-ONE-17-MAX-/tests/control-plane-api.mjs:67
+await metaPhoto.default({method:'POST',headers:{'x-app-key':'test-password','x-project':'jihoceske','x-photo-manifest':photoManifest,'x-photo-index':'0','content-type':'image/jpeg','x-confirm-token':''},async*(){yield Buffer.from([0])}},directPhoto);
+                                                                                                                                                                                                                 ^
+
+SyntaxError: Unexpected token '('
+    at checkSyntax (node:internal/main/check_syntax:74:5)
+
+Node.js v22.23.2
+
+    at genericNodeError (node:internal/errors:983:15)
+    at wrappedFn (node:internal/errors:537:14)
+    at checkExecSyncError (node:child_process:916:11)
+    at execFileSync (node:child_process:952:15)
+    at file:///home/runner/work/Business-Control-ONE-17-MAX-/Business-Control-ONE-17-MAX-/scripts/check.mjs:7:19 {
+  status: 1,
+  signal: null,
+  output: [
+    null,
+    Buffer(0) [Uint8Array] [],
+    Buffer(680) [Uint8Array] [
+       47, 104, 111, 109, 101,  47, 114, 117, 110, 110, 101, 114,
+       47, 119, 111, 114, 107,  47,  66, 117, 115, 105, 110, 101,
+      115, 115,  45,  67, 111, 110, 116, 114, 111, 108,  45,  79,
+       78,  69,  45,  49,  55,  45,  77,  65,  88,  45,  47,  66,
+      117, 115, 105, 110, 101, 115, 115,  45,  67, 111, 110, 116,
+      114, 111, 108,  45,  79,  78,  69,  45,  49,  55,  45,  77,
+       65,  88,  45,  47, 116, 101, 115, 116, 115,  47,  99, 111,
+      110, 116, 114, 111, 108,  45, 112, 108,  97, 110, 101,  45,
+       97, 112, 105,  46,
+      ... 580 more items
+    ]
+  ],
+  pid: 2290,
+  stdout: Buffer(0) [Uint8Array] [],
+  stderr: Buffer(680) [Uint8Array] [
+     47, 104, 111, 109, 101,  47, 114, 117, 110, 110, 101, 114,
+     47, 119, 111, 114, 107,  47,  66, 117, 115, 105, 110, 101,
+    115, 115,  45,  67, 111, 110, 116, 114, 111, 108,  45,  79,
+     78,  69,  45,  49,  55,  45,  77,  65,  88,  45,  47,  66,
+    117, 115, 105, 110, 101, 115, 115,  45,  67, 111, 110, 116,
+    114, 111, 108,  45,  79,  78,  69,  45,  49,  55,  45,  77,
+     65,  88,  45,  47, 116, 101, 115, 116, 115,  47,  99, 111,
+    110, 116, 114, 111, 108,  45, 112, 108,  97, 110, 101,  45,
+     97, 112, 105,  46,
+    ... 580 more items
+  ]
+}
+
+Node.js v22.23.2
