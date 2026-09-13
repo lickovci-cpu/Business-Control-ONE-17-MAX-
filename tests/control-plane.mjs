@@ -35,11 +35,11 @@ const payload={project:'jihoceske',channel:'email',to:'test@example.com',text:'h
 
 const task=await control.createTask({project:'jihoceske',agent:'sales',action:'comms:send',payload,actor:'test'});
 assert.equal(task.status,'WAITING_APPROVAL');
-assert.throws(()=>control.requestApproval(task.id,req,'mazliprint'),/PROJECT_MISMATCH/);
+await assert.rejects(()=>control.requestApproval(task.id,req,'mazliprint'),/PROJECT_MISMATCH/);
 const approval=await control.requestApproval(task.id,req,'jihoceske');
 assert.equal(approval.task.id,task.id);
 assert.equal(confirm.verifyConfirmation(approval.approvalToken,'control:comms:send',{taskId:task.id,project:'jihoceske',action:'comms:send',payloadHash:task.payloadHash}),true);
-assert.throws(()=>control.consumeApproval(task.id,approval.approvalToken,req,'mazliprint'),/PROJECT_MISMATCH/);
+await assert.rejects(()=>control.consumeApproval(task.id,approval.approvalToken,req,'mazliprint'),/PROJECT_MISMATCH/);
 const approved=await control.consumeApproval(task.id,approval.approvalToken,req,'jihoceske');
 assert.equal(approved.status,'APPROVED');
 await assert.rejects(()=>control.consumeApproval(task.id,approval.approvalToken,req,'jihoceske'),/(APPROVAL_ALREADY_USED|TASK_NOT_APPROVABLE)/);
