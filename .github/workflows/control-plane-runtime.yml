@@ -9,7 +9,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   runtime:
@@ -25,7 +25,23 @@ jobs:
       - name: Install dependencies
         run: npm install --ignore-scripts
       - name: npm run check
-        run: npm run check
+        id: check
+        continue-on-error: true
+        run: npm run check 2>&1 | tee check-runtime.log; exit ${PIPESTATUS[0]}
+      - name: Capture check failure
+        if: steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat check-runtime.log > CHECK-FAILURE.txt
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add CHECK-FAILURE.txt
+          git commit -m "ci: record check failure [skip ci]"
+          git push
+      - name: Fail check
+        if: steps.check.outcome == 'failure'
+        run: exit 1
       - name: smoke
         run: node tests/smoke.mjs
       - name: control-plane
