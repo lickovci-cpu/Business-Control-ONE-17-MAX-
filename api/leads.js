@@ -60,6 +60,9 @@ export default async function handler(req,res){
       }
       const done=await completeTask(task.id,[{type:'crm_db_mutation',action:realAction,entityType:'lead',entityId:result?.id||b.id||null,verifiedAt:new Date().toISOString()}],req,project);return res.json({ok:true,verified:true,result,task:done});
     }catch(e){await failAttempt(task.id,e.message,req,project).catch(()=>{});throw e;}
-  }catch(e){return sendError(res,e);}
+  }catch(e){
+    console.error('CRM_LEADS_ERROR',JSON.stringify({project:req.query?.project||'jihoceske',action:req.body?.action||null,status:e?.status||500,name:e?.name||'Error',message:String(e?.message||'UNKNOWN_ERROR').slice(0,300)}));
+    return sendError(res,e);
+  }
 }
 function queue(req,project,action,payload){return createTask({project,agent:'crm',action:taskAction(action),payload,actor:req.headers?.['x-bco-actor']||'user',evidenceRequired:true}).then(task=>({approvalRequired:true,task}));}
