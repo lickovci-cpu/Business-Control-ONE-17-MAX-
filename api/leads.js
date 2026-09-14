@@ -1,5 +1,6 @@
+import {createHash} from 'node:crypto';
 import {auth,noauth,body,projectKey,sendError} from './_lib.js';
-import {createTask,consumeApproval,startAttempt,completeTask,failAttempt} from './_control.js';
+import {createTask,getTask,blockTask,consumeApproval,startAttempt,completeTask,failAttempt} from './_control.js';
 
 const SB_URL=process.env.SUPABASE_URL||'https://vjzzvopwecmwuccdidzq.supabase.co';
 const SB_KEY=process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.SUPABASE_SERVICE_KEY||'';
@@ -10,7 +11,21 @@ function requireDb(){if(!SB_KEY){const e=new Error('CRM_DB_NOT_CONFIGURED');e.st
 function org(project){const id=ORGS[project];if(!id)throw new Error('CRM_PROJECT_ORG_NOT_CONFIGURED');return id;}
 async function sb(path,opt={}){requireDb();const r=await fetch(`${SB_URL}/rest/v1/${path}`,{...opt,headers:{apikey:SB_KEY,Authorization:`Bearer ${SB_KEY}`,'content-type':'application/json',...(opt.headers||{})},signal:AbortSignal.timeout(15000)});const text=await r.text();let data={};try{data=text?JSON.parse(text):{}}catch{data={raw:text}}if(!r.ok){const e=new Error(data.message||data.error||`SUPABASE_HTTP_${r.status}`);e.status=502;throw e;}return data;}
 function taskAction(a){return `crm:lead-${a}`;}
-async function queue(req,project,action,payload){const task=await createTask({project,agent:'crm',action:taskAction(action),payload,actor:req.headers?.['x-bco-actor']||'user',evidenceRequired:true});return {approvalRequired:true,task};}
+function stable(v){if(Array.isArray(v))return '['+v.map(stable).join(',')+']';if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}';return JSON.stringify(v);}
+function fingerprint(v){return createHash('sha256').update(stable(v)).digest('hex');}
+function approvedExecutionPayload(action,b,project,organization_id){return {project,organization_id,id:b.id||null,payload:b.payload||null,patch:b.patch||null,status:b.status||null};}
+async function assertApprovedPayload(task,action,executionPayload,project){
+  if(!task)throw new Error('TASK_NOT_FOUND');
+  if(task.id!==String(task.id))throw new Error('TASK_ID_MISMATCH');
+  if(task.project!==String(project))throw new Error('PROJECT_MISMATCH');
+  if(task.action!==taskAction(action))throw new Error('APPROVAL_ACTION_MISMATCH');
+  const actualHash=fingerprint(executionPayload);
+  if(!task.payloadHash||actualHash!==task.payloadHash){
+    await blockTask(task.id,'PAYLOAD_MISMATCH','Vytvořit novou approval žádost se stejným payloadem',null,project).catch(()=>{});
+    const e=new Error('PAYLOAD_MISMATCH');e.status=409;throw e;
+  }
+  return task;
+}
 function cleanPatch(p){const out={};for(const k of ['estimated_value','source','note','next_action_at','last_contact_at','qualified_at','offered_at','approved_at','delivered_at','invoiced_at','paid_at','invoiced_amount','paid_amount'])if(Object.prototype.hasOwnProperty.call(p||{},k))out[k]=p[k]??null;return out;}
 export default async function handler(req,res){
   if(!auth(req))return noauth(res);
@@ -26,7 +41,10 @@ export default async function handler(req,res){
     if(MUTATING.has(action)&&!b.approvalToken)return res.status(202).json(await queue(req,project,action,{project,organization_id,id:b.id||null,payload:b.payload||null,patch:b.patch||null,status:b.status||null}));
     if(!action.startsWith('execute-'))return res.status(400).json({error:'APPROVAL_REQUIRED'});
     const realAction=action.slice(8);if(!MUTATING.has(realAction))return res.status(400).json({error:'UNKNOWN_ACTION'});if(!b.taskId||!b.approvalToken)throw new Error('APPROVAL_REQUIRED');
-    const task=await consumeApproval(b.taskId,b.approvalToken,req,project);if(task.action!==taskAction(realAction))throw new Error('APPROVAL_ACTION_MISMATCH');await startAttempt(task.id,req,project);
+    const executionPayload=approvedExecutionPayload(realAction,b,project,organization_id);
+    const storedTask=await getTask(String(b.taskId));
+    await assertApprovedPayload(storedTask,realAction,executionPayload,project);
+    const task=await consumeApproval(b.taskId,b.approvalToken,req,project);await startAttempt(task.id,req,project);
     try{
       let result;
       if(realAction==='create'){
@@ -47,3 +65,4 @@ export default async function handler(req,res){
     }catch(e){await failAttempt(task.id,e.message,req,project).catch(()=>{});throw e;}
   }catch(e){return sendError(res,e);}
 }
+function queue(req,project,action,payload){return createTask({project,agent:'crm',action:taskAction(action),payload,actor:req.headers?.['x-bco-actor']||'user',evidenceRequired:true}).then(task=>({approvalRequired:true,task}));}
