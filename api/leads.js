@@ -14,18 +14,15 @@ function taskAction(a){return `crm:lead-${a}`;}
 function stable(v){if(Array.isArray(v))return '['+v.map(stable).join(',')+']';if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}';return JSON.stringify(v);}
 function fingerprint(v){return createHash('sha256').update(stable(v)).digest('hex');}
 function approvedExecutionPayload(action,b,project,organization_id){return {project,organization_id,id:b.id||null,payload:b.payload||null,patch:b.patch||null,status:b.status||null};}
-async function assertApprovedPayload(task,action,executionPayload,project){
+export function validateApprovedPayload(task,expectedTaskId,action,executionPayload,project){
   if(!task)throw new Error('TASK_NOT_FOUND');
-  if(task.id!==String(task.id))throw new Error('TASK_ID_MISMATCH');
+  if(task.id!==String(expectedTaskId))throw new Error('TASK_ID_MISMATCH');
   if(task.project!==String(project))throw new Error('PROJECT_MISMATCH');
   if(task.action!==taskAction(action))throw new Error('APPROVAL_ACTION_MISMATCH');
-  const actualHash=fingerprint(executionPayload);
-  if(!task.payloadHash||actualHash!==task.payloadHash){
-    await blockTask(task.id,'PAYLOAD_MISMATCH','Vytvořit novou approval žádost se stejným payloadem',null,project).catch(()=>{});
-    const e=new Error('PAYLOAD_MISMATCH');e.status=409;throw e;
-  }
-  return task;
+  if(!task.payloadHash||fingerprint(executionPayload)!==task.payloadHash){const e=new Error('PAYLOAD_MISMATCH');e.status=409;throw e;}
+  return true;
 }
+async function assertApprovedPayload(task,expectedTaskId,action,executionPayload,project){try{return validateApprovedPayload(task,expectedTaskId,action,executionPayload,project);}catch(e){if(e.message==='PAYLOAD_MISMATCH')await blockTask(task?.id,'PAYLOAD_MISMATCH','Vytvořit novou approval žádost se stejným payloadem',null,project).catch(()=>{});throw e;}}
 function cleanPatch(p){const out={};for(const k of ['estimated_value','source','note','next_action_at','last_contact_at','qualified_at','offered_at','approved_at','delivered_at','invoiced_at','paid_at','invoiced_amount','paid_amount'])if(Object.prototype.hasOwnProperty.call(p||{},k))out[k]=p[k]??null;return out;}
 export default async function handler(req,res){
   if(!auth(req))return noauth(res);
@@ -43,7 +40,7 @@ export default async function handler(req,res){
     const realAction=action.slice(8);if(!MUTATING.has(realAction))return res.status(400).json({error:'UNKNOWN_ACTION'});if(!b.taskId||!b.approvalToken)throw new Error('APPROVAL_REQUIRED');
     const executionPayload=approvedExecutionPayload(realAction,b,project,organization_id);
     const storedTask=await getTask(String(b.taskId));
-    await assertApprovedPayload(storedTask,realAction,executionPayload,project);
+    await assertApprovedPayload(storedTask,b.taskId,realAction,executionPayload,project);
     const task=await consumeApproval(b.taskId,b.approvalToken,req,project);await startAttempt(task.id,req,project);
     try{
       let result;
