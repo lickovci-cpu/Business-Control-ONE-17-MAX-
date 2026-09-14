@@ -1,0 +1,27 @@
+name: Main Runtime Verification
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
+      - name: Install dependencies
+        run: npm install --ignore-scripts
+      - name: npm run check
+        run: npm run check
+      - name: npm test
+        run: npm test
