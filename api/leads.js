@@ -58,7 +58,11 @@ export default async function handler(req,res){
         const patch=cleanPatch(b.patch||{});const current=await sb(`leads?id=eq.${encodeURIComponent(b.id)}&organization_id=eq.${organization_id}&select=contact_id`);const cid=current?.[0]?.contact_id;if(cid&&(b.patch?.name||b.patch?.phone||b.patch?.email))await sb(`contacts?id=eq.${encodeURIComponent(cid)}&organization_id=eq.${organization_id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({...(b.patch?.name?{name:b.patch.name}:{}),...(b.patch?.phone?{phone:b.patch.phone}:{}),...(b.patch?.email?{email:b.patch.email}:{})})});
         const updated=await sb(`leads?id=eq.${encodeURIComponent(b.id)}&organization_id=eq.${organization_id}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({...patch,updated_at:new Date().toISOString()})});result=Array.isArray(updated)?updated[0]:updated;
       }
-      const done=await completeTask(task.id,[{type:'crm_db_mutation',action:realAction,entityType:'lead',entityId:result?.id||b.id||null,verifiedAt:new Date().toISOString()}],req,project);return res.json({ok:true,verified:true,result,task:done});
+      const referenceId=result?.id||b.id||null;
+      if(!referenceId)throw new Error('RESULT_REFERENCE_REQUIRED');
+      const resultHash=fingerprint(result);
+      const evidence=[{type:'crm_db_mutation',action:task.action,entityType:'lead',entityId:String(referenceId),taskId:task.id,payloadHash:task.payloadHash,attemptId:task.attemptId,resultHash,referenceId:String(referenceId)}];
+      const done=await completeTask(task.id,evidence,req,project,result);return res.json({ok:true,verified:true,result,task:done});
     }catch(e){await failAttempt(task.id,e.message,req,project).catch(()=>{});throw e;}
   }catch(e){
     console.error('CRM_LEADS_ERROR',JSON.stringify({project:req.query?.project||'jihoceske',action:req.body?.action||null,status:e?.status||500,name:e?.name||'Error',message:String(e?.message||'UNKNOWN_ERROR').slice(0,300)}));
