@@ -23,7 +23,10 @@ export default async function handler(req,res){
     if(action==='consume-approval'){await taskForProject(String(b.taskId||''),project);return res.json({ok:true,task:await consumeApproval(String(b.taskId||''),String(b.approvalToken||''),req,project)});}
     if(action==='start'){await taskForProject(String(b.taskId||''),project);return res.json({ok:true,task:await startAttempt(String(b.taskId||''),req,project)});
     }
-    if(action==='complete'){await taskForProject(String(b.taskId||''),project);return res.json({ok:true,task:await completeTask(String(b.taskId||''),b.evidence,req,project)});}
+    if(action==='complete'){
+      await taskForProject(String(b.taskId||''),project);
+      const e=new Error('RESULT_BINDING_REQUIRED');e.status=409;throw e;
+    }
     if(action==='block'){await taskForProject(String(b.taskId||''),project);return res.json({ok:true,task:await blockTask(String(b.taskId||''),b.reason,b.nextStep,req,project)});}
     if(action==='fail'){await taskForProject(String(b.taskId||''),project);return res.json({ok:true,task:await failAttempt(String(b.taskId||''),b.error,req,project)});}
     return res.status(400).json({error:'UNKNOWN_ACTION'});
