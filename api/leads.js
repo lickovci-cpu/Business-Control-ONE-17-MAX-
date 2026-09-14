@@ -1,5 +1,5 @@
 import {auth,noauth,body,projectKey,sendError} from './_lib.js';
-import {createTask,requestApproval,consumeApproval,startAttempt,completeTask,failAttempt} from './_control.js';
+import {createTask,consumeApproval,startAttempt,completeTask,failAttempt} from './_control.js';
 
 const SB_URL=process.env.SUPABASE_URL||'https://vjzzvopwecmwuccdidzq.supabase.co';
 const SB_KEY=process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.SUPABASE_SERVICE_KEY||'';
@@ -10,7 +10,7 @@ function requireDb(){if(!SB_KEY){const e=new Error('CRM_DB_NOT_CONFIGURED');e.st
 function org(project){const id=ORGS[project];if(!id)throw new Error('CRM_PROJECT_ORG_NOT_CONFIGURED');return id;}
 async function sb(path,opt={}){requireDb();const r=await fetch(`${SB_URL}/rest/v1/${path}`,{...opt,headers:{apikey:SB_KEY,Authorization:`Bearer ${SB_KEY}`,'content-type':'application/json',...(opt.headers||{})},signal:AbortSignal.timeout(15000)});const text=await r.text();let data={};try{data=text?JSON.parse(text):{}}catch{data={raw:text}}if(!r.ok){const e=new Error(data.message||data.error||`SUPABASE_HTTP_${r.status}`);e.status=502;throw e;}return data;}
 function taskAction(a){return `crm:lead-${a}`;}
-async function queue(req,project,action,payload){const task=await createTask({project,agent:'crm',action:taskAction(action),payload,actor:req.headers?.['x-bco-actor']||'user',evidenceRequired:true});const approval=await requestApproval(task.id,req,project);return {approvalRequired:true,task:approval.task,approvalId:approval.approvalId,approvalToken:approval.approvalToken};}
+async function queue(req,project,action,payload){const task=await createTask({project,agent:'crm',action:taskAction(action),payload,actor:req.headers?.['x-bco-actor']||'user',evidenceRequired:true});return {approvalRequired:true,task};}
 function cleanPatch(p){const out={};for(const k of ['estimated_value','source','note','next_action_at','last_contact_at','qualified_at','offered_at','approved_at','delivered_at','invoiced_at','paid_at','invoiced_amount','paid_amount'])if(Object.prototype.hasOwnProperty.call(p||{},k))out[k]=p[k]??null;return out;}
 export default async function handler(req,res){
   if(!auth(req))return noauth(res);
