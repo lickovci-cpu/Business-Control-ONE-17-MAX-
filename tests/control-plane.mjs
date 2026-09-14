@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 
 process.env.APP_PASSWORD='test-password';
 process.env.APP_CONFIRM_SECRET='confirm-test';
@@ -32,6 +33,8 @@ const control=await import('../api/_control.js');
 const confirm=await import('../api/_confirm.js');
 const req={headers:{'x-bco-actor':'test'}};
 const payload={project:'jihoceske',channel:'email',to:'test@example.com',text:'hello'};
+const stable=v=>{if(Array.isArray(v))return '['+v.map(stable).join(',')+']';if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}';return JSON.stringify(v);};
+const fingerprint=v=>createHash('sha256').update(stable(v)).digest('hex');
 
 const task=await control.createTask({project:'jihoceske',agent:'sales',action:'comms:send',payload,actor:'test'});
 assert.equal(task.status,'WAITING_APPROVAL');
@@ -48,15 +51,34 @@ const attempt=await control.startAttempt(task.id,req,'jihoceske');
 assert.equal(attempt.status,'EXECUTING');
 assert.ok(attempt.attemptId);
 await assert.rejects(()=>control.startAttempt(task.id,req,'jihoceske'),/ATTEMPT_ALREADY_RUNNING|TASK_NOT_APPROVED/);
-await assert.rejects(()=>control.completeTask(task.id,[],req,'jihoceske'),/EVIDENCE_REQUIRED/);
-const done=await control.completeTask(task.id,[{type:'message_sent',referenceId:'msg-1'}],req,'jihoceske');
+await assert.rejects(()=>control.completeTask(task.id,[{type:'message_sent',referenceId:'msg-1'}],req,'jihoceske'),/RESULT_BINDING_REQUIRED/);
+await assert.rejects(()=>control.completeTask(task.id,[{type:'message_sent',referenceId:'msg-1',taskId:task.id,action:task.action,payloadHash:task.payloadHash,attemptId:attempt.attemptId,resultHash:fingerprint({id:'msg-1'})}],req,'jihoceske',{id:'different'}),/EVIDENCE_RESULT_MISMATCH/);
+const result={id:'msg-1',status:'sent'};
+const done=await control.completeTask(task.id,[{type:'message_sent',referenceId:'msg-1',taskId:task.id,action:task.action,payloadHash:task.payloadHash,attemptId:attempt.attemptId,resultHash:fingerprint(result)}],req,'jihoceske',result);
 assert.equal(done.status,'DONE');
+assert.equal(done.resultHash,fingerprint(result));
+assert.equal(done.resultReferenceId,'msg-1');
+assert.equal(done.evidence[0].taskId,task.id);
+assert.equal(done.evidence[0].action,task.action);
+assert.equal(done.evidence[0].payloadHash,task.payloadHash);
+assert.equal(done.evidence[0].attemptId,attempt.attemptId);
+assert.equal(done.evidence[0].resultHash,fingerprint(result));
+await assert.rejects(()=>control.completeTask(task.id,[{type:'message_sent',referenceId:'msg-1',success:true}],req,'jihoceske',result),/TASK_NOT_EXECUTING/);
 
 const legacy=confirm.createConfirmation('comms:send',payload,900);
 const ran=await control.runControlledMutation({action:'comms:send',project:'jihoceske',payload,confirmationToken:legacy,agent:'sales',req,execute:async()=>({id:'x'})});
 assert.equal(ran.task.status,'DONE');
 assert.ok(ran.task.attemptId);
+assert.equal(ran.task.evidence[0].taskId,ran.task.id);
+assert.equal(ran.task.evidence[0].action,'comms:send');
+assert.equal(ran.task.evidence[0].payloadHash,ran.task.payloadHash);
+assert.equal(ran.task.evidence[0].attemptId,ran.task.attemptId);
+assert.equal(ran.task.evidence[0].resultHash,fingerprint(ran.result));
+assert.equal(ran.task.resultReferenceId,'x');
 await assert.rejects(()=>control.runControlledMutation({action:'comms:send',project:'jihoceske',payload,confirmationToken:legacy,agent:'sales',req,execute:async()=>({id:'x'})}),/APPROVAL_ALREADY_USED/);
+
+const unreferenced=confirm.createConfirmation('comms:send',payload,900);
+await assert.rejects(()=>control.runControlledMutation({action:'comms:send',project:'jihoceske',payload,confirmationToken:unreferenced,agent:'sales',req,execute:async()=>({success:true})}),/RESULT_REFERENCE_REQUIRED/);
 
 const mismatch=confirm.createConfirmation('comms:send',{...payload,text:'different'},900);
 await assert.rejects(()=>control.runControlledMutation({action:'comms:send',project:'jihoceske',payload,confirmationToken:mismatch,agent:'sales',req,execute:async()=>({id:'x'})}),/CONFIRMATION_PAYLOAD_CHANGED/);
@@ -67,4 +89,4 @@ assert.equal(blockedTask.status,'BLOCKED');
 assert.equal(blockedTask.blockReason,'Meta není dostupná');
 assert.equal(blockedTask.nextStep,'Obnovit token');
 
-console.log('CONTROL PLANE OK — lifecycle, evidence, approval binding, one-time consumption, replay protection, project isolation, attempt lineage and BLOCKED state.');
+console.log('CONTROL PLANE OK — lifecycle, strict task/action/payload/attempt/result evidence, approval binding, one-time consumption, replay protection, project isolation, attempt lineage and BLOCKED state.');
