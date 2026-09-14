@@ -1,71 +1,35 @@
 import {auth,noauth,body,graph,projectKey,sendError} from './_lib.js';
 import {createConfirmation,verifyConfirmation} from './_confirm.js';
 import {resolveMeta} from './_meta-auth.js';
-
+import {createTask,requestApproval,runControlledMutation} from './_control.js';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-function normalizePhotos(raw=[]){
-  if(!Array.isArray(raw))return [];
-  return raw.slice(0,10).map((x,i)=>({index:i,name:String(x?.name||`foto-${i+1}.jpg`).slice(0,120),mime:String(x?.mime||'image/jpeg').toLowerCase(),size:Number(x?.size||0),sha256:String(x?.sha256||'')})).filter(x=>x.size>0&&x.sha256&&/^image\/(jpeg|png|webp)$/.test(x.mime));
-}
+function normalizePhotos(raw=[]){if(!Array.isArray(raw))return [];return raw.slice(0,10).map((x,i)=>({index:i,name:String(x?.name||`foto-${i+1}.jpg`).slice(0,120),mime:String(x?.mime||'image/jpeg').toLowerCase(),size:Number(x?.size||0),sha256:String(x?.sha256||'')})).filter(x=>x.size>0&&x.sha256&&/^image\/(jpeg|png|webp)$/.test(x.mime));}
 const uploadManifest=photos=>photos.map(x=>({mime:x.mime,size:x.size,sha256:x.sha256}));
-function publishPayload(b,{schedule=false}={}){
-  const project=projectKey(b.project),p={project,message:String(b.message||'').slice(0,63206),link:b.link?String(b.link).slice(0,2000):'',photos:normalizePhotos(b.photos)};
-  if(schedule){const t=new Date(b.when);if(!b.when||Number.isNaN(t.getTime()))throw new Error('INVALID_TIME');p.when=t.toISOString();}
-  return p;
-}
-function reelPayload(b){
-  const project=projectKey(b.project),videoUrl=String(b.videoUrl||'').trim(),caption=String(b.caption||'').slice(0,2200),shareToFeed=b.shareToFeed!==false;
-  let u;try{u=new URL(videoUrl);}catch{throw new Error('REEL_VIDEO_URL_INVALID');}
-  if(u.protocol!=='https:')throw new Error('REEL_VIDEO_URL_HTTPS_REQUIRED');
-  return {project,videoUrl:u.toString().slice(0,3000),caption,shareToFeed};
-}
-function verifyMedia(media,photos,project){
-  if(!photos.length)return [];
-  if(!Array.isArray(media)||media.length!==photos.length)throw new Error('PHOTO_UPLOAD_INCOMPLETE');
-  return photos.map((photo,i)=>{const m=media[i]||{},id=String(m.id||''),proofPayload={project,index:i,id,sha256:photo.sha256};if(!id)throw new Error('PHOTO_UPLOAD_INCOMPLETE');verifyConfirmation(m.proof,'meta:photo-proof',proofPayload);return id;});
-}
-function feedParams(payload,ids,{schedule=false}={}){
-  const p={message:payload.message,link:payload.link||undefined};ids.forEach((id,i)=>{p[`attached_media[${i}]`]=JSON.stringify({media_fbid:id});});
-  if(schedule){p.published='false';p.scheduled_publish_time=Math.floor(new Date(payload.when).getTime()/1000);if(ids.length)p.unpublished_content_type='SCHEDULED';}
-  return p;
-}
-function previewResponse(payload,action){const out={preview:payload,confirmationToken:createConfirmation(action,payload,900)};if(payload.photos?.length)out.mediaToken=createConfirmation('meta:photo-upload',{project:payload.project,photos:uploadManifest(payload.photos)},900);return out;}
+function publishPayload(b,{schedule=false}={}){const project=projectKey(b.project),p={project,message:String(b.message||'').slice(0,63206),link:b.link?String(b.link).slice(0,2000):'',photos:normalizePhotos(b.photos)};if(schedule){const t=new Date(b.when);if(!b.when||Number.isNaN(t.getTime()))throw new Error('INVALID_TIME');p.when=t.toISOString();}return p;}
+function reelPayload(b){const project=projectKey(b.project),videoUrl=String(b.videoUrl||'').trim(),caption=String(b.caption||'').slice(0,2200),shareToFeed=b.shareToFeed!==false;let u;try{u=new URL(videoUrl);}catch{throw new Error('REEL_VIDEO_URL_INVALID');}if(u.protocol!=='https:')throw new Error('REEL_VIDEO_URL_HTTPS_REQUIRED');return {project,videoUrl:u.toString().slice(0,3000),caption,shareToFeed};}
+function verifyMedia(media,photos,project){if(!photos.length)return [];if(!Array.isArray(media)||media.length!==photos.length)throw new Error('PHOTO_UPLOAD_INCOMPLETE');return photos.map((photo,i)=>{const m=media[i]||{},id=String(m.id||'');if(!id)throw new Error('PHOTO_UPLOAD_INCOMPLETE');verifyConfirmation(m.proof,'meta:photo-proof',{project,index:i,id,sha256:photo.sha256});return id;});}
+function feedParams(payload,ids,{schedule=false}={}){const p={message:payload.message,link:payload.link||undefined};ids.forEach((id,i)=>{p[`attached_media[${i}]`]=JSON.stringify({media_fbid:id});});if(schedule){p.published='false';p.scheduled_publish_time=Math.floor(new Date(payload.when).getTime()/1000);if(ids.length)p.unpublished_content_type='SCHEDULED';}return p;}
+async function previewResponse(payload,action,req,agent='user'){const task=await createTask({project:payload.project,agent,action,payload,actor:agent,evidenceRequired:true});const approval=await requestApproval(task.id,req,payload.project);const out={preview:payload,confirmationToken:approval.approvalToken,controlTaskId:task.id,approvalId:approval.approvalId};if(payload.photos?.length)out.mediaToken=approval.approvalToken;return out;}
 async function requireMeta(project){return resolveMeta(project);}
-async function publishInstagramReel(m,payload){
-  if(!m.igId){const e=new Error('INSTAGRAM_NOT_CONFIGURED');e.status=409;throw e;}
-  const created=await graph(`${m.igId}/media`,{media_type:'REELS',video_url:payload.videoUrl,caption:payload.caption||undefined,share_to_feed:payload.shareToFeed?'true':'false'},'POST',m.token);
-  const creationId=String(created.id||'');if(!creationId)throw new Error('REEL_CONTAINER_MISSING');
-  let last='IN_PROGRESS';
-  for(let i=0;i<18;i++){
-    await sleep(i<2?1400:2200);
-    const s=await graph(`${creationId}`,{fields:'status_code,status'},'GET',m.token);last=String(s.status_code||s.status||'').toUpperCase();
-    if(last==='FINISHED'){const out=await graph(`${m.igId}/media_publish`,{creation_id:creationId},'POST',m.token);return {id:out.id||null,creationId,status:'PUBLISHED'};}
-    if(['ERROR','EXPIRED'].includes(last)){const e=new Error(`REEL_PROCESSING_${last}`);e.status=409;throw e;}
-  }
-  return {creationId,status:last||'IN_PROGRESS',pending:true};
-}
-
+async function publishInstagramReel(m,payload){if(!m.igId){const e=new Error('INSTAGRAM_NOT_CONFIGURED');e.status=409;throw e;}const created=await graph(`${m.igId}/media`,{media_type:'REELS',video_url:payload.videoUrl,caption:payload.caption||undefined,share_to_feed:payload.shareToFeed?'true':'false'},'POST',m.token);const creationId=String(created.id||'');if(!creationId)throw new Error('REEL_CONTAINER_MISSING');let last='IN_PROGRESS';for(let i=0;i<18;i++){await sleep(i<2?1400:2200);const s=await graph(`${creationId}`,{fields:'status_code,status'},'GET',m.token);last=String(s.status_code||s.status||'').toUpperCase();if(last==='FINISHED'){const out=await graph(`${m.igId}/media_publish`,{creation_id:creationId},'POST',m.token);return {id:out.id||null,creationId,status:'PUBLISHED'};}if(['ERROR','EXPIRED'].includes(last)){const e=new Error(`REEL_PROCESSING_${last}`);e.status=409;throw e;}}return {creationId,status:last||'IN_PROGRESS',pending:true};}
 export default async function handler(req,res){
   if(!auth(req))return noauth(res);
   try{
     const a=String(req.query.action||'status'),project=projectKey(req.query.project||'jihoceske');
-    if(a==='reauth-info'){return res.json({project,required:true,graphVersion:process.env.META_GRAPH_VERSION||'v24.0',message:'Meta token je neplatný nebo expirovaný. Pro obnovení je potřeba nový User Access Token s oprávněními pro stránku a Instagram publikování.'});}
-    if(a==='status'){
-      const m=await resolveMeta(project,{allowInvalid:true});
-      return res.json({project,configured:m.configured,valid:m.valid,state:m.state,recovered:m.recovered,pageId:m.pageId||'',pageName:m.pageName||'',igConfigured:!!m.igId,adsConfigured:!!m.adAccountId,error:m.error||null});
-    }
+    if(a==='reauth-info')return res.json({project,required:true,graphVersion:process.env.META_GRAPH_VERSION||'v24.0',message:'Meta token je neplatný nebo expirovaný. Pro obnovení je potřeba nový User Access Token s oprávněními pro stránku a Instagram publikování.'});
+    if(a==='status'){const m=await resolveMeta(project,{allowInvalid:true});return res.json({project,configured:m.configured,valid:m.valid,state:m.state,recovered:m.recovered,pageId:m.pageId||'',pageName:m.pageName||'',igConfigured:!!m.igId,adsConfigured:!!m.adAccountId,error:m.error||null});}
     if(a==='posts'){const m=await requireMeta(project);return res.json(await graph(`${m.pageId}/posts`,{fields:'id,message,created_time,permalink_url,full_picture,comments.limit(0).summary(true),reactions.limit(0).summary(true)',limit:25},'GET',m.token));}
     if(a==='ig'){const m=await requireMeta(project);if(!m.igId)return res.json({data:[]});return res.json(await graph(`${m.igId}/media`,{fields:'id,caption,media_type,media_url,permalink,timestamp,like_count,comments_count',limit:25},'GET',m.token));}
     if(a==='comments'){const m=await requireMeta(project),id=String(req.query.id||'').slice(0,120);return res.json(await graph(`${id}/comments`,{fields:'id,message,from,created_time,like_count',limit:100},'GET',m.token));}
     if(a==='ads'){const m=await requireMeta(project);if(!m.adAccountId)return res.json({data:[]});return res.json(await graph(`${m.adAccountId}/insights`,{fields:'campaign_name,impressions,reach,clicks,spend,actions',date_preset:'last_30d',level:'campaign'},'GET',m.token));}
     if(req.method!=='POST')return res.status(400).json({error:'UNKNOWN_ACTION'});
     const b=await body(req);b.project=projectKey(b.project||project);const m=await requireMeta(b.project);
-    if(a==='preview-publish'){const payload=publishPayload(b),action=payload.photos.length?'meta:publish-photos':'meta:publish';return res.json(previewResponse(payload,action));}
-    if(a==='publish'){const payload=publishPayload(b),action=payload.photos.length?'meta:publish-photos':'meta:publish';verifyConfirmation(b.confirmationToken,action,payload);const ids=verifyMedia(b.media,payload.photos,payload.project),out=await graph(`${m.pageId}/feed`,feedParams(payload,ids),'POST',m.token);return res.json(out);}
-    if(a==='preview-schedule'){const payload=publishPayload(b,{schedule:true}),action=payload.photos.length?'meta:schedule-photos':'meta:schedule';return res.json(previewResponse(payload,action));}
-    if(a==='schedule'){const payload=publishPayload(b,{schedule:true}),action=payload.photos.length?'meta:schedule-photos':'meta:schedule';verifyConfirmation(b.confirmationToken,action,payload);const ids=verifyMedia(b.media,payload.photos,payload.project),out=await graph(`${m.pageId}/feed`,feedParams(payload,ids,{schedule:true}),'POST',m.token);return res.json(out);}
-    if(a==='preview-reel'){const payload=reelPayload(b);return res.json(previewResponse(payload,'meta:reel-publish'));}
-    if(a==='publish-reel'){const payload=reelPayload(b);verifyConfirmation(b.confirmationToken,'meta:reel-publish',payload);return res.json(await publishInstagramReel(m,payload));}
+    if(a==='preview-publish'){const payload=publishPayload(b),action=payload.photos.length?'meta:publish-photos':'meta:publish';return res.json(await previewResponse(payload,action,req,String(b.agent||'user')));}
+    if(a==='publish'){const payload=publishPayload(b),action=payload.photos.length?'meta:publish-photos':'meta:publish';const out=await runControlledMutation({action,project:payload.project,payload,confirmationToken:b.confirmationToken,agent:String(b.agent||'user'),req,execute:async()=>{const ids=verifyMedia(b.media,payload.photos,payload.project);return await graph(`${m.pageId}/feed`,feedParams(payload,ids),'POST',m.token);}});return res.json({...out.result,controlTask:out.task});}
+    if(a==='preview-schedule'){const payload=publishPayload(b,{schedule:true}),action=payload.photos.length?'meta:schedule-photos':'meta:schedule';return res.json(await previewResponse(payload,action,req,String(b.agent||'user')));}
+    if(a==='schedule'){const payload=publishPayload(b,{schedule:true}),action=payload.photos.length?'meta:schedule-photos':'meta:schedule';const out=await runControlledMutation({action,project:payload.project,payload,confirmationToken:b.confirmationToken,agent:String(b.agent||'user'),req,execute:async()=>{const ids=verifyMedia(b.media,payload.photos,payload.project);return await graph(`${m.pageId}/feed`,feedParams(payload,ids,{schedule:true}),'POST',m.token);}});return res.json({...out.result,controlTask:out.task});}
+    if(a==='preview-reel'){const payload=reelPayload(b);return res.json(await previewResponse(payload,'meta:reel-publish',req,String(b.agent||'user')));}
+    if(a==='publish-reel'){const payload=reelPayload(b);const out=await runControlledMutation({action:'meta:reel-publish',project:payload.project,payload,confirmationToken:b.confirmationToken,agent:String(b.agent||'user'),req,execute:async()=>await publishInstagramReel(m,payload)});return res.json({...out.result,controlTask:out.task});}
     return res.status(400).json({error:'UNKNOWN_ACTION'});
   }catch(e){return sendError(res,e);}
 }

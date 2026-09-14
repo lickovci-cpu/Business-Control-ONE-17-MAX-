@@ -10,14 +10,17 @@ function canonical(v){
 function hash(payload){return createHash('sha256').update(canonical(payload)).digest('base64url');}
 function sign(data){return createHmac('sha256',secret()).update(data).digest('base64url');}
 export function createConfirmation(action,payload,ttlSeconds=600){
-  const data={a:String(action),h:hash(payload),exp:Math.floor(Date.now()/1000)+ttlSeconds,n:randomBytes(8).toString('base64url')};
+  const data={a:String(action),h:hash(payload),exp:Math.floor(Date.now()/1000)+ttlSeconds,n:randomBytes(8).toString('base64url'),...(payload?.taskId?{taskId:String(payload.taskId)}:{})};
   const enc=Buffer.from(JSON.stringify(data)).toString('base64url');return `${enc}.${sign(enc)}`;
 }
-export function verifyConfirmation(token,action,payload){
+export function getConfirmationData(token){
   if(!token||!String(token).includes('.'))throw new Error('CONFIRMATION_REQUIRED');
   const [enc,sig]=String(token).split('.'),expected=sign(enc),a=Buffer.from(sig),b=Buffer.from(expected);
   if(a.length!==b.length||!timingSafeEqual(a,b))throw new Error('CONFIRMATION_INVALID');
-  let d;try{d=JSON.parse(Buffer.from(enc,'base64url').toString('utf8'))}catch{throw new Error('CONFIRMATION_INVALID');}
+  try{return JSON.parse(Buffer.from(enc,'base64url').toString('utf8'));}catch{throw new Error('CONFIRMATION_INVALID');}
+}
+export function verifyConfirmation(token,action,payload){
+  const d=getConfirmationData(token);
   if(d.exp<Math.floor(Date.now()/1000))throw new Error('CONFIRMATION_EXPIRED');
   if(d.a!==String(action)||d.h!==hash(payload))throw new Error('CONFIRMATION_PAYLOAD_CHANGED');
   return true;
