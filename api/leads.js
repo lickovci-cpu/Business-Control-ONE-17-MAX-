@@ -14,7 +14,7 @@ async function sb(path,opt={}){requireDb();const r=await fetch(`${SB_URL}/rest/v
 function taskAction(a){return `crm:lead-${a}`;}
 function stable(v){if(Array.isArray(v))return '['+v.map(stable).join(',')+']';if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}';return JSON.stringify(v);}
 function fingerprint(v){return createHash('sha256').update(stable(v)).digest('hex');}
-function approvedExecutionPayload(action,b,project,organization_id){return {project,organization_id,id:b.id||null,payload:b.payload||null,patch:b.patch||null,status:b.status||null};}
+function approvedExecutionPayload(action,b,project,organization_id){return {project,organization_id,id:b.id||null,payload:b.payload||null,patch:b.patch||null,status:b.status||null,amount:b.amount??null};}
 export function validateApprovedPayload(task,expectedTaskId,action,executionPayload,project){
   if(!task)throw new Error('TASK_NOT_FOUND');
   if(task.id!==String(expectedTaskId))throw new Error('TASK_ID_MISMATCH');
@@ -44,7 +44,7 @@ export default async function handler(req,res){
     }
     if(req.method!=='POST')return res.status(405).json({error:'METHOD'});
     const b=await body(req,200000);const action=String(b.action||'');
-    if(MUTATING.has(action)&&!b.approvalToken)return res.status(202).json(await queue(req,project,action,{project,organization_id,id:b.id||null,payload:b.payload||null,patch:b.patch||null,status:b.status||null}));
+    if(MUTATING.has(action)&&!b.approvalToken)return res.status(202).json(await queue(req,project,action,{project,organization_id,id:b.id||null,payload:b.payload||null,patch:b.patch||null,status:b.status||null,amount:b.amount??null}));
     if(!action.startsWith('execute-'))return res.status(400).json({error:'APPROVAL_REQUIRED'});
     const realAction=action.slice(8);if(!MUTATING.has(realAction))return res.status(400).json({error:'UNKNOWN_ACTION'});if(!b.taskId||!b.approvalToken)throw new Error('APPROVAL_REQUIRED');
     const executionPayload=approvedExecutionPayload(realAction,b,project,organization_id);
@@ -66,9 +66,10 @@ export default async function handler(req,res){
           const lead=await sb('leads',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({organization_id,contact_id:c?.id||null,status:'new',estimated_value:p.estimated_value??null,note:note||null,source:p.source||null})});result=Array.isArray(lead)?lead[0]:lead;
         }catch(e){if(newContact&&c?.id)await sb(`contacts?id=eq.${encodeURIComponent(c.id)}&organization_id=eq.${organization_id}`,{method:'DELETE'}).catch(()=>{});throw e;}
       } else if(realAction==='status'){
-        const rows=await sb(`leads?id=eq.${encodeURIComponent(b.id)}&organization_id=eq.${organization_id}&select=id,status`);if(!Array.isArray(rows)||!rows[0])throw new Error('LEAD_NOT_FOUND');
+        const rows=await sb(`leads?id=eq.${encodeURIComponent(b.id)}&organization_id=eq.${organization_id}&select=id,status,invoiced_amount,paid_amount`);if(!Array.isArray(rows)||!rows[0])throw new Error('LEAD_NOT_FOUND');
         validateLeadTransition(rows[0].status,b.status);
         const now=new Date().toISOString(),patch={status:b.status,updated_at:now};if(b.status==='qualified')patch.qualified_at=now;if(b.status==='contacted')patch.last_contact_at=now;if(b.status==='offer')patch.offered_at=now;if(b.status==='approved')patch.approved_at=now;if(b.status==='delivered')patch.delivered_at=now;if(b.status==='invoiced')patch.invoiced_at=now;if(b.status==='paid')patch.paid_at=now;
+        if(b.status==='invoiced'&&b.amount!=null)patch.invoiced_amount=Number(b.amount);if(b.status==='paid'&&b.amount!=null)patch.paid_amount=Number(b.amount);
         const updated=await sb(`leads?id=eq.${encodeURIComponent(b.id)}&organization_id=eq.${organization_id}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});result=Array.isArray(updated)?updated[0]:updated;
       } else {
         const patch=cleanPatch(b.patch||{});const current=await sb(`leads?id=eq.${encodeURIComponent(b.id)}&organization_id=eq.${organization_id}&select=contact_id`);const cid=current?.[0]?.contact_id;if(cid&&(b.patch?.name||b.patch?.phone||b.patch?.email))await sb(`contacts?id=eq.${encodeURIComponent(cid)}&organization_id=eq.${organization_id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({...(b.patch?.name?{name:b.patch.name}:{}),...(b.patch?.phone?{phone:b.patch.phone}:{}),...(b.patch?.email?{email:b.patch.email}:{})})});
