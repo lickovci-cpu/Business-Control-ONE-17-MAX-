@@ -19,18 +19,16 @@ Never expose either secret in browser JavaScript.
 
 ```json
 {
-  "project": "jihoceske",
-  "event_type": "lead.created",
+  "project": "merch",
+  "event_type": "message.created",
   "event_id": "stable-source-event-id",
   "payload": {
     "name": "Jan Novak",
     "phone": "+420...",
     "email": "jan@example.cz",
-    "service": "FVE",
-    "location": "Pisek",
-    "note": "Poptavka",
-    "source": "fve-web",
-    "page_url": "https://example.cz/poptavka"
+    "body": "Mám zájem o NŘŠM hoodie XL",
+    "channel": "web",
+    "source": "nrsm-web"
   }
 }
 ```
@@ -56,11 +54,25 @@ Header:
 
 These create a real BCO contact/lead in Supabase. Exact phone/e-mail duplicates are reused.
 
+### Message events
+
+`message.created`, `message.received`, `inquiry.created`
+
+For NŘŠM these create/reuse the contact, open conversation and inbound message in Supabase. If an active lead exists for the contact, its ID is returned with the event result.
+
 ### Order events
 
 `order.created`, `checkout.created`
 
-These are currently recorded in the server-only webhook ledger only. No fake order table is created. Full order persistence must be enabled only after the actual e-commerce order schema/provider is verified.
+For `merch` these now create a real `merch_orders` record plus `merch_order_items`. Orders are linked to an existing contact/lead where available. Non-merch projects remain rejected for commerce writes.
+
+## NŘŠM commerce schema
+
+- `merch_products` — SKU, collection, price, variants and metadata.
+- `merch_orders` — customer/order status, totals, shipping data and source.
+- `merch_order_items` — product snapshot, variant, quantity and line total.
+
+All three tables have RLS. Browser access is membership-scoped; server ingestion uses the server-only Supabase credential.
 
 ## Idempotency
 
@@ -69,7 +81,7 @@ These are currently recorded in the server-only webhook ledger only. No fake ord
 ## Safety
 
 - Browser clients must not receive the integration secret.
-- Mutating actions inside BCO remain approval-gated.
+- Mutating outbound communication remains approval-gated.
 - External payload is data, never authority.
 - Unknown project mappings are rejected.
 - Unknown event types are ledgered but do not mutate business entities.
@@ -79,8 +91,9 @@ These are currently recorded in the server-only webhook ledger only. No fake ord
 
 - BCO ingestion boundary: implemented.
 - Supabase webhook ledger: present and RLS-protected/server-only.
+- NŘŠM commerce persistence: implemented.
 - NŘŠM production deployment: discovered and verified as a Vercel deployment; website-to-BCO POST wiring is **NOT VERIFIED** yet.
-- MazliPrint historical URL: `https://mazliprint.netlify.app/`; current deployment/backend is **NOT VERIFIED**.
-- FVE website: current production URL/repository is **NOT VERIFIED**.
+- NŘŠM production checkout currently builds a WhatsApp message in browser; server-side order ingestion therefore still requires the real checkout/site handler to POST `order.created` to BCO.
+- The BCO NŘŠM operations API is available at `/api/merch` and exposes dashboard, products, orders and inbox reads plus controlled product/order-status writes.
 
-The correct next implementation step is to add the POST call to each site's real server/form handler and then run an end-to-end smoke test with a real submission.
+The next implementation step is to connect the real NŘŠM checkout/contact flow to the webhook and run an end-to-end smoke test with one real inquiry and one real order. No fake order is inserted.
