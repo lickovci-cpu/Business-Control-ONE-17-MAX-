@@ -29,3 +29,7 @@ The workflow intentionally exits without running if the secret is missing.
 Night Shift is an operations controller, not an unrestricted coding agent. It can monitor production and process the already-approved communication queue, but it does not autonomously edit the repository, database schema, RLS policies, credentials, or deployment configuration.
 
 Code changes remain reviewable through GitHub. This boundary prevents an overnight model loop from making unverified production changes.
+
+## Deployment synchronization
+
+The controller is merged to `main`. A documentation-only synchronization commit is intentionally used after the controller merge so the repository's existing Git-to-Vercel production integration receives a fresh `main` event. No application behavior is changed by this section.
