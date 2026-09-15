@@ -20,7 +20,7 @@
   ],
   "rewrites": [
     { "source": "/", "destination": "/public/index.html" },
-    { "source": "/studio", "destination": "/public/studio" },
+    { "source": "/studio", "destination": "/public/studio-entry" },
     { "source": "/api/merch-studio", "destination": "/api/merch-studio-router" },
     { "source": "/app.js", "destination": "/public/app.js" },
     { "source": "/styles.css", "destination": "/public/styles.css" },
