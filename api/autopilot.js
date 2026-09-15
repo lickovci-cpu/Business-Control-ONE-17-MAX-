@@ -41,8 +41,9 @@ export default async function handler(req,res){
   if(!lock)return res.status(409).json({error:'AUTOPILOT_ALREADY_RUNNING'});
   const started=new Date().toISOString();
   try{
-    const health=await probe('/api/health');
-    const cron=health.ok?await probe('/api/cron',{method:'POST',headers:{Authorization:`Bearer ${env('CRON_SECRET')}`}}):{path:'/api/cron',ok:false,status:0,skipped:'health_failed'};
+    const secret=env('CRON_SECRET');
+    const health=await probe('/api/health',{headers:{Authorization:`Bearer ${secret}`}});
+    const cron=health.ok?await probe('/api/cron',{method:'POST',headers:{Authorization:`Bearer ${secret}`}}):{path:'/api/cron',ok:false,status:0,skipped:'health_failed'};
     const previous=await kvGet(STATE)||{};
     const checks=[health,cron];
     const decision=classify(checks);
