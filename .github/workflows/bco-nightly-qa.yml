@@ -1,0 +1,38 @@
+name: BCO Nightly QA
+
+on:
+  schedule:
+    - cron: '15 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts
+
+      - name: Static checks
+        run: npm run check
+
+      - name: Regression suite
+        run: npm test
+
+      - name: Emit evidence
+        if: always()
+        run: |
+          echo "BCO nightly QA completed at $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          echo "Commit: $GITHUB_SHA"
