@@ -37,6 +37,7 @@ function classify(checks){
 export default async function handler(req,res){
   if(!authorized(req))return res.status(401).json({error:'unauthorized'});
   if(req.method!=='POST')return res.status(405).json({error:'METHOD_NOT_ALLOWED'});
+  if(!env('KV_REST_API_URL')||!env('KV_REST_API_TOKEN'))return res.status(503).json({error:'KV_NOT_CONFIGURED'});
   const lock=await kvSetNxEx(LOCK,Date.now(),120);
   if(!lock)return res.status(409).json({error:'AUTOPILOT_ALREADY_RUNNING'});
   const started=new Date().toISOString();

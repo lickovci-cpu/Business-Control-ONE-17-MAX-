@@ -5,6 +5,7 @@ const lib=await import('../api/_lib.js');
 const conf=await import('../api/_confirm.js');
 const meta=await import('../api/_meta-config.js');
 const healthHandler=(await import('../api/health.js')).default;
+const autopilot=(await import('../api/autopilot.js')).default;
 const token=lib.createSessionToken();assert.equal(lib.verifySessionToken(token),true);assert.equal(lib.verifySessionToken(token+'x'),false);
 const payload={project:'jihoceske',message:'test'},ct=conf.createConfirmation('meta:publish',payload);assert.equal(conf.verifyConfirmation(ct,'meta:publish',payload),true);assert.throws(()=>conf.verifyConfirmation(ct,'meta:publish',{...payload,project:'mazliprint'}));
 assert.equal(meta.metaConfig('jihoceske').configured,true);assert.equal(meta.metaConfig('mazliprint').configured,false);assert.throws(()=>lib.projectKey('evil'));
@@ -13,6 +14,10 @@ const noCookie={headers:{'x-app-key':'test-password'}};assert.equal(lib.auth(noC
 const healthResponse=()=>{let status=200,body;return{setHeader(){},statusCode:200,status(n){status=n;return this},json(v){body=v;return this},get result(){return{status,body}}}};
 const protectedHealth=healthResponse();healthHandler({headers:{authorization:'Bearer cron-test'}},protectedHealth);assert.equal(protectedHealth.result.status,200);assert.equal(protectedHealth.result.body.ok,true);
 const deniedHealth=healthResponse();healthHandler({headers:{}},deniedHealth);assert.equal(deniedHealth.result.status,401);
+const oldKvUrl=process.env.KV_REST_API_URL,oldKvToken=process.env.KV_REST_API_TOKEN;
+delete process.env.KV_REST_API_URL;delete process.env.KV_REST_API_TOKEN;
+const autopilotResponse=healthResponse();await autopilot({method:'POST',headers:{authorization:'Bearer cron-test'}},autopilotResponse);assert.equal(autopilotResponse.result.status,503);assert.equal(autopilotResponse.result.body.error,'KV_NOT_CONFIGURED');
+if(oldKvUrl!==undefined)process.env.KV_REST_API_URL=oldKvUrl;if(oldKvToken!==undefined)process.env.KV_REST_API_TOKEN=oldKvToken;
 const fs=await import('node:fs/promises');
 const app=await fs.readFile('public/app.js','utf8');
 for(const marker of ['state.project!==runProject','app_snapshots','leadScore','RECOVERY_KEY','dailyBrief','recordActivity','startEditLead','leadToComms','scheduleDraftSave','maybeAutoRecovery','renderPortfolio','MEDIA_THUMB_CACHE','IntersectionObserver','ensureMediaFile','clearThumbCache','useFallbackFiles','generateReel','publishReel','renderMetaConnection','generateCampaign','leadFollowKit','autoSelectReelPhotos','truthGuard','pipelineStats','renderSales','quoteSave','dealCoachRun','JOB_TEMPLATES','createJob','renderCashWatch','buildReelPreview','exportReelStoryboard','maybeDueNotification','requestPersistentStorage','runContentWorker','renderWorker','lastContentWorker'])assert.ok(app.includes(marker),marker);
@@ -24,6 +29,7 @@ const health=await fs.readFile('api/health.js','utf8');assert.ok(health.includes
 const ai=await fs.readFile('api/ai.js','utf8');assert.ok(ai.includes("task==='salescoach'"));assert.ok(ai.includes("task==='quote'"));
 const comms=await fs.readFile('api/comms.js','utf8');assert.ok(comms.includes('PROJECT_MISMATCH'));
 const rcs=await fs.readFile('api/_comms.js','utf8');assert.ok(rcs.includes('RCS_USE_GLOBAL_ENDPOINT'));
+const autopilotSource=await fs.readFile('api/autopilot.js','utf8');assert.ok(autopilotSource.includes("KV_NOT_CONFIGURED"));
 console.log('SMOKE OK — 17 MAX auth, project isolation, Control Room, Sales Command, Quote Builder, Delivery OS, Reels Composer 3, cloud sync and mobile-safe media.');
 
 assert(html.includes('id="metaCenterText"') && html.includes('id="metaCopyDiag"'));
