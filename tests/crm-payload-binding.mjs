@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {validateApprovedPayload} from '../api/leads.js';
+import {validateApprovedPayload,validateLeadTransition} from '../api/leads.js';
 
 const base={project:'jihoceske',organization_id:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',id:null,payload:null,patch:null,status:null};
 const stable=(x)=>Array.isArray(x)?'['+x.map(stable).join(',')+']':x&&typeof x==='object'?'{'+Object.keys(x).sort().map(k=>JSON.stringify(k)+':'+stable(x[k])).join(',')+'}':JSON.stringify(x);
@@ -27,7 +27,17 @@ assert.throws(()=>validateApprovedPayload(exactTask,'other-task','update',exact,
 assert.throws(()=>validateApprovedPayload(exactTask,exactTask.id,'update',exact,'other-project'),/PROJECT_MISMATCH/);
 assert.throws(()=>validateApprovedPayload(exactTask,exactTask.id,'status',exact,'jihoceske'),/APPROVAL_ACTION_MISMATCH/);
 
+assert.equal(validateLeadTransition('new','contacted'),true);
+assert.equal(validateLeadTransition('offer','approved'),true);
+assert.equal(validateLeadTransition('invoiced','paid'),true);
+assert.equal(validateLeadTransition('paid','closed'),true);
+assert.equal(validateLeadTransition('qualified','qualified'),true);
+assert.throws(()=>validateLeadTransition('new','paid'),/INVALID_LEAD_TRANSITION/);
+assert.throws(()=>validateLeadTransition('offer','job'),/INVALID_LEAD_TRANSITION/);
+assert.throws(()=>validateLeadTransition('closed','paid'),/INVALID_LEAD_TRANSITION/);
+assert.throws(()=>validateLeadTransition('new','not-a-status'),/INVALID_LEAD_STATUS/);
+
 const control=await import('../api/_control.js');
 assert.ok(control.consumeApproval.toString().includes('APPROVAL_ALREADY_USED'),'Control Plane replay protection must remain active');
 
-console.log('CRM PAYLOAD BINDING OK — exact payload, CREATE/UPDATE/STATUS tampering, task/project/action binding, replay guard.');
+console.log('CRM PAYLOAD BINDING + TRANSITIONS OK — exact payload, tampering, task/project/action binding, replay guard, valid/invalid stage transitions.');
