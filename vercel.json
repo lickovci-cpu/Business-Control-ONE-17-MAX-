@@ -9,8 +9,13 @@
     "api/cron.js": { "maxDuration": 60 },
     "api/merch-studio.js": { "maxDuration": 60 },
     "api/merch-studio-safe.js": { "maxDuration": 60 },
+    "api/merch-cron.js": { "maxDuration": 60 },
     "api/*.js": { "maxDuration": 30 }
   },
+  "crons": [
+    { "path": "/api/merch-cron", "schedule": "0 */6 * * *" },
+    { "path": "/api/cron", "schedule": "*/5 * * * *" }
+  ],
   "rewrites": [
     { "source": "/", "destination": "/public/index.html" },
     { "source": "/studio", "destination": "/public/studio.html" },
@@ -34,14 +39,6 @@
         { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
         { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data: https:; media-src 'self' blob: https:; connect-src 'self' https://vjzzvopwecmwuccdidzq.supabase.co https://api.openai.com https://generativelanguage.googleapis.com https://api.hunter.io https://queue.fal.run https://api.replicate.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; manifest-src 'self'" }
       ]
-    },
-    {
-      "source": "/public/index.html",
-      "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
-    },
-    {
-      "source": "/(app.js|styles.css|sw.js|manifest.webmanifest)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     }
   ]
 }
