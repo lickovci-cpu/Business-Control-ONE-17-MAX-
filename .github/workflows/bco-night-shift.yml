@@ -1,0 +1,31 @@
+name: BCO Night Shift
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  night-shift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run autonomous BCO controller
+        env:
+          BCO_PUBLIC_URL: ${{ vars.BCO_PUBLIC_URL }}
+          BCO_CRON_SECRET: ${{ secrets.BCO_CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          URL="${BCO_PUBLIC_URL:-https://business-control-one.vercel.app}"
+          if [ -z "${BCO_CRON_SECRET:-}" ]; then
+            echo "BCO_CRON_SECRET is not configured; night shift is intentionally disabled."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error \
+            --max-time 60 \
+            -X POST \
+            -H "Authorization: Bearer ${BCO_CRON_SECRET}" \
+            "${URL}/api/autopilot"
