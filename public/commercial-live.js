@@ -1,6 +1,6 @@
 /* BCO live commercial read model: Supabase-backed quotes, jobs, opportunities and cash. */
 (()=>{
-  const $=s=>document.querySelector(s), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)], esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=v=>new Intl.NumberFormat('cs-CZ',{style:'currency',currency:'CZK',maximumFractionDigits:0}).format(Number(v)||0);
   const project=()=>{try{return window.state?.project||$('#project')?.value||'jihoceske'}catch{return 'jihoceske'}};
   const req=async()=>{const r=await fetch(`/api/commercial?project=${encodeURIComponent(project())}`,{credentials:'same-origin',signal:AbortSignal.timeout(15000)});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||`HTTP ${r.status}`);return j;};
