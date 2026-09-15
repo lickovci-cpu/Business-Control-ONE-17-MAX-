@@ -3,7 +3,7 @@ import {createHash} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import {validateApprovedPayload,validateLeadTransition} from '../api/leads.js';
 
-const base={project:'jihoceske',organization_id:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',id:null,payload:null,patch:null,status:null};
+const base={project:'jihoceske',organization_id:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',id:null,payload:null,patch:null,status:null,amount:null};
 const stable=(x)=>Array.isArray(x)?'['+x.map(stable).join(',')+']':x&&typeof x==='object'?'{'+Object.keys(x).sort().map(k=>JSON.stringify(k)+':'+stable(x[k])).join(',')+'}':JSON.stringify(x);
 const hash=(v)=>createHash('sha256').update(stable(v)).digest('hex');
 const payload=(p={})=>({...base,...p});
@@ -12,14 +12,15 @@ const taskFor=(action,p)=>({id:'task-1',project:'jihoceske',action:`crm:lead-${a
 for(const [action,p] of [
   ['create',payload({payload:{name:'TEST_CRM_BINDING'}})],
   ['update',payload({id:'lead-1',patch:{note:'TEST'}})],
-  ['status',payload({id:'lead-1',status:'qualified'})]
+  ['status',payload({id:'lead-1',status:'qualified'})],
+  ['status',payload({id:'lead-1',status:'paid',amount:25000})]
 ]){
   const t=taskFor(action,p);
   assert.equal(validateApprovedPayload(t,t.id,action,p,'jihoceske'),true,`${action} exact payload must pass`);
   const changed=structuredClone(p);
   if(action==='create')changed.payload.name='TEST_CRM_BINDING_CHANGED';
   if(action==='update'){changed.id='lead-2';assert.throws(()=>validateApprovedPayload(t,t.id,action,changed,'jihoceske'),/PAYLOAD_MISMATCH/);changed.id='lead-1';changed.patch.note='CHANGED';}
-  if(action==='status')changed.status='offer';
+  if(action==='status'){changed.status='offer';assert.throws(()=>validateApprovedPayload(t,t.id,action,changed,'jihoceske'),/PAYLOAD_MISMATCH/);changed.status=p.status;changed.amount=Number(p.amount||0)+1;}
   assert.throws(()=>validateApprovedPayload(t,t.id,action,changed,'jihoceske'),/PAYLOAD_MISMATCH/);
 }
 
@@ -39,11 +40,16 @@ assert.throws(()=>validateLeadTransition('closed','paid'),/INVALID_LEAD_TRANSITI
 assert.throws(()=>validateLeadTransition('new','not-a-status'),/INVALID_LEAD_STATUS/);
 
 const api=await readFile('api/leads.js','utf8');
+const bridge=await readFile('public/crm-live.js','utf8');
 assert.ok(api.includes('contacts?organization_id=eq.${organization_id}&phone=eq.'),'CRM create should reuse exact phone contacts');
 assert.ok(api.includes('contacts?organization_id=eq.${organization_id}&email=eq.'),'CRM create should reuse exact email contacts');
 assert.ok(api.includes('newContact&&c?.id'),'CRM create should rollback a newly-created orphan contact on lead failure');
+assert.ok(api.includes('invoiced_amount=Number(b.amount)'),'CRM invoice amount must persist');
+assert.ok(api.includes('paid_amount=Number(b.amount)'),'CRM payment amount must persist');
+assert.ok(bridge.includes('Částka faktury v Kč'),'CRM UI must request invoice amount');
+assert.ok(bridge.includes('Částka skutečně uhrazená v Kč'),'CRM UI must request paid amount');
 
 const control=await import('../api/_control.js');
 assert.ok(control.consumeApproval.toString().includes('APPROVAL_ALREADY_USED'),'Control Plane replay protection must remain active');
 
-console.log('CRM PAYLOAD + TRANSITIONS + CONTACT SAFETY OK — exact binding, stage guard, contact reuse and orphan rollback.');
+console.log('CRM PAYLOAD + TRANSITIONS + CONTACT + PAYMENT AMOUNTS OK.');
