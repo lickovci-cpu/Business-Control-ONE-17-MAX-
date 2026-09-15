@@ -55,9 +55,16 @@ export default async function handler(req,res){
       let result;
       if(realAction==='create'){
         const p=b.payload||{};if(!String(p.name||'').trim())throw new Error('LEAD_NAME_REQUIRED');
-        const contact=await sb('contacts',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({organization_id,name:String(p.contact||p.name).slice(0,200),phone:p.phone||null,email:p.email||null})});
-        const c=Array.isArray(contact)?contact[0]:contact;const note=[p.note||'',p.web?`Web: ${p.web}`:'',p.region?`Region: ${p.region}`:'',p.leadType?`Typ: ${p.leadType}`:'',p.priority?`Priorita: ${p.priority}`:''].filter(Boolean).join(' · ');
-        const lead=await sb('leads',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({organization_id,contact_id:c?.id||null,status:'new',estimated_value:p.estimated_value??null,note:note||null,source:p.source||null})});result=Array.isArray(lead)?lead[0]:lead;
+        const phone=String(p.phone||'').trim(),email=String(p.email||'').trim();
+        let existing=[];
+        if(phone)existing=await sb(`contacts?organization_id=eq.${organization_id}&phone=eq.${encodeURIComponent(phone)}&select=id,name,phone,email&limit=1`);
+        if(!existing.length&&email)existing=await sb(`contacts?organization_id=eq.${organization_id}&email=eq.${encodeURIComponent(email)}&select=id,name,phone,email&limit=1`);
+        let c=Array.isArray(existing)?existing[0]:null,newContact=false;
+        if(!c){const contact=await sb('contacts',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({organization_id,name:String(p.contact||p.name).slice(0,200),phone:phone||null,email:email||null})});c=Array.isArray(contact)?contact[0]:contact;newContact=true;}
+        const note=[p.note||'',p.web?`Web: ${p.web}`:'',p.region?`Region: ${p.region}`:'',p.leadType?`Typ: ${p.leadType}`:'',p.priority?`Priorita: ${p.priority}`:''].filter(Boolean).join(' · ');
+        try{
+          const lead=await sb('leads',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({organization_id,contact_id:c?.id||null,status:'new',estimated_value:p.estimated_value??null,note:note||null,source:p.source||null})});result=Array.isArray(lead)?lead[0]:lead;
+        }catch(e){if(newContact&&c?.id)await sb(`contacts?id=eq.${encodeURIComponent(c.id)}&organization_id=eq.${organization_id}`,{method:'DELETE'}).catch(()=>{});throw e;}
       } else if(realAction==='status'){
         const rows=await sb(`leads?id=eq.${encodeURIComponent(b.id)}&organization_id=eq.${organization_id}&select=id,status`);if(!Array.isArray(rows)||!rows[0])throw new Error('LEAD_NOT_FOUND');
         validateLeadTransition(rows[0].status,b.status);
