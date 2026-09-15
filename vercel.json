@@ -7,10 +7,14 @@
     "api/ai.js": { "maxDuration": 60 },
     "api/meta-photo.js": { "maxDuration": 60 },
     "api/cron.js": { "maxDuration": 60 },
+    "api/merch-studio.js": { "maxDuration": 60 },
+    "api/merch-studio-safe.js": { "maxDuration": 60 },
     "api/*.js": { "maxDuration": 30 }
   },
   "rewrites": [
     { "source": "/", "destination": "/public/index.html" },
+    { "source": "/studio", "destination": "/public/studio.html" },
+    { "source": "/api/merch-studio", "destination": "/api/merch-studio-safe" },
     { "source": "/app.js", "destination": "/public/app.js" },
     { "source": "/styles.css", "destination": "/public/styles.css" },
     { "source": "/manifest.webmanifest", "destination": "/public/manifest.webmanifest" },
@@ -28,7 +32,7 @@
         { "key": "Cross-Origin-Resource-Policy", "value": "same-origin" },
         { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
         { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; media-src 'self' blob: https:; connect-src 'self' https://vjzzvopwecmwuccdidzq.supabase.co; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; manifest-src 'self'" }
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data: https:; media-src 'self' blob: https:; connect-src 'self' https://vjzzvopwecmwuccdidzq.supabase.co https://api.openai.com https://generativelanguage.googleapis.com https://api.hunter.io https://queue.fal.run https://api.replicate.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; manifest-src 'self'" }
       ]
     },
     {
