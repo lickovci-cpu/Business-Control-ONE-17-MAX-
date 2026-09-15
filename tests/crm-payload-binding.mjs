@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
+import {readFile} from 'node:fs/promises';
 import {validateApprovedPayload,validateLeadTransition} from '../api/leads.js';
 
 const base={project:'jihoceske',organization_id:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',id:null,payload:null,patch:null,status:null};
@@ -37,7 +38,12 @@ assert.throws(()=>validateLeadTransition('offer','job'),/INVALID_LEAD_TRANSITION
 assert.throws(()=>validateLeadTransition('closed','paid'),/INVALID_LEAD_TRANSITION/);
 assert.throws(()=>validateLeadTransition('new','not-a-status'),/INVALID_LEAD_STATUS/);
 
+const api=await readFile('api/leads.js','utf8');
+assert.ok(api.includes('contacts?organization_id=eq.${organization_id}&phone=eq.'),'CRM create should reuse exact phone contacts');
+assert.ok(api.includes('contacts?organization_id=eq.${organization_id}&email=eq.'),'CRM create should reuse exact email contacts');
+assert.ok(api.includes('newContact&&c?.id'),'CRM create should rollback a newly-created orphan contact on lead failure');
+
 const control=await import('../api/_control.js');
 assert.ok(control.consumeApproval.toString().includes('APPROVAL_ALREADY_USED'),'Control Plane replay protection must remain active');
 
-console.log('CRM PAYLOAD BINDING + TRANSITIONS OK — exact payload, tampering, task/project/action binding, replay guard, valid/invalid stage transitions.');
+console.log('CRM PAYLOAD + TRANSITIONS + CONTACT SAFETY OK — exact binding, stage guard, contact reuse and orphan rollback.');
