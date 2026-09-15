@@ -3,7 +3,7 @@ import {createHash} from 'node:crypto';
 import {validateApprovedPayload,validateLeadTransition} from '../api/leads.js';
 
 const base={project:'jihoceske',organization_id:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',id:null,payload:null,patch:null,status:null};
-const stable=(x)=>Array.isArray(x)?'['+x.map(stable).join(',')+']':x&&typeof x==='object'?'{'+Object.keys(x).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}':JSON.stringify(x);
+const stable=(x)=>Array.isArray(x)?'['+x.map(stable).join(',')+']':x&&typeof x==='object'?'{'+Object.keys(x).sort().map(k=>JSON.stringify(k)+':'+stable(x[k])).join(',')+'}':JSON.stringify(x);
 const hash=(v)=>createHash('sha256').update(stable(v)).digest('hex');
 const payload=(p={})=>({...base,...p});
 const taskFor=(action,p)=>({id:'task-1',project:'jihoceske',action:`crm:lead-${action}`,payloadHash:hash(p)});
