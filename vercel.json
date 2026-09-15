@@ -9,7 +9,9 @@
     "api/cron.js": { "maxDuration": 60 },
     "api/merch-studio.js": { "maxDuration": 60 },
     "api/merch-studio-safe.js": { "maxDuration": 60 },
+    "api/merch-studio-router.js": { "maxDuration": 60 },
     "api/merch-cron.js": { "maxDuration": 60 },
+    "api/merch-public-status.js": { "maxDuration": 30 },
     "api/*.js": { "maxDuration": 30 }
   },
   "crons": [
@@ -19,7 +21,7 @@
   "rewrites": [
     { "source": "/", "destination": "/public/index.html" },
     { "source": "/studio", "destination": "/public/studio" },
-    { "source": "/api/merch-studio", "destination": "/api/merch-studio-safe" },
+    { "source": "/api/merch-studio", "destination": "/api/merch-studio-router" },
     { "source": "/app.js", "destination": "/public/app.js" },
     { "source": "/styles.css", "destination": "/public/styles.css" },
     { "source": "/manifest.webmanifest", "destination": "/public/manifest.webmanifest" },
