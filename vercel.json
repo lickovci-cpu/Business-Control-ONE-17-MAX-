@@ -18,7 +18,7 @@
   ],
   "rewrites": [
     { "source": "/", "destination": "/public/index.html" },
-    { "source": "/studio", "destination": "/public/studio.html" },
+    { "source": "/studio", "destination": "/public/studio" },
     { "source": "/api/merch-studio", "destination": "/api/merch-studio-safe" },
     { "source": "/app.js", "destination": "/public/app.js" },
     { "source": "/styles.css", "destination": "/public/styles.css" },
