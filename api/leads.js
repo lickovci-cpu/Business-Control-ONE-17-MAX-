@@ -6,6 +6,7 @@ const SB_URL=process.env.SUPABASE_URL||'https://vjzzvopwecmwuccdidzq.supabase.co
 const SB_KEY=process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.SUPABASE_SERVICE_KEY||'';
 const ORGS={jihoceske:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',merch:'d2751286-da99-42c0-b8ac-6a2da8ecdabf'};
 const STATUSES=new Set(['new','qualified','contacted','follow_up','offer','approved','job','delivered','invoiced','paid','closed']);
+const TRANSITIONS={new:new Set(['contacted','qualified']),qualified:new Set(['contacted','follow_up','offer']),contacted:new Set(['qualified','follow_up','offer']),follow_up:new Set(['contacted','qualified','offer']),offer:new Set(['approved']),approved:new Set(['job']),job:new Set(['delivered']),delivered:new Set(['invoiced']),invoiced:new Set(['paid']),paid:new Set(['closed']),closed:new Set()};
 const MUTATING=new Set(['create','update','status']);
 function requireDb(){if(!SB_KEY){const e=new Error('CRM_DB_NOT_CONFIGURED');e.status=503;throw e;}}
 function org(project){const id=ORGS[project];if(!id)throw new Error('CRM_PROJECT_ORG_NOT_CONFIGURED');return id;}
@@ -20,6 +21,14 @@ export function validateApprovedPayload(task,expectedTaskId,action,executionPayl
   if(task.project!==String(project))throw new Error('PROJECT_MISMATCH');
   if(task.action!==taskAction(action))throw new Error('APPROVAL_ACTION_MISMATCH');
   if(!task.payloadHash||fingerprint(executionPayload)!==task.payloadHash){const e=new Error('PAYLOAD_MISMATCH');e.status=409;throw e;}
+  return true;
+}
+export function validateLeadTransition(from,to){
+  const current=String(from||'new');const next=String(to||'');
+  if(!STATUSES.has(next))throw new Error('INVALID_LEAD_STATUS');
+  if(!STATUSES.has(current))throw new Error('INVALID_CURRENT_LEAD_STATUS');
+  if(current===next)return true;
+  if(!TRANSITIONS[current]?.has(next)){const e=new Error(`INVALID_LEAD_TRANSITION:${current}->${next}`);e.status=409;throw e;}
   return true;
 }
 async function assertApprovedPayload(task,expectedTaskId,action,executionPayload,project){try{return validateApprovedPayload(task,expectedTaskId,action,executionPayload,project);}catch(e){if(e.message==='PAYLOAD_MISMATCH')await blockTask(task?.id,'PAYLOAD_MISMATCH','Vytvořit novou approval žádost se stejným payloadem',null,project).catch(()=>{});throw e;}}
@@ -50,8 +59,8 @@ export default async function handler(req,res){
         const c=Array.isArray(contact)?contact[0]:contact;const note=[p.note||'',p.web?`Web: ${p.web}`:'',p.region?`Region: ${p.region}`:'',p.leadType?`Typ: ${p.leadType}`:'',p.priority?`Priorita: ${p.priority}`:''].filter(Boolean).join(' · ');
         const lead=await sb('leads',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({organization_id,contact_id:c?.id||null,status:'new',estimated_value:p.estimated_value??null,note:note||null,source:p.source||null})});result=Array.isArray(lead)?lead[0]:lead;
       } else if(realAction==='status'){
-        if(!STATUSES.has(String(b.status)))throw new Error('INVALID_LEAD_STATUS');
-        const rows=await sb(`leads?id=eq.${encodeURIComponent(b.id)}&organization_id=eq.${organization_id}&select=id`);if(!Array.isArray(rows)||!rows[0])throw new Error('LEAD_NOT_FOUND');
+        const rows=await sb(`leads?id=eq.${encodeURIComponent(b.id)}&organization_id=eq.${organization_id}&select=id,status`);if(!Array.isArray(rows)||!rows[0])throw new Error('LEAD_NOT_FOUND');
+        validateLeadTransition(rows[0].status,b.status);
         const now=new Date().toISOString(),patch={status:b.status,updated_at:now};if(b.status==='qualified')patch.qualified_at=now;if(b.status==='contacted')patch.last_contact_at=now;if(b.status==='offer')patch.offered_at=now;if(b.status==='approved')patch.approved_at=now;if(b.status==='delivered')patch.delivered_at=now;if(b.status==='invoiced')patch.invoiced_at=now;if(b.status==='paid')patch.paid_at=now;
         const updated=await sb(`leads?id=eq.${encodeURIComponent(b.id)}&organization_id=eq.${organization_id}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});result=Array.isArray(updated)?updated[0]:updated;
       } else {
