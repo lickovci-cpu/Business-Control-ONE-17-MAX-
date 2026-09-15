@@ -3,7 +3,7 @@ import {kvGet,kvSet,kvSetNxEx,kvLpush,kvLtrim,kvMget,kvLrange} from './_lib.js';
 import {createConfirmation,verifyConfirmation,getConfirmationData} from './_confirm.js';
 const TASK_PREFIX='business-control:task:',APPROVAL_PREFIX='business-control:approval:',TASK_INDEX='business-control:tasks:index',AUDIT_PREFIX='business-control:audit:',MAX_AUDIT=500;
 export const TASK_STATES=Object.freeze(['QUEUED','PLANNING','WAITING_APPROVAL','APPROVED','EXECUTING','DONE','BLOCKED','FAILED','CANCELLED']);
-export const MUTATING_ACTIONS=Object.freeze(new Set(['comms:send','comms:queue','comms:retry','comms:cancel','meta:photo-upload','meta:publish','meta:publish-photos','meta:schedule','meta:schedule-photos','meta:reel-publish','crm:lead-create','crm:lead-update','crm:lead-status']));
+export const MUTATING_ACTIONS=Object.freeze(new Set(['comms:send','comms:queue','comms:retry','comms:cancel','meta:photo-upload','meta:publish','meta:publish-photos','meta:schedule','meta:schedule-photos','meta:reel-publish','crm:lead-create','crm:lead-update','crm:lead-status','commercial:create-quote','commercial:create-job','commercial:create-financial']));
 const taskKey=id=>`${TASK_PREFIX}${id}`,approvalKey=id=>`${APPROVAL_PREFIX}${id}`,auditKey=id=>`${AUDIT_PREFIX}${id}`;
 function stable(v){if(Array.isArray(v))return '['+v.map(stable).join(',')+']';if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}';return JSON.stringify(v);}
 function fingerprint(v){return createHash('sha256').update(stable(v)).digest('hex');}
