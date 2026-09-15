@@ -6,6 +6,7 @@
   const req=async()=>{const r=await fetch(`/api/commercial?project=${encodeURIComponent(project())}`,{credentials:'same-origin',signal:AbortSignal.timeout(15000)});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||`HTTP ${r.status}`);return j;};
   function block(title,body){return `<div class="card commercial-live"><div class="section-kicker">LIVE DB / SUPABASE</div><h3>${esc(title)}</h3>${body}</div>`;}
   function render(d){
+    $$('.commercial-live').forEach(x=>x.remove());
     const c=d.commercial||{},s=c.summary||{};
     const q=(c.quotes||[]).slice(0,8).map(x=>`<div class="item"><strong>${esc(x.quote_number||x.id?.slice(0,8)||'NO NUMBER')}</strong><span class="muted">${esc(x.status||'NO DATA')} · ${money(x.total)}</span></div>`).join('')||'<div class="item">NO DATA — žádné skutečné nabídky v DB.</div>';
     const j=(c.jobs||[]).slice(0,8).map(x=>`<div class="item"><strong>${esc(x.title||'NO TITLE')}</strong><span class="muted">${esc(x.status||'NO DATA')} · ${money(x.price)}</span></div>`).join('')||'<div class="item">NO DATA — žádné skutečné zakázky v DB.</div>';
