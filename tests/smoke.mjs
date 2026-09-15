@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-process.env.APP_PASSWORD='test-password';process.env.APP_CONFIRM_SECRET='confirm-test';process.env.APP_SESSION_SECRET='session-test';process.env.CRON_SECRET='cron-test';
+process.env.APP_PASSWORD='test-password';process.env.BCO_API_KEY='bco-api-test';process.env.APP_CONFIRM_SECRET='confirm-test';process.env.APP_SESSION_SECRET='session-test';process.env.CRON_SECRET='cron-test';
 process.env.META_PAGE_TOKEN='legacy-fve-token';process.env.META_PAGE_ID='117';
 const lib=await import('../api/_lib.js');
 const conf=await import('../api/_confirm.js');
@@ -11,6 +11,10 @@ const payload={project:'jihoceske',message:'test'},ct=conf.createConfirmation('m
 assert.equal(meta.metaConfig('jihoceske').configured,true);assert.equal(meta.metaConfig('mazliprint').configured,false);assert.throws(()=>lib.projectKey('evil'));
 const fakeReq={headers:{cookie:`bc_session=${encodeURIComponent(token)}`}};assert.equal(lib.auth(fakeReq),true);
 const noCookie={headers:{'x-app-key':'test-password'}};assert.equal(lib.auth(noCookie),true);
+const oldPassword=process.env.APP_PASSWORD;delete process.env.APP_PASSWORD;
+assert.equal(lib.auth({headers:{'x-app-key':'bco-api-test'}}),true);
+assert.equal(lib.auth({headers:{'x-app-key':'wrong'}}),false);
+process.env.APP_PASSWORD=oldPassword;
 const healthResponse=()=>{let status=200,body;return{setHeader(){},statusCode:200,status(n){status=n;return this},json(v){body=v;return this},get result(){return{status,body}}}};
 const protectedHealth=healthResponse();healthHandler({headers:{authorization:'Bearer cron-test'}},protectedHealth);assert.equal(protectedHealth.result.status,200);assert.equal(protectedHealth.result.body.ok,true);
 const deniedHealth=healthResponse();healthHandler({headers:{}},deniedHealth);assert.equal(deniedHealth.result.status,401);
@@ -30,7 +34,7 @@ const ai=await fs.readFile('api/ai.js','utf8');assert.ok(ai.includes("task==='sa
 const comms=await fs.readFile('api/comms.js','utf8');assert.ok(comms.includes('PROJECT_MISMATCH'));
 const rcs=await fs.readFile('api/_comms.js','utf8');assert.ok(rcs.includes('RCS_USE_GLOBAL_ENDPOINT'));
 const autopilotSource=await fs.readFile('api/autopilot.js','utf8');assert.ok(autopilotSource.includes("KV_NOT_CONFIGURED"));
-console.log('SMOKE OK — 17 MAX auth, project isolation, Control Room, Sales Command, Quote Builder, Delivery OS, Reels Composer 3, cloud sync and mobile-safe media.');
+console.log('SMOKE OK — 17 MAX auth, BCO_API_KEY bridge, project isolation, Control Room, Sales Command, Quote Builder, Delivery OS, Reels Composer 3, cloud sync and mobile-safe media.');
 
 assert(html.includes('id="metaCenterText"') && html.includes('id="metaCopyDiag"'));
 assert(app.includes('function renderMetaCenter') && app.includes('function metaDiagnostic'));

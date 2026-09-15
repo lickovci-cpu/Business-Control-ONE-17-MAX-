@@ -30,20 +30,18 @@ export function verifySessionToken(token){
   }catch{return false;}
 }
 export function auth(req){
-  const p=env('APP_PASSWORD');
+  const p=env('APP_PASSWORD')||env('BCO_API_KEY');
   if(!p)return process.env.NODE_ENV!=='production';
   const c=cookies(req)[SESSION_COOKIE];
   if(verifySessionToken(c))return true;
-  // Backward-compatible migration path for CLI/scripts. Browser 8.1 does not persist this key.
+  // Server-to-server migration path: BCO_API_KEY is accepted only as a request header.
   return safeEqual(String(req.headers?.['x-app-key']||''),p);
 }
 export function safeEqual(a,b){
   const aa=Buffer.from(String(a)),bb=Buffer.from(String(b));
   return aa.length===bb.length&&timingSafeEqual(aa,bb);
 }
-export function setSessionCookie(res,token){
-  res.setHeader('Set-Cookie',`${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; Max-Age=${SESSION_TTL}; HttpOnly; Secure; SameSite=Strict`);
-}
+export function setSessionCookie(res,token){res.setHeader('Set-Cookie',`${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; Max-Age=${SESSION_TTL}; HttpOnly; Secure; SameSite=Strict`);}
 export function clearSessionCookie(res){res.setHeader('Set-Cookie',`${SESSION_COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict`);}
 export function noauth(res){return res.status(401).json({error:'AUTH_REQUIRED'});}
 
