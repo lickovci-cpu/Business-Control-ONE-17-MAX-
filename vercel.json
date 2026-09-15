@@ -9,7 +9,7 @@
     "api/cron.js": { "maxDuration": 60 },
     "api/merch-studio.js": { "maxDuration": 60 },
     "api/merch-studio-safe.js": { "maxDuration": 60 },
-    "api/merch-studio-router.js": { "maxDuration": 60 },
+    "api/merch-studio-router2.js": { "maxDuration": 60 },
     "api/merch-cron.js": { "maxDuration": 60 },
     "api/merch-public-status.js": { "maxDuration": 30 },
     "api/*.js": { "maxDuration": 30 }
@@ -21,7 +21,7 @@
   "rewrites": [
     { "source": "/", "destination": "/public/index.html" },
     { "source": "/studio", "destination": "/public/studio-entry" },
-    { "source": "/api/merch-studio", "destination": "/api/merch-studio-router" },
+    { "source": "/api/merch-studio", "destination": "/api/merch-studio-router2" },
     { "source": "/app.js", "destination": "/public/app.js" },
     { "source": "/styles.css", "destination": "/public/styles.css" },
     { "source": "/manifest.webmanifest", "destination": "/public/manifest.webmanifest" },
@@ -29,22 +29,16 @@
     { "source": "/icon.svg", "destination": "/public/icon.svg" }
   ],
   "headers": [
-    {
-      "source": "/studio",
-      "headers": [{ "key": "Content-Type", "value": "text/html; charset=utf-8" }, { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
-    },
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "no-referrer" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
-        { "key": "Cross-Origin-Resource-Policy", "value": "same-origin" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
-        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data: https:; media-src 'self' blob: https:; connect-src 'self' https://vjzzvopwecmwuccdidzq.supabase.co https://api.openai.com https://generativelanguage.googleapis.com https://api.hunter.io https://queue.fal.run https://api.replicate.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; manifest-src 'self'" }
-      ]
-    }
+    { "source": "/studio", "headers": [{ "key": "Content-Type", "value": "text/html; charset=utf-8" }, { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }] },
+    { "source": "/(.*)", "headers": [
+      { "key": "X-Content-Type-Options", "value": "nosniff" },
+      { "key": "Referrer-Policy", "value": "no-referrer" },
+      { "key": "X-Frame-Options", "value": "DENY" },
+      { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
+      { "key": "Cross-Origin-Resource-Policy", "value": "same-origin" },
+      { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
+      { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
+      { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data: https:; media-src 'self' blob: https:; connect-src 'self' https://vjzzvopwecmwuccdidzq.supabase.co https://api.openai.com https://generativelanguage.googleapis.com https://api.hunter.io https://queue.fal.run https://api.replicate.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; manifest-src 'self'" }
+    ] }
   ]
 }
