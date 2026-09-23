@@ -92,8 +92,9 @@ All three tables have RLS. Browser access is membership-scoped; server ingestion
 - BCO ingestion boundary: implemented.
 - Supabase webhook ledger: present and RLS-protected/server-only.
 - NŘŠM commerce persistence: implemented.
-- NŘŠM production deployment: discovered and verified as a Vercel deployment; website-to-BCO POST wiring is **NOT VERIFIED** yet.
-- NŘŠM production checkout currently builds a WhatsApp message in browser; server-side order ingestion therefore still requires the real checkout/site handler to POST `order.created` to BCO.
+- NŘŠM production deployment: verified as a Vercel deployment at `https://n-m-100.vercel.app`.
+- NŘŠM production now contains a server-side `/api/bco` bridge that forwards `checkout.created`, `order.created`, `message.created`, `message.received` and `inquiry.created` to this BCO webhook.
+- The bridge is intentionally fail-closed: the production NŘŠM endpoint currently reports `configured:false`, so live forwarding remains blocked until the same `BCO_INTEGRATION_SECRET` is configured in both the NŘŠM and BCO Vercel projects.
 - The BCO NŘŠM operations API is available at `/api/merch` and exposes dashboard, products, orders and inbox reads plus controlled product/order-status writes.
 
-The next implementation step is to connect the real NŘŠM checkout/contact flow to the webhook and run an end-to-end smoke test with one real inquiry and one real order. No fake order is inserted.
+The next implementation step is operational rather than architectural: set the same `BCO_INTEGRATION_SECRET` in both Vercel projects, then run one real B2B inquiry and one real checkout smoke test. No fake order or lead is inserted.
