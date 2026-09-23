@@ -11,7 +11,9 @@ for(const marker of [
   "lead.created",
   "order.created",
   "Authorization",
-  "verified:true"
+  "verified:true",
+  "inquiry.created",
+  "ensureLead"
 ])assert.ok(file.includes(marker),`integration marker missing: ${marker}`);
 for(const marker of [
   "POST https://business-control-one.vercel.app/api/integrations/webhook",
