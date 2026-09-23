@@ -14,6 +14,11 @@ function publicBase(){
   return raw.replace(/\/$/,'');
 }
 
+function nrsmBase(){
+  const raw=env('NRSM_PUBLIC_URL','https://n-m-100.vercel.app');
+  return raw.replace(/\/$/,'');
+}
+
 async function probe(path,options={}){
   const started=Date.now();
   try{
@@ -31,6 +36,7 @@ function classify(checks){
   if(!failed.length)return {status:'healthy',priority:'none',nextAction:'continue_monitoring'};
   if(failed.some(x=>x.path==='/api/health'))return {status:'degraded',priority:'P0',nextAction:'inspect_production_health'};
   if(failed.some(x=>x.path==='/api/cron'))return {status:'degraded',priority:'P1',nextAction:'inspect_scheduler'};
+  if(failed.some(x=>x.path==='nrsn:/api/bco'))return {status:'degraded',priority:'P1',nextAction:'configure_nrsm_bco_bridge'};
   return {status:'degraded',priority:'P1',nextAction:'inspect_failed_checks'};
 }
 
@@ -45,8 +51,9 @@ export default async function handler(req,res){
     const secret=env('CRON_SECRET');
     const health=await probe('/api/health',{headers:{Authorization:`Bearer ${secret}`}});
     const cron=health.ok?await probe('/api/cron',{method:'POST',headers:{Authorization:`Bearer ${secret}`}}):{path:'/api/cron',ok:false,status:0,skipped:'health_failed'};
+    const nrsm=await probe(`${nrsmBase()}/api/bco`);
     const previous=await kvGet(STATE)||{};
-    const checks=[health,cron];
+    const checks=[health,cron,{path:'nrsn:/api/bco',ok:nrsm.ok&&nrsm.status===200&&nrsm.data?.configured===true,status:nrsm.status,ms:nrsm.ms,data:nrsm.data||null}];
     const decision=classify(checks);
     const run={id:`night-${Date.now()}`,startedAt:started,finishedAt:new Date().toISOString(),checks,decision};
     const history=Array.isArray(previous.history)?previous.history.slice(-(MAX_HISTORY-1)):[];
