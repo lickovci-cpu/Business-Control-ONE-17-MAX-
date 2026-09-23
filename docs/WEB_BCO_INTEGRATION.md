@@ -58,7 +58,7 @@ These create a real BCO contact/lead in Supabase. Exact phone/e-mail duplicates 
 
 `message.created`, `message.received`, `inquiry.created`
 
-For NŘŠM these create/reuse the contact, open conversation and inbound message in Supabase. If an active lead exists for the contact, its ID is returned with the event result.
+For NŘŠM these create/reuse the contact, create an active `new` lead when none exists, open a conversation and store the inbound message. The returned result includes the lead ID so the inquiry enters the CRM pipeline immediately.
 
 ### Order events
 
@@ -93,8 +93,9 @@ All three tables have RLS. Browser access is membership-scoped; server ingestion
 - Supabase webhook ledger: present and RLS-protected/server-only.
 - NŘŠM commerce persistence: implemented.
 - NŘŠM production deployment: verified as a Vercel deployment at `https://n-m-100.vercel.app`.
-- NŘŠM production now contains a server-side `/api/bco` bridge that forwards `checkout.created`, `order.created`, `message.created`, `message.received` and `inquiry.created` to this BCO webhook.
-- The bridge is intentionally fail-closed: the production NŘŠM endpoint currently reports `configured:false`, so live forwarding remains blocked until the same `BCO_INTEGRATION_SECRET` is configured in both the NŘŠM and BCO Vercel projects.
+- NŘŠM production uses a server-side `/api/bco` bridge for `inquiry.created`; the storefront never receives the integration secret.
+- The bridge is intentionally fail-closed: it reports `configured:false` until the same `BCO_INTEGRATION_SECRET` is configured in both the NŘŠM and BCO Vercel projects.
+- `inquiry.created` is a CRM lead event: it creates the contact/lead path and stores the inbound message together.
 - The BCO NŘŠM operations API is available at `/api/merch` and exposes dashboard, products, orders and inbox reads plus controlled product/order-status writes.
 
 The next implementation step is operational rather than architectural: set the same `BCO_INTEGRATION_SECRET` in both Vercel projects, then run one real B2B inquiry and one real checkout smoke test. No fake order or lead is inserted.
