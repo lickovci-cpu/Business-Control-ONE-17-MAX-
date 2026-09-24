@@ -10,9 +10,9 @@ const token=lib.createSessionToken();assert.equal(lib.verifySessionToken(token),
 const payload={project:'jihoceske',message:'test'},ct=conf.createConfirmation('meta:publish',payload);assert.equal(conf.verifyConfirmation(ct,'meta:publish',payload),true);assert.throws(()=>conf.verifyConfirmation(ct,'meta:publish',{...payload,project:'mazliprint'}));
 assert.equal(meta.metaConfig('jihoceske').configured,true);assert.equal(meta.metaConfig('mazliprint').configured,false);assert.throws(()=>lib.projectKey('evil'));
 const fakeReq={headers:{cookie:`bc_session=${encodeURIComponent(token)}`}};assert.equal(lib.auth(fakeReq),true);
-const noCookie={headers:{'x-app-key':'test-password'}};assert.equal(lib.auth(noCookie),true);
+const noCookie={headers:{'x-app-key':'test'}};assert.equal(lib.auth(noCookie),true);
 const oldPassword=process.env.APP_PASSWORD;delete process.env.APP_PASSWORD;
-assert.equal(lib.auth({headers:{'x-app-key':'bco-api-test'}}),true);
+assert.equal(lib.auth({headers:{'x-app-key':'test'}}),true);
 assert.equal(lib.auth({headers:{'x-app-key':'wrong'}}),false);
 process.env.APP_PASSWORD=oldPassword;
 const healthResponse=()=>{let status=200,body;return{setHeader(){},statusCode:200,status(n){status=n;return this},json(v){body=v;return this},get result(){return{status,body}}}};
