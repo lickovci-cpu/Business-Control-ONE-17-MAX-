@@ -407,13 +407,26 @@ async function loadMoneySprint(force=false){
     list('moneyToday',p.today,'Žádný uložený plán.');
     list('moneyWeek',p.thisWeek,'Žádný uložený týdenní plán.');
     list('moneyKill',p.kill,'Žádné blokace.');
-    const priority=(s.prospects?.priority||[]).map(x=>{
-      const company=x.companyName||x.domain||'Neurčený prospect';
-      const score=Number(x.fitScore)||0;
-      const status=x.status&&x.status!=='unknown'?' / '+x.status:'';
-      return company+' · FIT '+score+status+(x.email?' · '+x.email:'');
-    });
-    list('moneyProspectList',priority,'Nejsou k dispozici žádní aktivní prioritní prospecti.');
+    const priority=s.prospects?.priority||[];
+    const prospectBox=el('moneyProspectList');
+    if(prospectBox){
+      if(!priority.length){
+        prospectBox.innerHTML='<div class="item muted">Nejsou k dispozici žádní aktivní prioritní prospecti.</div>';
+      }else{
+        const safe=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+        prospectBox.innerHTML=priority.map((x,i)=>{
+          const company=safe(x.companyName||x.domain||'Neurčený prospect');
+          const email=String(x.email||'').trim();
+          const score=Number(x.fitScore)||0;
+          const status=x.status&&x.status!=='unknown'?' / '+safe(x.status):'';
+          const subject=String(x.draftSubject||('NŘŠM — nabídka spolupráce pro '+(x.companyName||''))).trim();
+          const body=String(x.draftBody||'').trim();
+          const href=email?'mailto:'+encodeURIComponent(email)+'?subject='+encodeURIComponent(subject)+(body?'&body='+encodeURIComponent(body):''):'';
+          const action=href?'<a class="btn secondary" href="'+href+'">📧 Otevřít e-mail</a>':'<span class="pill subtle">BEZ E-MAILU</span>';
+          return '<div class="item money-prospect"><div><strong>'+String(i+1).padStart(2,'0')+' / '+company+'</strong><div class="muted">FIT '+score+status+(email?' · '+safe(email):'')+'</div></div><div class="money-actions">'+action+'</div></div>';
+        }).join('');
+      }
+    }
     list('moneyNeeds',p.needsUser,'Nic dalšího není označeno.');
   }catch(e){
     const msg=e?.message==='AUTH_REQUIRED'
