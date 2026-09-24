@@ -43,6 +43,34 @@ assert.equal(res.value.structuredValid,true);
 assert.deepEqual(res.value.parsed,{ok:true,source:'openai'});
 assert.deepEqual(res.value.attemptedProviders,['openai']);
 
+global.fetch=async(url,opt={})=>{
+  const u=String(url);
+  if(u==='https://api.openai.com/v1/responses'){
+    return new Response(JSON.stringify({output_text:JSON.stringify({
+      fitReason:'B2B fit',
+      priority:'A',
+      subject:'NŘŠM merch',
+      firstMessage:'Ahoj',
+      whatsapp:'Ahoj',
+      questions:['Kolik kusů?'],
+      followUps:{d2:'Za 2 dny',d5:'Za 5 dní',d10:'Za 10 dní'},
+      objections:[{objection:'Cena',answer:'Pošlu nabídku po potvrzení rozsahu.'}],
+      nextStep:'Poslat podklady',
+      crmNote:'Test'
+    })}),{status:200,headers:{'content-type':'application/json'}});
+  }
+  return realFetch(url,opt);
+};
+const leadkit=response();
+await ai.default({
+  method:'POST',
+  headers:{'x-app-key':'test-password'},
+  body:{task:'leadkit',project:'merch',agent:'followup',prompt:'test',provider:'openai',context:{safe:true}}
+},leadkit);
+assert.equal(leadkit.statusCode,200);
+assert.equal(leadkit.value.structuredValid,true);
+assert.equal(leadkit.value.parsed.followUps.d5,'Za 5 dní');
+
 process.env.OPENAI_API_KEY='';
 process.env.AI_COST_MODE='free-first';
 process.env.AI_ALLOW_PAID_FALLBACKS='false';
