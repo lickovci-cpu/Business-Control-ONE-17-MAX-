@@ -74,6 +74,39 @@
       </div>
     </section>
 
+    <section id="money" class="section">
+      <div class="section-title">
+        <div>
+          <div class="section-kicker">7-DAY CASH SPRINT</div>
+          <h1>💰 PENÍZE / NŘŠM</h1>
+          <p class="muted">Živý přehled obchodních příležitostí, draftů a objednávek. Žádné automatické odesílání.</p>
+        </div>
+        <button class="btn primary" id="moneyRefresh">Přepočítat cash plán</button>
+      </div>
+      <div class="grid kpi-grid">
+        <div class="card kpi-card"><div class="kpi-label">B2B prospecty</div><div id="moneyProspects" class="kpi">–</div><span class="kpi-caption">NŘŠM pipeline</span></div>
+        <div class="card kpi-card"><div class="kpi-label">Drafty k akci</div><div id="moneyDrafts" class="kpi">–</div><span class="kpi-caption">čekají na schválení</span></div>
+        <div class="card kpi-card"><div class="kpi-label">CRM leady</div><div id="moneyLeads" class="kpi">–</div><span class="kpi-caption">aktuální B2C/B2B</span></div>
+        <div class="card kpi-card"><div class="kpi-label">Objednávky 7 dní</div><div id="moneyOrders" class="kpi">–</div><span class="kpi-caption">počet / obrat</span></div>
+        <div class="card full">
+          <div class="card-head"><div><div class="section-kicker">TODAY</div><h2>Co přinese peníze nejdřív</h2></div><span id="moneyMode" class="pill subtle">Kontrola</span></div>
+          <div id="moneyToday" class="list"></div>
+        </div>
+        <div class="card wide">
+          <div class="card-head"><div><div class="section-kicker">THIS WEEK</div><h2>7denní tah</h2></div></div>
+          <div id="moneyWeek" class="list"></div>
+        </div>
+        <div class="card">
+          <div class="section-kicker">STOP</div><h2>Co teď nedělat</h2>
+          <div id="moneyKill" class="list"></div>
+        </div>
+        <div class="card full">
+          <div class="section-kicker">USER REQUIRED</div><h2>Co ještě čeká na tebe</h2>
+          <div id="moneyNeeds" class="list"></div>
+        </div>
+      </div>
+    </section>
+
     <section id="control" class="section">
       <div class="section-title"><div><div class="section-kicker">BUSINESS CONTROL 15</div><h1>Řídicí místnost</h1><p class="muted">Jeden přehled pro dnešní obchod, zakázky, cash, obsah a technický stav. Nic neposílá automaticky.</p></div><button class="btn primary" id="controlRefresh">Přepočítat stav</button></div>
       <div class="grid kpi-grid">
