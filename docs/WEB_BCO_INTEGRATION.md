@@ -44,7 +44,7 @@ Header:
 - `jihoceske` → Jihočeské střechy a FVE organization
 - `merch` → NŘŠM organization
 
-`mazliprint` is intentionally not enabled for writes yet because the current Supabase project has no verified MazliPrint organization mapping. This prevents cross-project data contamination.
+`mazliprint` is now mapped to the verified `MazliPrint` organization in the shared Supabase project. Commerce writes remain intentionally restricted to `merch`; MazliPrint is available as a project key for controlled integration expansion without changing the NŘŠM/FVE paths.
 
 ## Supported events
 
