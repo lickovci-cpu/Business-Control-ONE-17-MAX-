@@ -2,7 +2,7 @@ import {auth,noauth,env,normalizeSecret,kvGet,kvSet,fetchJsonWithRetry} from './
 
 const ORG='d2751286-da99-42c0-b8ac-6a2da8ecdabf';
 const SB_URL=env('SUPABASE_URL','https://vjzzvopwecmwuccdidzq.supabase.co');
-const PLAN_KEY='business-control:merch:revenue-plan';
+const PLAN_KEY='business-control:merch:revenue-plan-v2';
 
 function authorized(req){
   const secret=env('CRON_SECRET');
