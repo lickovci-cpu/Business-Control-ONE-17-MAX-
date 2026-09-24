@@ -1,14 +1,14 @@
-import {auth,noauth,body,sendError,env,fetchJsonWithRetry,kvGet} from './_lib.js';
+import {auth,noauth,body,sendError,env,fetchJsonWithRetry,kvGet,supabaseBaseUrl,supabaseServiceKey} from './_lib.js';
 
 const ORG='d2751286-da99-42c0-b8ac-6a2da8ecdabf';
-const SB_URL=env('SUPABASE_URL','https://vjzzvopwecmwuccdidzq.supabase.co');
+const SB_URL=supabaseBaseUrl();
 const prospectFields='id,organization_id,company_name,domain,contact_name,email,phone,source,source_url,fit_score,status,notes,metadata,created_at,updated_at,last_contact_at,next_action_at';
 const draftFields='id,organization_id,prospect_id,channel,subject,body,personalization,status,created_at,updated_at,approved_at,sent_at';
 const creativeFields='id,organization_id,prospect_id,product_id,provider,prompt,image_url,preview_url,variant,score,status,metadata,created_at,selected_at';
 function clean(v,max=1000){return String(v??'').trim().slice(0,max)}
 function intScore(v){const n=Number(v);return Number.isFinite(n)?Math.max(0,Math.min(100,Math.round(n))):null}
 function okStatus(v,list){return list.includes(v)}
-function sb(){const key=env('SUPABASE_SERVICE_ROLE_KEY')||env('SUPABASE_SERVICE_KEY');if(!key)throw Object.assign(new Error('SUPABASE_SERVICE_ROLE_KEY_NOT_CONFIGURED'),{status:503});return {key};}
+function sb(){const key=supabaseServiceKey();if(!key)throw Object.assign(new Error('SUPABASE_SERVICE_ROLE_KEY_NOT_CONFIGURED'),{status:503});return {key};}
 async function query(path,params={},method='GET',payload){const {key}=sb();const u=new URL(`${SB_URL}/rest/v1/${path}`);for(const[k,v]of Object.entries(params))u.searchParams.set(k,String(v));const opt={method,headers:{apikey:key,Authorization:`Bearer ${key}`,'content-type':'application/json',Prefer:'return=representation'},...(payload===undefined?{}:{body:JSON.stringify(payload)})};return fetchJsonWithRetry(u,opt,2)}
 
 export default async function handler(req,res){
