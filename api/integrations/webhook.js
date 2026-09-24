@@ -1,8 +1,8 @@
 import {createHash} from 'node:crypto';
-import {body,projectKey,sendError,safeEqual} from '../_lib.js';
+import {body,projectKey,sendError,safeEqual,normalizeSecret} from '../_lib.js';
 
 const SB_URL=process.env.SUPABASE_URL||'https://vjzzvopwecmwuccdidzq.supabase.co';
-const SB_KEY=process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.SUPABASE_SERVICE_KEY||'';
+const SB_KEY=normalizeSecret(process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.SUPABASE_SERVICE_KEY||'');
 const INTEGRATION_SECRET=process.env.BCO_INTEGRATION_SECRET||'';
 const ORGS={
   jihoceske:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',
