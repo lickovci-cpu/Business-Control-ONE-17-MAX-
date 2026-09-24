@@ -53,19 +53,30 @@ create table if not exists public.merch_order_items (
 create index if not exists merch_products_org_active_idx on public.merch_products(organization_id, active);
 create index if not exists merch_orders_org_status_idx on public.merch_orders(organization_id, status, created_at desc);
 create index if not exists merch_orders_contact_idx on public.merch_orders(contact_id, created_at desc);
+create index if not exists merch_creative_proposals_product_idx on public.merch_creative_proposals(product_id);
+create index if not exists merch_creative_proposals_prospect_idx on public.merch_creative_proposals(prospect_id);
+create index if not exists merch_order_items_organization_idx on public.merch_order_items(organization_id);
+create index if not exists merch_order_items_product_idx on public.merch_order_items(product_id);
+create index if not exists merch_orders_lead_idx on public.merch_orders(lead_id);
+create index if not exists merch_outreach_drafts_prospect_idx on public.merch_outreach_drafts(prospect_id);
 create index if not exists merch_order_items_order_idx on public.merch_order_items(order_id);
 
 alter table public.merch_products enable row level security;
 alter table public.merch_orders enable row level security;
 alter table public.merch_order_items enable row level security;
 
-create policy merch_products_member_select on public.merch_products for select using (exists (select 1 from public.memberships m where m.organization_id = merch_products.organization_id and m.user_id = auth.uid()));
-create policy merch_products_member_write on public.merch_products for all using (exists (select 1 from public.memberships m where m.organization_id = merch_products.organization_id and m.user_id = auth.uid() and m.role in ('owner','admin','manager'))) with check (exists (select 1 from public.memberships m where m.organization_id = merch_products.organization_id and m.user_id = auth.uid() and m.role in ('owner','admin','manager')));
-create policy merch_orders_member_select on public.merch_orders for select using (exists (select 1 from public.memberships m where m.organization_id = merch_orders.organization_id and m.user_id = auth.uid()));
-create policy merch_orders_member_write on public.merch_orders for all using (exists (select 1 from public.memberships m where m.organization_id = merch_orders.organization_id and m.user_id = auth.uid() and m.role in ('owner','admin','manager'))) with check (exists (select 1 from public.memberships m where m.organization_id = merch_orders.organization_id and m.user_id = auth.uid() and m.role in ('owner','admin','manager')));
-create policy merch_order_items_member_select on public.merch_order_items for select using (exists (select 1 from public.memberships m where m.organization_id = merch_order_items.organization_id and m.user_id = auth.uid()));
-create policy merch_order_items_member_write on public.merch_order_items for all using (exists (select 1 from public.memberships m where m.organization_id = merch_order_items.organization_id and m.user_id = auth.uid() and m.role in ('owner','admin','manager'))) with check (exists (select 1 from public.memberships m where m.organization_id = merch_order_items.organization_id and m.user_id = auth.uid() and m.role in ('owner','admin','manager')));
-
+create policy merch_products_member_select on public.merch_products for select to authenticated using (exists (select 1 from public.memberships m where m.organization_id = merch_products.organization_id and m.user_id = (select auth.uid())));
+create policy merch_products_member_insert on public.merch_products for insert to authenticated with check (exists (select 1 from public.memberships m where m.organization_id = merch_products.organization_id and m.user_id = (select auth.uid()) and m.role in ('owner','admin','manager')));
+create policy merch_products_member_update on public.merch_products for update to authenticated using (exists (select 1 from public.memberships m where m.organization_id = merch_products.organization_id and m.user_id = (select auth.uid()) and m.role in ('owner','admin','manager'))) with check (exists (select 1 from public.memberships m where m.organization_id = merch_products.organization_id and m.user_id = (select auth.uid()) and m.role in ('owner','admin','manager')));
+create policy merch_products_member_delete on public.merch_products for delete to authenticated using (exists (select 1 from public.memberships m where m.organization_id = merch_products.organization_id and m.user_id = (select auth.uid()) and m.role in ('owner','admin','manager')));
+create policy merch_orders_member_select on public.merch_orders for select to authenticated using (exists (select 1 from public.memberships m where m.organization_id = merch_orders.organization_id and m.user_id = (select auth.uid())));
+create policy merch_orders_member_insert on public.merch_orders for insert to authenticated with check (exists (select 1 from public.memberships m where m.organization_id = merch_orders.organization_id and m.user_id = (select auth.uid()) and m.role in ('owner','admin','manager')));
+create policy merch_orders_member_update on public.merch_orders for update to authenticated using (exists (select 1 from public.memberships m where m.organization_id = merch_orders.organization_id and m.user_id = (select auth.uid()) and m.role in ('owner','admin','manager'))) with check (exists (select 1 from public.memberships m where m.organization_id = merch_orders.organization_id and m.user_id = (select auth.uid()) and m.role in ('owner','admin','manager')));
+create policy merch_orders_member_delete on public.merch_orders for delete to authenticated using (exists (select 1 from public.memberships m where m.organization_id = merch_orders.organization_id and m.user_id = (select auth.uid()) and m.role in ('owner','admin','manager')));
+create policy merch_order_items_member_select on public.merch_order_items for select to authenticated using (exists (select 1 from public.memberships m where m.organization_id = merch_order_items.organization_id and m.user_id = (select auth.uid())));
+create policy merch_order_items_member_insert on public.merch_order_items for insert to authenticated with check (exists (select 1 from public.memberships m where m.organization_id = merch_order_items.organization_id and m.user_id = (select auth.uid()) and m.role in ('owner','admin','manager')));
+create policy merch_order_items_member_update on public.merch_order_items for update to authenticated using (exists (select 1 from public.memberships m where m.organization_id = merch_order_items.organization_id and m.user_id = (select auth.uid()) and m.role in ('owner','admin','manager'))) with check (exists (select 1 from public.memberships m where m.organization_id = merch_order_items.organization_id and m.user_id = (select auth.uid()) and m.role in ('owner','admin','manager')));
+create policy merch_order_items_member_delete on public.merch_order_items for delete to authenticated using (exists (select 1 from public.memberships m where m.organization_id = merch_order_items.organization_id and m.user_id = (select auth.uid()) and m.role in ('owner','admin','manager')));
 create or replace function public.set_merch_updated_at() returns trigger language plpgsql set search_path = public as $ begin new.updated_at = now(); return new; end $;
 drop trigger if exists merch_products_updated_at on public.merch_products;
 create trigger merch_products_updated_at before update on public.merch_products for each row execute function public.set_merch_updated_at();
