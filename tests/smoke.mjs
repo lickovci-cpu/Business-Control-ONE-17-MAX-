@@ -16,7 +16,7 @@ assert.equal(lib.auth({headers:{'x-app-key':'test'}}),true);
 assert.equal(lib.auth({headers:{'x-app-key':'wrong'}}),false);
 process.env.APP_PASSWORD=oldPassword;
 const healthResponse=()=>{let status=200,body;return{setHeader(){},statusCode:200,status(n){status=n;return this},json(v){body=v;return this},get result(){return{status,body}}}};
-const protectedHealth=healthResponse();healthHandler({headers:{authorization:'Bearer cron-test'}},protectedHealth);assert.equal(protectedHealth.result.status,200);assert.equal(protectedHealth.result.body.ok,true);
+const protectedHealth=healthResponse();healthHandler({headers:{authorization:'Bearer test'}},protectedHealth);assert.equal(protectedHealth.result.status,200);assert.equal(protectedHealth.result.body.ok,true);
 const deniedHealth=healthResponse();healthHandler({headers:{}},deniedHealth);assert.equal(deniedHealth.result.status,401);
 const oldKvUrl=process.env.KV_REST_API_URL,oldKvToken=process.env.KV_REST_API_TOKEN;
 delete process.env.KV_REST_API_URL;delete process.env.KV_REST_API_TOKEN;
