@@ -1,4 +1,4 @@
-import {auth,noauth,projectKey,env,sendError,body} from './_lib.js';
+import {auth,noauth,projectKey,env,normalizeSecret,sendError,body} from './_lib.js';
 
 const AGENTS = {"lead_hunter":{"name":"Lead Hunter","task":"crm","autonomy":"supervised","actions":["research","score","create_lead"]},"sales":{"name":"Sales Agent","task":"salescoach","autonomy":"approval","actions":["draft_message","prepare_followup"]},"followup":{"name":"Follow-up Agent","task":"leadkit","autonomy":"approval","actions":["draft_followup","prepare_message"]},"quote":{"name":"Quote Agent","task":"quote","autonomy":"approval","actions":["draft_quote","validate_scope"]},"content":{"name":"Content Agent","task":"contentpiece","autonomy":"approval","actions":["draft_post","draft_story","draft_reel"]},"finance":{"name":"Finance Agent","task":"crm","autonomy":"supervised","actions":["read_finance","flag_risk"]},"customer":{"name":"Customer Agent","task":"leadkit","autonomy":"approval","actions":["draft_review_request","draft_followup"]},"ceo":{"name":"CEO Agent","task":"crm","autonomy":"approval","actions":["summarize","prioritize","recommend"]}};
 
@@ -11,7 +11,7 @@ function currentOrigin(req){
 async function runAi(req, payload){
   const url=`${currentOrigin(req)}/api/ai`;
   const headers={'content-type':'application/json'};
-  const password=env('APP_PASSWORD');
+  const password=normalizeSecret(env('APP_PASSWORD'));
   if(password)headers['x-app-key']=password;
   const r=await fetch(url,{method:'POST',headers,body:JSON.stringify(payload),signal:AbortSignal.timeout(70000)});
   const j=await r.json().catch(()=>({}));
