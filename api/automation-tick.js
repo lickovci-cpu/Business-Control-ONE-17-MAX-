@@ -150,7 +150,7 @@ async function createTasks(project,orgId,automation,actions){
       organization_id:'eq.'+orgId,
       entity_type:'eq.automation',
       entity_id:'eq.'+automation.id,
-      title:'eq.'+encodeURIComponent(title),
+      title:'eq.'+title,
       status:'in.(open,in_progress,blocked)',
       select:'id',
       limit:1
@@ -201,31 +201,37 @@ export async function executeAutomationTick(req){
     for(const automation of due){
       const startedAt=new Date().toISOString();
       const orgId=String(automation.organization_id);
-      const orgSlug=await orgSlugById(orgId);
-      const project=projectForOrgSlug(orgSlug);
-      if(!project){errors.push({automation:automation.name,error:'UNMAPPED_ORGANIZATION'});continue;}
-      const actionConfig=automation.action_config&&typeof automation.action_config==='object'?automation.action_config:{};
-      const agentSlug=String(actionConfig.agent||'').toLowerCase();
-      const context={project,organizationSlug:orgSlug,automation:{id:automation.id,name:automation.name,trigger:automation.trigger_config,action:actionConfig},state:await summarizeProject(project),startedAt};
-      let result={ok:true,mode:'task_only'};
-      let createdTasks=[];
-      if(agentSlug==='ceo'&&aiCount<MAX_AI_AUTOMATIONS_PER_TICK){
-        const agentResult=await runAgent(req,automation,project,context);
-        if(!agentResult.ok)throw new Error(agentResult.error||'AGENT_FAILED');
-        aiCount++;
-        const ai=agentResult.result?.ai||{};
-        const actions=extractActions(ai);
-        createdTasks=await createTasks(project,orgId,automation,actions);
-        await recordAgentEvent({project,agentId:agentResult.agent.id,eventType:'autonomous_tick',severity:'info',payload:{automationId:automation.id,createdTasks:createdTasks.length}});
-        result={ok:true,mode:'agent',agent:agentSlug,provider:ai.provider||null,createdTasks:createdTasks.length,structuredValid:Boolean(ai.structuredValid)};
-      }else{
-        const title=clean(actionConfig.prompt||automation.name,400);
-        createdTasks=await createTasks(project,orgId,automation,[{title,priority:'B',notes:'Automatická úloha čekající na zpracování specializovaným agentem nebo ruční kontrolu.'}]);
-        result={ok:true,mode:'task_only',agent:agentSlug||null,createdTasks:createdTasks.length};
+      try{
+        const orgSlug=await orgSlugById(orgId);
+        const project=projectForOrgSlug(orgSlug);
+        if(!project)throw new Error('UNMAPPED_ORGANIZATION');
+        const actionConfig=automation.action_config&&typeof automation.action_config==='object'?automation.action_config:{};
+        const agentSlug=String(actionConfig.agent||'').toLowerCase();
+        const context={project,organizationSlug:orgSlug,automation:{id:automation.id,name:automation.name,trigger:automation.trigger_config,action:actionConfig},state:await summarizeProject(project),startedAt};
+        let result={ok:true,mode:'task_only'};
+        let createdTasks=[];
+        if(agentSlug==='ceo'&&aiCount<MAX_AI_AUTOMATIONS_PER_TICK){
+          const agentResult=await runAgent(req,automation,project,context);
+          if(!agentResult.ok)throw new Error(agentResult.error||'AGENT_FAILED');
+          aiCount++;
+          const ai=agentResult.result?.ai||{};
+          const actions=extractActions(ai);
+          createdTasks=await createTasks(project,orgId,automation,actions);
+          await recordAgentEvent({project,agentId:agentResult.agent.id,eventType:'autonomous_tick',severity:'info',payload:{automationId:automation.id,createdTasks:createdTasks.length}});
+          result={ok:true,mode:'agent',agent:agentSlug,provider:ai.provider||null,createdTasks:createdTasks.length,structuredValid:Boolean(ai.structuredValid)};
+        }else{
+          const title=clean(actionConfig.prompt||automation.name,400);
+          createdTasks=await createTasks(project,orgId,automation,[{title,priority:'B',notes:'Automatická úloha čekající na zpracování specializovaným agentem nebo ruční kontrolu.'}]);
+          result={ok:true,mode:'task_only',agent:agentSlug||null,createdTasks:createdTasks.length};
+        }
+        await writeRun(automation,orgId,'completed',{project,automationId:automation.id,startedAt},result);
+        await markRun(automation);
+        processed.push({automationId:automation.id,name:automation.name,project,result});
+      }catch(e){
+        const error=clean(e?.message||'AUTOMATION_FAILED',1500);
+        await writeRun(automation,orgId,'failed',{automationId:automation.id,startedAt},null,error).catch(()=>{});
+        errors.push({automation:automation.name,error});
       }
-      await writeRun(automation,orgId,'completed',{project,automationId:automation.id,startedAt},result);
-      await markRun(automation);
-      processed.push({automationId:automation.id,name:automation.name,project,result});
     }
     return {ok:true,at:at.toISOString(),processed,errors};
   }finally{
