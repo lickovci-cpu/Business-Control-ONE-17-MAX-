@@ -3,8 +3,14 @@ import {auth,noauth,body,projectKey,sendError,normalizeSecret} from './_lib.js';
 import {createTask,getTask,blockTask,consumeApproval,startAttempt,completeTask,failAttempt} from './_control.js';
 
 const SB_URL=process.env.SUPABASE_URL||'https://vjzzvopwecmwuccdidzq.supabase.co';
-const SB_KEY=normalizeSecret(process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.SUPABASE_SERVICE_KEY||'');
-const ORGS={jihoceske:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',merch:'d2751286-da99-42c0-b8ac-6a2da8ecdabf'};
+function validSupabaseKey(value){const s=normalizeSecret(value||'');return /^[\\x20-\\x7E]+$/.test(s)?s:'';}
+const SB_KEY=validSupabaseKey(process.env.SUPABASE_SERVICE_ROLE_KEY)||validSupabaseKey(process.env.SUPABASE_SERVICE_KEY);
+const ORGS={
+  jihoceske:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',
+  fve:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',
+  mazliprint:'2d971414-9329-4d0b-94df-66cb8413f00c',
+  merch:'d2751286-da99-42c0-b8ac-6a2da8ecdabf'
+};
 const STATUSES=new Set(['new','qualified','contacted','follow_up','offer','approved','job','delivered','invoiced','paid','closed']);
 const TRANSITIONS={new:new Set(['contacted','qualified']),qualified:new Set(['contacted','follow_up','offer']),contacted:new Set(['qualified','follow_up','offer']),follow_up:new Set(['contacted','qualified','offer']),offer:new Set(['approved']),approved:new Set(['job']),job:new Set(['delivered']),delivered:new Set(['invoiced']),invoiced:new Set(['paid']),paid:new Set(['closed']),closed:new Set()};
 const MUTATING=new Set(['create','update','status']);
