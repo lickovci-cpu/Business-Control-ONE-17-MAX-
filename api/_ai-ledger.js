@@ -10,7 +10,7 @@ const PROJECT_TO_ORG_SLUG = Object.freeze({
 const orgCache = new Map();
 
 function safeText(value,max=500){
-  return String(value??'').replace(/[\\u0000-\\u001F\\u007F]/g,' ').slice(0,max);
+  return String(value??'').replace(/[\x00-\x1F\x7F]/g,' ').slice(0,max);
 }
 
 async function resolveOrganizationId(project){
@@ -19,7 +19,7 @@ async function resolveOrganizationId(project){
   if(orgCache.has(slug))return orgCache.get(slug);
   const key=normalizeSecret(env('SUPABASE_SERVICE_ROLE_KEY')||env('SUPABASE_SERVICE_KEY'));
   if(!key)return null;
-  const base=String(env('SUPABASE_URL','https://vjzzvopwecmwuccdidzq.supabase.co')).replace(/\\/$/,'');
+  const base=String(env('SUPABASE_URL','https://vjzzvopwecmwuccdidzq.supabase.co')).replace(/\/$/,'');
   try{
     const u=new URL(base+'/rest/v1/organizations');
     u.searchParams.set('select','id');
