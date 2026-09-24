@@ -65,12 +65,18 @@ export async function listAgents(project){
   if(!org)return [];
   const rows=await rest('ai_agents',{organization_id:'eq.'+org,active:'eq.true',select:'id,slug,name,description,active,autonomy_level,allowed_actions,config',order:'slug.asc'});
   if(Array.isArray(rows)&&rows.length)return rows.map(normalize).filter(Boolean);
-  return Object.keys(STATIC_AGENTS).map(staticAgent).filter(Boolean);
+  if(env('NODE_ENV','production')!=='production'&&env('AGENT_REGISTRY_FALLBACK','false')==='true'){
+    return Object.keys(STATIC_AGENTS).map(staticAgent).filter(Boolean);
+  }
+  return [];
 }
 export async function getAgent(project,slug){
   const wanted=String(slug||'').toLowerCase();
   const rows=await listAgents(project);
   return rows.find(a=>a.slug===wanted)||null;
+}
+export function agentFallbackEnabled(){
+  return env('NODE_ENV','production')!=='production'&&env('AGENT_REGISTRY_FALLBACK','false')==='true';
 }
 export async function recordAgentEvent({project,agentId,eventType,severity='info',entityType=null,entityId=null,payload={}}){
   const org=projectOrg(project),k=key();
