@@ -1,7 +1,7 @@
 import {createHash,createHmac,timingSafeEqual,randomBytes} from 'node:crypto';
-import {env} from './_lib.js';
+import {env,normalizeSecret} from './_lib.js';
 
-function secret(){const s=env('APP_CONFIRM_SECRET')||env('APP_PASSWORD');if(!s)throw new Error('APP_CONFIRM_SECRET nebo APP_PASSWORD musí být v produkci nastaven.');return s;}
+function secret(){const s=normalizeSecret(env('APP_CONFIRM_SECRET')||env('APP_PASSWORD'));if(!s)throw new Error('APP_CONFIRM_SECRET nebo APP_PASSWORD musí být v produkci nastaven.');return s;}
 function canonical(v){
   if(Array.isArray(v))return '['+v.map(canonical).join(',')+']';
   if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}';
