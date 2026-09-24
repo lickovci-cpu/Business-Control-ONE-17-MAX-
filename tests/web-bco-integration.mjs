@@ -15,7 +15,7 @@ for(const marker of [
   "inquiry.created",
   "ensureLead",
   "INVALID_ORDER_ITEM_QUANTITY_",
-  "INVALID_ORDER_ITEM_PRICE_"
+  "INVALID_ORDER_ITEM_PRICE_", "releaseDedupe", "rowId"
 ])assert.ok(file.includes(marker),`integration marker missing: ${marker}`);
 for(const marker of [
   "POST https://business-control-one.vercel.app/api/integrations/webhook",
