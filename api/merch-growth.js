@@ -1,4 +1,4 @@
-import {auth,noauth,body,sendError,env,fetchJsonWithRetry} from './_lib.js';
+import {auth,noauth,body,sendError,env,fetchJsonWithRetry,kvGet} from './_lib.js';
 
 const ORG='d2751286-da99-42c0-b8ac-6a2da8ecdabf';
 const SB_URL=env('SUPABASE_URL','https://vjzzvopwecmwuccdidzq.supabase.co');
@@ -20,6 +20,7 @@ export default async function handler(req,res){
     const [p,d,c]=await Promise.all([query('merch_prospects',{organization_id:`eq.${ORG}`,select:prospectFields,order:'fit_score.desc,created_at.desc',limit:100}),query('merch_outreach_drafts',{organization_id:`eq.${ORG}`,select:draftFields,order:'created_at.desc',limit:100}),query('merch_creative_proposals',{organization_id:`eq.${ORG}`,select:creativeFields,order:'created_at.desc',limit:100})]);
     return res.json({ok:true,prospects:p||[],outreach:d||[],creatives:c||[]});
    }
+   if(action==='revenue-plan')return res.json({ok:true,plan:await kvGet('business-control:merch:revenue-plan')});
    const map={prospects:['merch_prospects',prospectFields],outreach:['merch_outreach_drafts',draftFields],creatives:['merch_creative_proposals',creativeFields]};
    if(map[action]){const [table,select]=map[action],rows=await query(table,{organization_id:`eq.${ORG}`,select,order:'created_at.desc',limit:200});return res.json({ok:true,[action]:rows||[]})}
    return res.status(400).json({error:'UNKNOWN_ACTION'});
