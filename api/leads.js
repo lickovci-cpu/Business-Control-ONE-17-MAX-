@@ -3,12 +3,19 @@ import {auth,noauth,body,projectKey,sendError,normalizeSecret} from './_lib.js';
 import {createTask,getTask,blockTask,consumeApproval,startAttempt,completeTask,failAttempt} from './_control.js';
 
 const SB_URL=process.env.SUPABASE_URL||'https://vjzzvopwecmwuccdidzq.supabase.co';
-const SB_KEY=normalizeSecret(process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.SUPABASE_SERVICE_KEY||'');
-const ORGS={jihoceske:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',merch:'d2751286-da99-42c0-b8ac-6a2da8ecdabf'};
+function validSupabaseKey(value){const s=normalizeSecret(value||'');return /^[\\x20-\\x7E]+$/.test(s)?s:'';}
+const SB_KEY=validSupabaseKey(process.env.SUPABASE_SERVICE_ROLE_KEY)||validSupabaseKey(process.env.SUPABASE_SERVICE_KEY);
+const ORGS={
+  jihoceske:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',
+  fve:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',
+  mazliprint:'2d971414-9329-4d0b-94df-66cb8413f00c',
+  merch:'d2751286-da99-42c0-b8ac-6a2da8ecdabf'
+};
 const STATUSES=new Set(['new','qualified','contacted','follow_up','offer','approved','job','delivered','invoiced','paid','closed']);
 const TRANSITIONS={new:new Set(['contacted','qualified']),qualified:new Set(['contacted','follow_up','offer']),contacted:new Set(['qualified','follow_up','offer']),follow_up:new Set(['contacted','qualified','offer']),offer:new Set(['approved']),approved:new Set(['job']),job:new Set(['delivered']),delivered:new Set(['invoiced']),invoiced:new Set(['paid']),paid:new Set(['closed']),closed:new Set()};
 const MUTATING=new Set(['create','update','status']);
 function requireDb(){if(!SB_KEY){const e=new Error('CRM_DB_NOT_CONFIGURED');e.status=503;throw e;}}
+function configuredProject(project){return Boolean(ORGS[project]);}
 function headerValue(name,value){const s=String(value??'');for(let i=0;i<s.length;i++)if(s.charCodeAt(i)>255){const e=new Error(`${name}_INVALID_BYTE_STRING`);e.status=503;throw e;}return s;}
 function org(project){const id=ORGS[project];if(!id){const e=new Error('CRM_PROJECT_ORG_NOT_CONFIGURED');e.status=503;throw e;}return id;}
 async function sb(path,opt={}){requireDb();const key=headerValue('SUPABASE_KEY',SB_KEY);const r=await fetch(`${SB_URL}/rest/v1/${path}`,{...opt,headers:{apikey:key,Authorization:`Bearer ${key}`,'content-type':'application/json',...(opt.headers||{})},signal:AbortSignal.timeout(15000)});const text=await r.text();let data={};try{data=text?JSON.parse(text):{}}catch{data={raw:text}}if(!r.ok){const e=new Error(data.message||data.error||`SUPABASE_HTTP_${r.status}`);e.status=502;throw e;}return data;}
