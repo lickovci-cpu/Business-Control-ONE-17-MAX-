@@ -35,6 +35,7 @@ async function snapshot(){
   const last7=(orders||[]).filter(x=>now-new Date(x.created_at).getTime()<=7*24*60*60*1000);
   const fveProspectIds=new Set((drafts||[]).filter(d=>isLikelyFveText(d.subject)).map(d=>d.prospect_id).filter(Boolean));
   const activeMerchProspects=(prospects||[]).filter(x=>!fveProspectIds.has(x.id)&&!isLikelyFveText(x.company_name+' '+x.domain));
+  const draftByProspect=new Map((drafts||[]).filter(d=>d.prospect_id).map(d=>[d.prospect_id,d]));
   return {
     at:new Date().toISOString(),
     leads:{count:(leads||[]).length,status:counts(leads),pipelineValue:sum(leads,'estimated_value'),due:dueLead},
@@ -47,7 +48,20 @@ async function snapshot(){
       priority:activeMerchProspects
         .filter(x=>!['converted','rejected','suppressed'].includes(String(x.status||'')))
         .slice(0,10)
-        .map(x=>({companyName:clean(x.company_name,180),domain:clean(x.domain,240),email:clean(x.email,240),fitScore:Number(x.fit_score)||0,status:clean(x.status,80)||'unknown',nextActionAt:x.next_action_at||null}))
+        .map(x=>{
+          const d=draftByProspect.get(x.id);
+          return {
+            companyName:clean(x.company_name,180),
+            domain:clean(x.domain,240),
+            email:clean(x.email,240),
+            fitScore:Number(x.fit_score)||0,
+            status:clean(x.status,80)||'unknown',
+            nextActionAt:x.next_action_at||null,
+            draftStatus:clean(d?.status,40),
+            draftSubject:clean(d?.subject,240),
+            draftBody:clean(d?.body,5000)
+          };
+        })
     },
     outreach:{count:(drafts||[]).length,status:counts(drafts)},
     orders:{count:(orders||[]).length,status:counts(orders),gross:sum(orders,'total'),recent7dCount:last7.length,recent7dGross:sum(last7,'total')}
