@@ -1,4 +1,4 @@
-import {auth,noauth,env,kvGet,kvSet,fetchJsonWithRetry} from './_lib.js';
+import {auth,noauth,env,normalizeSecret,kvGet,kvSet,fetchJsonWithRetry} from './_lib.js';
 
 const ORG='d2751286-da99-42c0-b8ac-6a2da8ecdabf';
 const SB_URL=env('SUPABASE_URL','https://vjzzvopwecmwuccdidzq.supabase.co');
@@ -10,7 +10,7 @@ function authorized(req){
 }
 function clean(v,max=1200){return String(v??'').trim().slice(0,max)}
 async function query(path,params={}){
-  const key=env('SUPABASE_SERVICE_ROLE_KEY')||env('SUPABASE_SERVICE_KEY');
+  const key=normalizeSecret(env('SUPABASE_SERVICE_ROLE_KEY')||env('SUPABASE_SERVICE_KEY'));
   if(!key)throw Object.assign(new Error('SUPABASE_SERVICE_ROLE_KEY_NOT_CONFIGURED'),{status:503});
   const u=new URL(SB_URL+'/rest/v1/'+path);
   Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,String(v)));
