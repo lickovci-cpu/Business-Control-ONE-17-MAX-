@@ -18,25 +18,33 @@ async function query(path,params={}){
 }
 function counts(rows=[]){return rows.reduce((a,x)=>{const k=String(x.status||'unknown');a[k]=(a[k]||0)+1;return a;},{});}
 function sum(rows=[],field){return rows.reduce((n,x)=>n+(Number(x[field])||0),0);}
+function isLikelyFveText(v){
+  const t=String(v??'').toLowerCase();
+  return /\bfve\b|fotovolta|montážn(?:í|e) dvoj|montáže fve|solar|solars|fotovoltaika/.test(t);
+}
 async function snapshot(){
   const [leads,prospects,drafts,orders]=await Promise.all([
     query('leads',{organization_id:'eq.'+ORG,select:'id,status,estimated_value,next_action_at,updated_at',order:'updated_at.desc',limit:250}),
     query('merch_prospects',{organization_id:'eq.'+ORG,select:'id,company_name,domain,email,status,fit_score,next_action_at,created_at',order:'fit_score.desc,created_at.asc',limit:250}),
-    query('merch_outreach_drafts',{organization_id:'eq.'+ORG,select:'id,status,created_at,sent_at',order:'created_at.desc',limit:250}),
+    query('merch_outreach_drafts',{organization_id:'eq.'+ORG,select:'id,prospect_id,status,subject,created_at,sent_at',order:'created_at.desc',limit:250}),
     query('merch_orders',{organization_id:'eq.'+ORG,select:'id,status,total,created_at',order:'created_at.desc',limit:250})
   ]);
   const now=Date.now();
   const dueLead=(leads||[]).filter(x=>x.next_action_at&&new Date(x.next_action_at).getTime()<=now&&!['paid','closed','lost'].includes(x.status)).length;
   const dueProspect=(prospects||[]).filter(x=>x.next_action_at&&new Date(x.next_action_at).getTime()<=now&&!['converted','rejected','suppressed'].includes(x.status)).length;
   const last7=(orders||[]).filter(x=>now-new Date(x.created_at).getTime()<=7*24*60*60*1000);
+  const fveProspectIds=new Set((drafts||[]).filter(d=>isLikelyFveText(d.subject)).map(d=>d.prospect_id).filter(Boolean));
+  const activeMerchProspects=(prospects||[]).filter(x=>!fveProspectIds.has(x.id)&&!isLikelyFveText(x.company_name+' '+x.domain));
   return {
     at:new Date().toISOString(),
     leads:{count:(leads||[]).length,status:counts(leads),pipelineValue:sum(leads,'estimated_value'),due:dueLead},
     prospects:{
       count:(prospects||[]).length,
+      relevantCount:activeMerchProspects.length,
+      excludedLikelyFve:(prospects||[]).length-activeMerchProspects.length,
       status:counts(prospects),
       due:dueProspect,
-      priority:(prospects||[])
+      priority:activeMerchProspects
         .filter(x=>!['converted','rejected','suppressed'].includes(String(x.status||'')))
         .slice(0,10)
         .map(x=>({companyName:clean(x.company_name,180),domain:clean(x.domain,240),email:clean(x.email,240),fitScore:Number(x.fit_score)||0,status:clean(x.status,80)||'unknown',nextActionAt:x.next_action_at||null}))
@@ -47,8 +55,8 @@ async function snapshot(){
 }
 function fallback(s){
   const today=[];
-  if(!s.prospects.count)today.push('Naplnit pipeline 10 relevantními B2B prospecty; žádný další redesign.');
-  if(s.prospects.count && !s.outreach.status?.draft)today.push('Připravit personalizované 1:1 nabídky pro nejlepší prospecty.');
+  if(!s.prospects.relevantCount)today.push('Naplnit pipeline 10 relevantními B2B prospecty; žádný další redesign.');
+  if(s.prospects.relevantCount && !s.outreach.status?.draft)today.push('Připravit personalizované 1:1 nabídky pro nejlepší prospecty.');
   if(s.outreach.status?.draft)today.push('Projít drafty a schválit pouze relevantní zprávy.');
   if(s.prospects.due)today.push('Vyřídit '+s.prospects.due+' splatných prospect follow-upů.');
   if(s.leads.due)today.push('Vyřídit '+s.leads.due+' CRM follow-upů.');
