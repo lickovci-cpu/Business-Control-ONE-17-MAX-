@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "check": "node scripts/check.mjs",
-    "test": "node tests/smoke.mjs && node tests/control-plane.mjs && node tests/control-plane-api.mjs && node tests/crm-live.mjs && node tests/crm-payload-binding.mjs && node tests/commercial-live.mjs && node tests/web-bco-integration.mjs && node tests/crm-key-routing.mjs && node tests/ai-agents.mjs && node tests/agent-registry.mjs"
+    "test": "node tests/smoke.mjs && node tests/control-plane.mjs && node tests/control-plane-api.mjs && node tests/crm-live.mjs && node tests/crm-payload-binding.mjs && node tests/commercial-live.mjs && node tests/web-bco-integration.mjs && node tests/ai-agents.mjs && node tests/automation-tick.mjs && node tests/crm-key-routing.mjs"
   },
   "dependencies": {
     "@vercel/blob": "^1.0.2"
