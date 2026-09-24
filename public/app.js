@@ -407,6 +407,13 @@ async function loadMoneySprint(force=false){
     list('moneyToday',p.today,'Žádný uložený plán.');
     list('moneyWeek',p.thisWeek,'Žádný uložený týdenní plán.');
     list('moneyKill',p.kill,'Žádné blokace.');
+    const priority=(s.prospects?.priority||[]).map(x=>{
+      const company=x.companyName||x.domain||'Neurčený prospect';
+      const score=Number(x.fitScore)||0;
+      const status=x.status&&x.status!=='unknown'?' / '+x.status:'';
+      return company+' · FIT '+score+status+(x.email?' · '+x.email:'');
+    });
+    list('moneyProspectList',priority,'Nejsou k dispozici žádní aktivní prioritní prospecti.');
     list('moneyNeeds',p.needsUser,'Nic dalšího není označeno.');
   }catch(e){
     const msg=e?.message==='AUTH_REQUIRED'
