@@ -38,7 +38,39 @@ function validateImages(images){
 function tokenBudget(task){const hard=Math.max(128,Number(env('AI_MAX_OUTPUT_TOKENS','1800'))||1800),defaults={message:500,reel:1800,reelhooks:500,campaign:1800,leadkit:1500,salescoach:1200,quote:1200,contentpiece:1400,select:500,command:1200,weekly:1600,visual:1800,crm:1200,product:1200};return Math.min(hard,defaults[task]||1200);}
 const JSON_TASKS=new Set(['command','visual','select','weekly','reel','contentpiece','reelhooks','campaign','leadkit','salescoach','quote','crm','product']);
 function providerModel(provider){return ({gemini:env('GEMINI_MODEL','gemini-3.5-flash-lite'),claude:env('ANTHROPIC_MODEL','claude-haiku-4-5'),openrouter:env('OPENROUTER_MODEL','openrouter/free'),openai:env('OPENAI_MODEL','gpt-5.6-luna'),custom:env('CUSTOM_AI_MODEL','custom')})[provider]||null;}
-function parseStructuredOutput(task,text){if(!JSON_TASKS.has(task))return null;const raw=String(text||'').trim().replace(/^```(?:json)?\\s*/i,'').replace(/\\s*```$/,'');try{return JSON.parse(raw);}catch{return null;}}
+function parseStructuredOutput(task,text){if(!JSON_TASKS.has(task))return null;const raw=String(text||'').trim().replace(/^\`\`\`(?:json)?\\s*/i,'').replace(/\\s*\`\`\`$/,'');try{return JSON.parse(raw);}catch{return null;}}
+function hasObject(value){return Boolean(value&&typeof value==='object'&&!Array.isArray(value));}
+function nonEmptyString(value){return typeof value==='string'&&value.trim().length>0;}
+function validateStructuredOutput(task,value){
+  if(!JSON_TASKS.has(task)||value===null||value===undefined)return !JSON_TASKS.has(task);
+  if(task==='select'||task==='weekly'||task==='reelhooks'){
+    if(!Array.isArray(value))return false;
+    if(task==='select')return value.length>=1&&value.length<=10&&value.every(nonEmptyString);
+    if(task==='weekly')return value.length===7&&value.every(x=>hasObject(x)&&nonEmptyString(x.topic)&&nonEmptyString(x.postText));
+    return value.length===5&&value.every(nonEmptyString);
+  }
+  if(!hasObject(value))return false;
+  const required={
+    command:['intent','project','goal','tasks','notes'],
+    visual:['photos','coverPhotoId','albumOrder','summary'],
+    reel:['title','hook','shotList','caption','cta'],
+    contentpiece:['format','title','caption','cta','hashtags'],
+    campaign:['title','goal','post','stories','carousel','reel','cta','hashtags','publishOrder','notes'],
+    leadkit:['fitReason','priority','subject','firstMessage','whatsapp','questions','followUps','objections','nextStep','crmNote'],
+    salescoach:['priority','goal','nextStep','verify','risks','message','reason'],
+    quote:['scope','verify','exclusions','handoff'],
+    crm:['priorities','followUps','risks','nextActions'],
+    product:['positioning','customer','offer','marginRisk','contentIdeas','tests','nextAction']
+  }[task]||[];
+  if(required.some(k=>!(k in value)))return false;
+  if(['tasks','notes','photos','shotList','hashtags','questions','objections','scope','verify','exclusions','handoff','priorities','followUps','risks','nextActions','contentIdeas','tests','stories','carousel','publishOrder'].some(k=>k in value)&&
+     Object.entries(value).some(([k,v])=>['tasks','notes','photos','shotList','hashtags','questions','objections','scope','verify','exclusions','handoff','priorities','followUps','risks','nextActions','contentIdeas','tests','stories','carousel','publishOrder'].includes(k)&&!Array.isArray(v)))return false;
+  if(task==='campaign'&&(!Array.isArray(value.stories)||value.stories.length!==3||!Array.isArray(value.carousel)||value.carousel.length!==5))return false;
+  if(task==='reel'&&!Array.isArray(value.shotList))return false;
+  if(task==='visual'&&(!Array.isArray(value.photos)||value.photos.length<1||!Array.isArray(value.albumOrder)))return false;
+  if(task==='leadkit'&&(!hasObject(value.followUps)||!hasObject(value.objections)))return false;
+  return true;
+}
 async function checkedFetch(url,opt,label){let r;try{r=await fetch(url,{...opt,signal:AbortSignal.timeout(55000)})}catch(e){throw new Error(`${label}: ${e.name==='TimeoutError'?'timeout':'network error'}`)}const j=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(j.error?.message||j.error_description||j.error||`${label} HTTP ${r.status}`);e.status=r.status;throw e;}return j;}
 async function gemini(parts,maxTokens){const key=env('GEMINI_API_KEY');if(!key)throw new Error('GEMINI_API_KEY není nastaven.');const model=env('GEMINI_MODEL','gemini-3.5-flash-lite'),j=await checkedFetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':key},body:JSON.stringify({contents:[{role:'user',parts}],generationConfig:{maxOutputTokens:maxTokens}})},'Gemini');return j.candidates?.[0]?.content?.parts?.map(x=>x.text||'').join('')||'';}
 async function openai(prompt,images,maxTokens){const key=env('OPENAI_API_KEY');if(!key)throw new Error('OPENAI_API_KEY není nastaven.');const model=env('OPENAI_MODEL','gpt-5.6-luna'),content=[{type:'input_text',text:prompt},...images.map(im=>({type:'input_image',image_url:`data:${im.mime};base64,${im.data}`}))],j=await checkedFetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'content-type':'application/json',Authorization:`Bearer ${key}`},body:JSON.stringify({model,input:[{role:'user',content}],max_output_tokens:maxTokens})},'OpenAI');const fallback=(j.output||[]).flatMap(x=>Array.isArray(x.content)?x.content:[]).map(x=>x.text||'').filter(Boolean).join('');return j.output_text||fallback||'';}
@@ -58,7 +90,7 @@ export default async function handler(req,res){
     for(const p of order){
       if(!configured[p]){skipped.push(`${p}:nenastaven`);continue;}
       if(reqProvider==='auto'&&freeFirst&&['openai','claude'].includes(p)&&!paidAllowed){skipped.push(`${p}:placený fallback zakázán`);continue;}
-      attemptedProviders.push(p);try{let text='';if(p==='gemini')text=await gemini(parts,maxTokens);else if(p==='claude')text=await claude(prompt,images,maxTokens);else if(p==='openrouter')text=await openrouter(prompt,images,maxTokens);else if(p==='openai')text=await openai(prompt,images,maxTokens);else if(p==='custom')text=await custom(prompt,images,maxTokens);else continue;const parsed=parseStructuredOutput(task,text),latencyMs=Date.now()-startedAt;await recordAiRun({project,agent,task,status:'completed',provider:p,model:providerModel(p),requestedProvider:reqProvider,fallbackUsed:attemptedProviders.length>1,attemptedProviders,imageCount:images.length,outputChars:String(text||'').length,structuredExpected:JSON_TASKS.has(task),structuredValid:parsed!==null,latencyMs});return res.json({text,parsed,provider:p,model:providerModel(p),project,fallbackUsed:attemptedProviders.length>1,attemptedProviders,structuredExpected:JSON_TASKS.has(task),structuredValid:parsed!==null,skipped});}catch(e){errors.push(`${p}: ${e.message}`);if(reqProvider!=='auto')throw e;}
+      attemptedProviders.push(p);try{let text='';if(p==='gemini')text=await gemini(parts,maxTokens);else if(p==='claude')text=await claude(prompt,images,maxTokens);else if(p==='openrouter')text=await openrouter(prompt,images,maxTokens);else if(p==='openai')text=await openai(prompt,images,maxTokens);else if(p==='custom')text=await custom(prompt,images,maxTokens);else continue;const parsed=parseStructuredOutput(task,text),structuredValid=parsed!==null&&validateStructuredOutput(task,parsed),latencyMs=Date.now()-startedAt;if(!structuredValid&&reqProvider==='auto'&&JSON_TASKS.has(task)){const invalidError=`${p}:STRUCTURED_OUTPUT_INVALID`;errors.push(invalidError);await recordAiRun({project,agent,task,status:'invalid_output',provider:p,model:providerModel(p),requestedProvider:reqProvider,fallbackUsed:attemptedProviders.length>1,attemptedProviders,imageCount:images.length,outputChars:String(text||'').length,structuredExpected:true,structuredValid:false,latencyMs,error:'STRUCTURED_OUTPUT_INVALID'});continue;}await recordAiRun({project,agent,task,status:'completed',provider:p,model:providerModel(p),requestedProvider:reqProvider,fallbackUsed:attemptedProviders.length>1,attemptedProviders,imageCount:images.length,outputChars:String(text||'').length,structuredExpected:JSON_TASKS.has(task),structuredValid,latencyMs});return res.json({text,parsed,provider:p,model:providerModel(p),project,fallbackUsed:attemptedProviders.length>1,attemptedProviders,structuredExpected:JSON_TASKS.has(task),structuredValid,skipped});}catch(e){errors.push(`${p}: ${e.message}`);if(reqProvider!=='auto')throw e;}
     }
     const failure=errors.length?errors.join(' | '):`Není dostupný žádný povolený AI provider. ${skipped.join(' | ')}`;await recordAiRun({project,agent,task,status:'failed',provider:null,model:null,requestedProvider:reqProvider,fallbackUsed:attemptedProviders.length>1,attemptedProviders,imageCount:images.length,outputChars:0,structuredExpected:JSON_TASKS.has(task),structuredValid:false,latencyMs:Date.now()-startedAt,error:failure});throw new Error(failure);
   }catch(e){return sendError(res,e);}
