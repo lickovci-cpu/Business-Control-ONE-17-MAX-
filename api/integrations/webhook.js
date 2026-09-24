@@ -6,7 +6,8 @@ const SB_KEY=normalizeSecret(process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.
 const INTEGRATION_SECRET=process.env.BCO_INTEGRATION_SECRET||'';
 const ORGS={
   jihoceske:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',
-  merch:'d2751286-da99-42c0-b8ac-6a2da8ecdabf'
+  merch:'d2751286-da99-42c0-b8ac-6a2da8ecdabf',
+  mazliprint:'2d971414-9329-4d0b-94df-66cb8413f00c'
 };
 const PROJECTS=new Set(Object.keys(ORGS));
 const EVENT_LIMIT=200000;
