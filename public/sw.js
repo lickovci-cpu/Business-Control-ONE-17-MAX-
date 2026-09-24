@@ -1,4 +1,4 @@
-const CACHE='bc19-commercial-live-v1';
+const CACHE='bc20-money-sprint-v1';
 const SHELL=['/','/app.js','/styles.css','/manifest.webmanifest','/icon.svg','/crm-live.js','/commercial-live.js'];
 
 self.addEventListener('install',event=>{
