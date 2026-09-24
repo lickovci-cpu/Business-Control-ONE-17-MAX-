@@ -53,12 +53,9 @@ create table if not exists public.merch_order_items (
 create index if not exists merch_products_org_active_idx on public.merch_products(organization_id, active);
 create index if not exists merch_orders_org_status_idx on public.merch_orders(organization_id, status, created_at desc);
 create index if not exists merch_orders_contact_idx on public.merch_orders(contact_id, created_at desc);
-create index if not exists merch_creative_proposals_product_idx on public.merch_creative_proposals(product_id);
-create index if not exists merch_creative_proposals_prospect_idx on public.merch_creative_proposals(prospect_id);
 create index if not exists merch_order_items_organization_idx on public.merch_order_items(organization_id);
 create index if not exists merch_order_items_product_idx on public.merch_order_items(product_id);
 create index if not exists merch_orders_lead_idx on public.merch_orders(lead_id);
-create index if not exists merch_outreach_drafts_prospect_idx on public.merch_outreach_drafts(prospect_id);
 create index if not exists merch_order_items_order_idx on public.merch_order_items(order_id);
 
 alter table public.merch_products enable row level security;
