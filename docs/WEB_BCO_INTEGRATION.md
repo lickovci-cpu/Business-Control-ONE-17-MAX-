@@ -1,6 +1,6 @@
 # WEB → BCO integration contract
 
-<!-- QA baseline refreshed 2026-09-25 -->
+<!-- QA baseline refreshed 2026-09-25; verification v5 -->
 
 ## Purpose
 
