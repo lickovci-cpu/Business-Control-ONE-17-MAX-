@@ -10,10 +10,12 @@ const token=lib.createSessionToken();assert.equal(lib.verifySessionToken(token),
 const payload={project:'jihoceske',message:'test'},ct=conf.createConfirmation('meta:publish',payload);assert.equal(conf.verifyConfirmation(ct,'meta:publish',payload),true);assert.throws(()=>conf.verifyConfirmation(ct,'meta:publish',{...payload,project:'mazliprint'}));
 assert.equal(meta.metaConfig('jihoceske').configured,true);assert.equal(meta.metaConfig('mazliprint').configured,false);assert.throws(()=>lib.projectKey('evil'));
 const fakeReq={headers:{cookie:`bc_session=${encodeURIComponent(token)}`}};assert.equal(lib.auth(fakeReq),true);
+assert.equal(lib.normalizeSecret('\uFEFF\" test \"'), 'test');
 const noCookie={headers:{'x-app-key':'test'}};assert.equal(lib.auth(noCookie),true);
 const oldPassword=process.env.APP_PASSWORD;delete process.env.APP_PASSWORD;
 assert.equal(lib.auth({headers:{'x-app-key':'test'}}),true);
 assert.equal(lib.auth({headers:{'x-app-key':'wrong'}}),false);
+assert.equal(lib.normalizeSecret('\u200Btest\u200D'),'test');
 process.env.APP_PASSWORD=oldPassword;
 const healthResponse=()=>{let status=200,body;return{setHeader(){},statusCode:200,status(n){status=n;return this},json(v){body=v;return this},get result(){return{status,body}}}};
 const protectedHealth=healthResponse();healthHandler({headers:{authorization:'Bearer test'}},protectedHealth);assert.equal(protectedHealth.result.status,200);assert.equal(protectedHealth.result.body.ok,true);
@@ -33,6 +35,7 @@ const health=await fs.readFile('api/health.js','utf8');assert.ok(health.includes
 const ai=await fs.readFile('api/ai.js','utf8');assert.ok(ai.includes("task==='salescoach'"));assert.ok(ai.includes("task==='quote'"));
 const comms=await fs.readFile('api/comms.js','utf8');assert.ok(comms.includes('PROJECT_MISMATCH'));
 const rcs=await fs.readFile('api/_comms.js','utf8');assert.ok(rcs.includes('RCS_USE_GLOBAL_ENDPOINT'));
+const leadsSource=await fs.readFile('api/leads.js','utf8');assert.ok(leadsSource.includes('CRM_PROJECT_ORG_NOT_CONFIGURED'));assert.ok(leadsSource.includes('verified:false'));
 const autopilotSource=await fs.readFile('api/autopilot.js','utf8');assert.ok(autopilotSource.includes("KV_NOT_CONFIGURED"));
 console.log('SMOKE OK — 17 MAX auth, BCO_API_KEY bridge, project isolation, Control Room, Sales Command, Quote Builder, Delivery OS, Reels Composer 3, cloud sync and mobile-safe media.');
 
