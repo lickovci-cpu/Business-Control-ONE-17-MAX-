@@ -7,6 +7,7 @@
     "api/ai.js": { "maxDuration": 60 },
     "api/meta-photo.js": { "maxDuration": 60 },
     "api/cron.js": { "maxDuration": 60 },
+    "api/automation-tick.js": { "maxDuration": 60 },
     "api/merch-studio.js": { "maxDuration": 60 },
     "api/merch-studio-safe.js": { "maxDuration": 60 },
     "api/merch-studio-router2.js": { "maxDuration": 60 },
@@ -16,7 +17,8 @@
   },
   "crons": [
     { "path": "/api/merch-cron", "schedule": "0 */6 * * *" },
-    { "path": "/api/cron", "schedule": "*/5 * * * *" }
+    { "path": "/api/cron", "schedule": "*/5 * * * *" },
+    { "path": "/api/automation-tick", "schedule": "*/5 * * * *" }
   ],
   "rewrites": [
     { "source": "/", "destination": "/public/index.html" },
