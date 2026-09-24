@@ -1,5 +1,7 @@
 # WEB → BCO integration contract
 
+<!-- QA baseline refreshed 2026-09-25 -->
+
 ## Purpose
 
 This endpoint is the controlled ingestion boundary for the BCO-owned websites. Websites send events to BCO; BCO validates the integration secret, deduplicates the event in `webhook_events`, and creates the appropriate business record when the event type is supported.
