@@ -20,7 +20,7 @@ const protectedHealth=healthResponse();healthHandler({headers:{authorization:'Be
 const deniedHealth=healthResponse();healthHandler({headers:{}},deniedHealth);assert.equal(deniedHealth.result.status,401);
 const oldKvUrl=process.env.KV_REST_API_URL,oldKvToken=process.env.KV_REST_API_TOKEN;
 delete process.env.KV_REST_API_URL;delete process.env.KV_REST_API_TOKEN;
-const autopilotResponse=healthResponse();await autopilot({method:'POST',headers:{authorization:'Bearer cron-test'}},autopilotResponse);assert.equal(autopilotResponse.result.status,503);assert.equal(autopilotResponse.result.body.error,'KV_NOT_CONFIGURED');
+const autopilotResponse=healthResponse();await autopilot({method:'POST',headers:{authorization:'Bearer test'}},autopilotResponse);assert.equal(autopilotResponse.result.status,503);assert.equal(autopilotResponse.result.body.error,'KV_NOT_CONFIGURED');
 if(oldKvUrl!==undefined)process.env.KV_REST_API_URL=oldKvUrl;if(oldKvToken!==undefined)process.env.KV_REST_API_TOKEN=oldKvToken;
 const fs=await import('node:fs/promises');
 const app=await fs.readFile('public/app.js','utf8');
