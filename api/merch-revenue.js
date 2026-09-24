@@ -21,7 +21,7 @@ function sum(rows=[],field){return rows.reduce((n,x)=>n+(Number(x[field])||0),0)
 async function snapshot(){
   const [leads,prospects,drafts,orders]=await Promise.all([
     query('leads',{organization_id:'eq.'+ORG,select:'id,status,estimated_value,next_action_at,updated_at',order:'updated_at.desc',limit:250}),
-    query('merch_prospects',{organization_id:'eq.'+ORG,select:'id,status,fit_score,next_action_at,created_at',order:'created_at.desc',limit:250}),
+    query('merch_prospects',{organization_id:'eq.'+ORG,select:'id,company_name,domain,email,status,fit_score,next_action_at,created_at',order:'fit_score.desc,created_at.asc',limit:250}),
     query('merch_outreach_drafts',{organization_id:'eq.'+ORG,select:'id,status,created_at,sent_at',order:'created_at.desc',limit:250}),
     query('merch_orders',{organization_id:'eq.'+ORG,select:'id,status,total,created_at',order:'created_at.desc',limit:250})
   ]);
@@ -32,7 +32,15 @@ async function snapshot(){
   return {
     at:new Date().toISOString(),
     leads:{count:(leads||[]).length,status:counts(leads),pipelineValue:sum(leads,'estimated_value'),due:dueLead},
-    prospects:{count:(prospects||[]).length,status:counts(prospects),due:dueProspect},
+    prospects:{
+      count:(prospects||[]).length,
+      status:counts(prospects),
+      due:dueProspect,
+      priority:(prospects||[])
+        .filter(x=>!['converted','rejected','suppressed'].includes(String(x.status||'')))
+        .slice(0,10)
+        .map(x=>({companyName:clean(x.company_name,180),domain:clean(x.domain,240),email:clean(x.email,240),fitScore:Number(x.fit_score)||0,status:clean(x.status,80)||'unknown',nextActionAt:x.next_action_at||null}))
+    },
     outreach:{count:(drafts||[]).length,status:counts(drafts)},
     orders:{count:(orders||[]).length,status:counts(orders),gross:sum(orders,'total'),recent7dCount:last7.length,recent7dGross:sum(last7,'total')}
   };
