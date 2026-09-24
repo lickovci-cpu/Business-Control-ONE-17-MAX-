@@ -66,7 +66,7 @@ create policy merch_orders_member_write on public.merch_orders for all using (ex
 create policy merch_order_items_member_select on public.merch_order_items for select using (exists (select 1 from public.memberships m where m.organization_id = merch_order_items.organization_id and m.user_id = auth.uid()));
 create policy merch_order_items_member_write on public.merch_order_items for all using (exists (select 1 from public.memberships m where m.organization_id = merch_order_items.organization_id and m.user_id = auth.uid() and m.role in ('owner','admin','manager'))) with check (exists (select 1 from public.memberships m where m.organization_id = merch_order_items.organization_id and m.user_id = auth.uid() and m.role in ('owner','admin','manager')));
 
-create or replace function public.set_merch_updated_at() returns trigger language plpgsql as $$ begin new.updated_at = now(); return new; end $$;
+create or replace function public.set_merch_updated_at() returns trigger language plpgsql set search_path = public as $ begin new.updated_at = now(); return new; end $;
 drop trigger if exists merch_products_updated_at on public.merch_products;
 create trigger merch_products_updated_at before update on public.merch_products for each row execute function public.set_merch_updated_at();
 drop trigger if exists merch_orders_updated_at on public.merch_orders;
