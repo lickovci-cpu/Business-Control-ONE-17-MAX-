@@ -1,16 +1,16 @@
 import {createHash} from 'node:crypto';
-import {auth,noauth,body,projectKey,sendError} from './_lib.js';
+import {auth,noauth,body,projectKey,sendError,normalizeSecret} from './_lib.js';
 import {createTask,getTask,blockTask,consumeApproval,startAttempt,completeTask,failAttempt} from './_control.js';
 
 const SB_URL=process.env.SUPABASE_URL||'https://vjzzvopwecmwuccdidzq.supabase.co';
-const SB_KEY=process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.SUPABASE_SERVICE_KEY||'';
+const SB_KEY=normalizeSecret(process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.SUPABASE_SERVICE_KEY||'');
 const ORGS={jihoceske:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',merch:'d2751286-da99-42c0-b8ac-6a2da8ecdabf'};
 const STATUSES=new Set(['new','qualified','contacted','follow_up','offer','approved','job','delivered','invoiced','paid','closed']);
 const TRANSITIONS={new:new Set(['contacted','qualified']),qualified:new Set(['contacted','follow_up','offer']),contacted:new Set(['qualified','follow_up','offer']),follow_up:new Set(['contacted','qualified','offer']),offer:new Set(['approved']),approved:new Set(['job']),job:new Set(['delivered']),delivered:new Set(['invoiced']),invoiced:new Set(['paid']),paid:new Set(['closed']),closed:new Set()};
 const MUTATING=new Set(['create','update','status']);
 function requireDb(){if(!SB_KEY){const e=new Error('CRM_DB_NOT_CONFIGURED');e.status=503;throw e;}}
 function headerValue(name,value){const s=String(value??'');for(let i=0;i<s.length;i++)if(s.charCodeAt(i)>255){const e=new Error(`${name}_INVALID_BYTE_STRING`);e.status=503;throw e;}return s;}
-function org(project){const id=ORGS[project];if(!id)throw new Error('CRM_PROJECT_ORG_NOT_CONFIGURED');return id;}
+function org(project){const id=ORGS[project];if(!id){const e=new Error('CRM_PROJECT_ORG_NOT_CONFIGURED');e.status=503;throw e;}return id;}
 async function sb(path,opt={}){requireDb();const key=headerValue('SUPABASE_KEY',SB_KEY);const r=await fetch(`${SB_URL}/rest/v1/${path}`,{...opt,headers:{apikey:key,Authorization:`Bearer ${key}`,'content-type':'application/json',...(opt.headers||{})},signal:AbortSignal.timeout(15000)});const text=await r.text();let data={};try{data=text?JSON.parse(text):{}}catch{data={raw:text}}if(!r.ok){const e=new Error(data.message||data.error||`SUPABASE_HTTP_${r.status}`);e.status=502;throw e;}return data;}
 function taskAction(a){return `crm:lead-${a}`;}
 function stable(v){if(Array.isArray(v))return '['+v.map(stable).join(',')+']';if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}';return JSON.stringify(v);}
@@ -38,6 +38,7 @@ export default async function handler(req,res){
   if(!auth(req))return noauth(res);
   try{
     const project=projectKey(req.query?.project||'jihoceske');
+    if(!ORGS[project]&&req.method==='GET')return res.json({ok:true,project,verified:false,configured:false,leads:[],error:'CRM_PROJECT_ORG_NOT_CONFIGURED'});
     const organization_id=org(project);
     if(req.method==='GET'){
       const rows=await sb(`leads?organization_id=eq.${organization_id}&select=*,contacts(id,name,phone,email)&order=created_at.desc&limit=500`);
