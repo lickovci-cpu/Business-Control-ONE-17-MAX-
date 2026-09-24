@@ -20,3 +20,7 @@ create policy merch_creative_member_select on public.merch_creative_proposals fo
 create policy merch_creative_manager_insert on public.merch_creative_proposals for insert to authenticated with check (exists (select 1 from public.memberships m where m.organization_id=merch_creative_proposals.organization_id and m.user_id=(select auth.uid()) and m.role in ('owner','admin','manager')));
 create policy merch_creative_manager_update on public.merch_creative_proposals for update to authenticated using (exists (select 1 from public.memberships m where m.organization_id=merch_creative_proposals.organization_id and m.user_id=(select auth.uid()) and m.role in ('owner','admin','manager'))) with check (exists (select 1 from public.memberships m where m.organization_id=merch_creative_proposals.organization_id and m.user_id=(select auth.uid()) and m.role in ('owner','admin','manager')));
 create policy merch_creative_manager_delete on public.merch_creative_proposals for delete to authenticated using (exists (select 1 from public.memberships m where m.organization_id=merch_creative_proposals.organization_id and m.user_id=(select auth.uid()) and m.role in ('owner','admin','manager')));
+
+create index if not exists merch_creative_proposals_product_idx on public.merch_creative_proposals(product_id);
+create index if not exists merch_creative_proposals_prospect_idx on public.merch_creative_proposals(prospect_id);
+create index if not exists merch_outreach_drafts_prospect_idx on public.merch_outreach_drafts(prospect_id);
