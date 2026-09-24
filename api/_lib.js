@@ -1,6 +1,12 @@
 import {createHmac,timingSafeEqual,randomBytes} from 'node:crypto';
 
 export const env=(k,d='')=>process.env[k]||d;
+export function normalizeSecret(value){
+  let s=String(value??'').replace(/^\uFEFF/,'').trim();
+  if((s.startsWith('"')&&s.endsWith('"'))||(s.startsWith("'")&&s.endsWith("'")))s=s.slice(1,-1).trim();
+  s=s.replace(/[\u200B-\u200D\u2060]/g,'');
+  return s;
+}
 const SESSION_COOKIE='bc_session';
 const SESSION_TTL=30*24*60*60;
 
@@ -30,7 +36,7 @@ export function verifySessionToken(token){
   }catch{return false;}
 }
 export function auth(req){
-  const p=env('APP_PASSWORD')||env('BCO_API_KEY');
+  const p=normalizeSecret(env('APP_PASSWORD')||env('BCO_API_KEY'));
   if(!p)return process.env.NODE_ENV!=='production';
   const c=cookies(req)[SESSION_COOKIE];
   if(verifySessionToken(c))return true;
