@@ -30,7 +30,7 @@ export default async function handler(req,res){
     const b=await body(req,700000),id=String(b.agent||'').trim().toLowerCase();
     if(!AGENTS[id])return res.status(400).json({error:'UNKNOWN_AGENT'});
     const project=projectKey(b.project||'jihoceske'),a=AGENTS[id];
-    const ai=await runAi(req,{task:String(b.task||a.task),project,context:b.context||{},prompt:String(b.prompt||''),images:Array.isArray(b.images)?b.images.slice(0,10):[],provider:String(b.provider||'auto')});
+    const ai=await runAi(req,{agent:id,task:String(b.task||a.task),project,context:b.context||{},prompt:String(b.prompt||''),images:Array.isArray(b.images)?b.images.slice(0,10):[],provider:String(b.provider||'auto')});
     return res.json({ok:true,agent:{id,...a},project,requiresApproval:a.autonomy!=='autonomous',ai});
   }catch(e){return sendError(res,e);}
 }
