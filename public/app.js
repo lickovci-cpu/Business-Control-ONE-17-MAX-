@@ -394,7 +394,7 @@ async function loadMoneySprint(force=false){
       if(!res.ok)throw new Error(data.error||'MONEY_PLAN_FAILED');
     }
     const p=data.plan||{}, s=p.snapshot||{};
-    const prospectCount=Number(s.prospects?.count||0);
+    const prospectCount=Number(s.prospects?.relevantCount ?? s.prospects?.count ?? 0);
     const draftCount=Number(s.outreach?.status?.draft||0);
     const leadCount=Number(s.leads?.count||0);
     const orderCount=Number(s.orders?.recent7dCount||0);
