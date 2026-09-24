@@ -43,8 +43,37 @@ assert.equal(res.value.structuredValid,true);
 assert.deepEqual(res.value.parsed,{ok:true,source:'openai'});
 assert.deepEqual(res.value.attemptedProviders,['openai']);
 
-process.env.OPENAI_API_KEY='';
+process.env.GEMINI_API_KEY='test-gemini-key';
+process.env.OPENAI_API_KEY='test-openai-key';
 process.env.AI_COST_MODE='free-first';
+process.env.AI_ALLOW_PAID_FALLBACKS='true';
+
+const originalFetch=global.fetch;
+global.fetch=async(url,opt={})=>{
+  const u=String(url);
+  if(u.includes('generativelanguage.googleapis.com')){
+    return new Response(JSON.stringify({candidates:[{content:{parts:[{text:'{"intent":"only","project":"jihoceske"}'}]}}]}),{status:200,headers:{'content-type':'application/json'}});
+  }
+  if(u==='https://api.openai.com/v1/responses'){
+    return new Response(JSON.stringify({output_text:'{"intent":"fallback","project":"jihoceske","goal":"ok","tasks":[],"notes":[]}'}),{status:200,headers:{'content-type':'application/json'}});
+  }
+  return originalFetch(url,opt);
+};
+
+const fallback=response();
+await ai.default({
+  method:'POST',
+  headers:{'x-app-key':'test-password'},
+  body:{task:'command',project:'jihoceske',agent:'ceo',prompt:'fallback test',provider:'auto',context:{safe:true}}
+},fallback);
+assert.equal(fallback.statusCode,200);
+assert.equal(fallback.value.provider,'openai');
+assert.deepEqual(fallback.value.attemptedProviders,['gemini','openai']);
+assert.equal(fallback.value.structuredValid,true);
+assert.deepEqual(fallback.value.parsed,{intent:'fallback',project:'jihoceske',goal:'ok',tasks:[],notes:[]});
+
+process.env.OPENAI_API_KEY='';
+process.env.GEMINI_API_KEY='';
 process.env.AI_ALLOW_PAID_FALLBACKS='false';
 
 const auto=response();
