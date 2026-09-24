@@ -1,6 +1,5 @@
 import {auth,noauth,projectKey,env,normalizeSecret,sendError,body} from './_lib.js';
-
-const AGENTS = {"lead_hunter":{"name":"Lead Hunter","task":"crm","autonomy":"supervised","actions":["research","score","create_lead"]},"sales":{"name":"Sales Agent","task":"salescoach","autonomy":"approval","actions":["draft_message","prepare_followup"]},"followup":{"name":"Follow-up Agent","task":"leadkit","autonomy":"approval","actions":["draft_followup","prepare_message"]},"quote":{"name":"Quote Agent","task":"quote","autonomy":"approval","actions":["draft_quote","validate_scope"]},"content":{"name":"Content Agent","task":"contentpiece","autonomy":"approval","actions":["draft_post","draft_story","draft_reel"]},"finance":{"name":"Finance Agent","task":"crm","autonomy":"supervised","actions":["read_finance","flag_risk"]},"customer":{"name":"Customer Agent","task":"leadkit","autonomy":"approval","actions":["draft_review_request","draft_followup"]},"ceo":{"name":"CEO Agent","task":"crm","autonomy":"approval","actions":["summarize","prioritize","recommend"]}};
+import {getAgent,listAgents,recordAgentEvent} from './_agent-registry.js';
 
 function currentOrigin(req){
   const proto=String(req.headers?.['x-forwarded-proto']||'https');
@@ -8,7 +7,7 @@ function currentOrigin(req){
   return `${proto}://${host}`;
 }
 
-async function runAi(req, payload){
+async function runAi(req,payload){
   const url=`${currentOrigin(req)}/api/ai`;
   const headers={'content-type':'application/json'};
   const password=normalizeSecret(env('APP_PASSWORD'));
@@ -19,18 +18,84 @@ async function runAi(req, payload){
   return j;
 }
 
+function publicAgent(a){
+  return {
+    id:a.id,
+    slug:a.slug,
+    name:a.name,
+    description:a.description||'',
+    active:a.active!==false,
+    autonomy:a.autonomy,
+    actions:Array.isArray(a.allowedActions)?a.allowedActions:[],
+    task:a.task,
+    config:a.config||{},
+    source:a.source||'unknown'
+  };
+}
+
 export default async function handler(req,res){
   if(!auth(req))return noauth(res);
   try{
+    const project=projectKey(req.method==='GET'?req.query?.project||'jihoceske':req.body?.project||'jihoceske');
     if(req.method==='GET'){
-      const project=projectKey(req.query?.project||'jihoceske');
-      return res.json({ok:true,project,agents:Object.entries(AGENTS).map(([id,a])=>({id,...a})),approvalPolicy:{mutatingActionsRequireHumanApproval:true,publicationRequiresHumanApproval:true,pricingRequiresHumanApproval:true}});
+      const agents=await listAgents(project);
+      return res.json({
+        ok:true,
+        project,
+        agents:agents.map(publicAgent),
+        approvalPolicy:{
+          mutatingActionsRequireHumanApproval:true,
+          publicationRequiresHumanApproval:true,
+          pricingRequiresHumanApproval:true
+        }
+      });
     }
     if(req.method!=='POST')return res.status(405).json({error:'METHOD'});
-    const b=await body(req,700000),id=String(b.agent||'').trim().toLowerCase();
-    if(!AGENTS[id])return res.status(400).json({error:'UNKNOWN_AGENT'});
-    const project=projectKey(b.project||'jihoceske'),a=AGENTS[id];
-    const ai=await runAi(req,{agent:id,task:String(b.task||a.task),project,context:b.context||{},prompt:String(b.prompt||''),images:Array.isArray(b.images)?b.images.slice(0,10):[],provider:String(b.provider||'auto')});
-    return res.json({ok:true,agent:{id,...a},project,requiresApproval:a.autonomy!=='autonomous',ai});
-  }catch(e){return sendError(res,e);}
+    const b=await body(req,700000);
+    const id=String(b.agent||'').trim().toLowerCase();
+    const agent=await getAgent(project,id);
+    if(!agent||agent.active===false)return res.status(400).json({error:'UNKNOWN_AGENT'});
+    const requestedTask=String(b.task||'').trim();
+    const task=requestedTask&&requestedTask===agent.task?requestedTask:agent.task;
+    if(requestedTask&&requestedTask!==task){
+      await recordAgentEvent({
+        project,
+        agentId:agent.id,
+        eventType:'task_override_rejected',
+        severity:'warn',
+        payload:{requestedTask,defaultTask:task}
+      });
+    }
+    const ai=await runAi(req,{
+      agent:id,
+      agentId:agent.id||undefined,
+      task,
+      project,
+      context:b.context||{},
+      prompt:String(b.prompt||''),
+      images:Array.isArray(b.images)?b.images.slice(0,10):[],
+      provider:String(b.provider||'auto')
+    });
+    await recordAgentEvent({
+      project,
+      agentId:agent.id,
+      eventType:'run_completed',
+      severity:'info',
+      payload:{
+        task,
+        provider:ai?.provider||null,
+        fallbackUsed:Boolean(ai?.fallbackUsed),
+        structuredValid:Boolean(ai?.structuredValid)
+      }
+    });
+    return res.json({
+      ok:true,
+      agent:publicAgent(agent),
+      project,
+      requiresApproval:agent.autonomy!=='autonomous',
+      ai
+    });
+  }catch(e){
+    return sendError(res,e);
+  }
 }
