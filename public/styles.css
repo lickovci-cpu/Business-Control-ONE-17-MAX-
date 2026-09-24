@@ -181,3 +181,6 @@ body[data-workspace="merch"]{--bg:#0b1017;--surface:#121b26;--surface2:#172536;-
 .nav-label{align-self:center;padding:0 4px;color:var(--muted2);font:900 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em}
 .tabs button[data-tab="today"]{order:-2}.tabs button[data-tab="crm"],.tabs button[data-tab="sales"],.tabs button[data-tab="content"]{order:-1}
 @media(max-width:760px){.nav-label{display:none}.tabs{justify-content:flex-start}.tabs button{min-width:64px;justify-content:center}.tabs button[data-tab="today"]{order:0}.tabs button[data-tab="crm"]{order:1}.tabs button[data-tab="sales"]{order:2}.tabs button[data-tab="content"]{order:3}.tabs button[data-tab="settings"]{order:4}}
+
+.money-prospect{display:flex;align-items:center;justify-content:space-between;gap:12px}.money-prospect>div:first-child{min-width:0}.money-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto}.money-actions .btn{white-space:nowrap}
+@media(max-width:700px){.money-prospect{align-items:flex-start;flex-direction:column}.money-actions{width:100%}.money-actions .btn{width:100%;text-align:center}}
