@@ -3,7 +3,7 @@ import {auth,noauth,body,projectKey,sendError,normalizeSecret} from './_lib.js';
 import {createTask,getTask,blockTask,consumeApproval,startAttempt,completeTask,failAttempt} from './_control.js';
 
 const SB_URL=process.env.SUPABASE_URL||'https://vjzzvopwecmwuccdidzq.supabase.co';
-function validSupabaseKey(value){const s=normalizeSecret(value||'');return /^[\\x20-\\x7E]+$/.test(s)?s:'';}
+function validSupabaseKey(value){const s=normalizeSecret(value||'');return /^[\x20-\x7E]+$/.test(s)?s:'';}
 const SB_KEY=validSupabaseKey(process.env.SUPABASE_SERVICE_ROLE_KEY)||validSupabaseKey(process.env.SUPABASE_SERVICE_KEY);
 const ORGS={
   jihoceske:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',

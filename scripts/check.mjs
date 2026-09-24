@@ -10,7 +10,7 @@ const html=await readFile('public/index.html','utf8'),ids=[...html.matchAll(/\bi
 if(dupes.length)throw new Error('Duplicate IDs: '+[...new Set(dupes)].join(', '));
 if(/style\s*=/.test(html))throw new Error('Inline style attribute would conflict with CSP.');
 const sw=await readFile('public/sw.js','utf8');
-if(!sw.includes("bc18-commercial-live-v1")||!sw.includes("url.pathname.startsWith('/api/')")||!sw.includes('notificationclick'))throw new Error('Service worker strategy missing.');
+if(!sw.includes("bc20-money-sprint-v1")||!sw.includes("/commercial-live.js")||!sw.includes("url.pathname.startsWith('/api/')")||!sw.includes('notificationclick'))throw new Error('Service worker strategy missing.');
 const app=await readFile('public/app.js','utf8');
 for(const marker of ['MEDIA_THUMB_CACHE','IntersectionObserver','ensureMediaFile','clearThumbCache','generateReel','renderMetaConnection','generateCampaign','leadFollowKit','autoSelectReelPhotos','truthGuard','renderSales','pipelineStats','quoteSave','dealCoachRun','renderJobs','JOB_TEMPLATES','renderCashWatch','buildReelPreview','renderControlRoom','controlRoomData','maybeDueNotification','requestPersistentStorage','runContentWorker','renderWorker','lastContentWorker'])if(!app.includes(marker))throw new Error('V15 marker missing: '+marker);
 const literalIds=[...app.matchAll(/\$\('#([A-Za-z0-9_-]+)'\)/g)].map(m=>m[1]);
