@@ -22,7 +22,31 @@ async function sb(path,opt={}){requireConfig();const r=await fetch(`${SB_URL}/re
 function clean(v,max=500){return String(v??'').trim().slice(0,max);}
 const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function organization(project){const id=ORGS[project];if(!id)throw new Error('PROJECT_ORG_NOT_CONFIGURED');return id;}
-async function dedupe(project,eventType,eventId,payload,organizationId){const dedupeKey=`web:${project}:${eventType}:${eventId||hash(payload)}`.slice(0,240);const existing=await sb(`webhook_events?dedupe_key=eq.${encodeURIComponent(dedupeKey)}&select=id&limit=1`);if(existing?.length)return {duplicate:true,dedupeKey,referenceId:String(existing[0].id)};const row=await sb('webhook_events',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({organization_id:organizationId,provider:`website:${project}`,event_type:eventType,dedupe_key:dedupeKey,payload})});return {duplicate:false,dedupeKey,referenceId:String(row?.[0]?.id||row?.id||dedupeKey)};}
+async function dedupe(project,eventType,eventId,payload,organizationId){
+  const dedupeKey=`web:${project}:${eventType}:${eventId||hash(payload)}`.slice(0,240);
+  const existing=await sb(`webhook_events?dedupe_key=eq.${encodeURIComponent(dedupeKey)}&select=id&limit=1`);
+  if(existing?.length)return {duplicate:true,dedupeKey,referenceId:String(existing[0].id),rowId:String(existing[0].id)};
+  const row=await sb('webhook_events',{
+    method:'POST',
+    headers:{Prefer:'return=representation'},
+    body:JSON.stringify({
+      organization_id:organizationId,
+      provider:`website:${project}`,
+      event_type:eventType,
+      dedupe_key:dedupeKey,
+      payload
+    })
+  });
+  const rowId=String(row?.[0]?.id||row?.id||'');
+  return {duplicate:false,dedupeKey,referenceId:rowId||dedupeKey,rowId:rowId||null};
+}
+async function releaseDedupe(rowId){
+  if(!rowId)return;
+  await sb(`webhook_events?id=eq.${encodeURIComponent(rowId)}`,{
+    method:'DELETE',
+    headers:{Prefer:'return=minimal'}
+  });
+}
 async function upsertContact(project,payload,organizationId){const name=clean(payload.contact?.name||payload.name,200);const phone=clean(payload.contact?.phone||payload.phone,80);const email=clean(payload.contact?.email||payload.email,240).toLowerCase();if(!name&&!phone&&!email)throw new Error('CONTACT_DATA_REQUIRED');let rows=[];if(phone)rows=await sb(`contacts?organization_id=eq.${organizationId}&phone=eq.${encodeURIComponent(phone)}&select=id,name,phone,email&limit=1`);if(!rows.length&&email)rows=await sb(`contacts?organization_id=eq.${organizationId}&email=eq.${encodeURIComponent(email)}&select=id,name,phone,email&limit=1`);if(rows.length)return rows[0];const created=await sb('contacts',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({organization_id:organizationId,name:name||null,phone:phone||null,email:email||null})});return Array.isArray(created)?created[0]:created;}
 async function findLead(organizationId,contactId){if(!contactId)return null;const rows=await sb(`leads?organization_id=eq.${organizationId}&contact_id=eq.${contactId}&status=not.in.(closed,lost,paid)&order=created_at.desc&select=id,status&limit=1`);return rows?.[0]||null;}
 async function ingestLead(project,payload,organizationId,event){const contact=await upsertContact(project,payload,organizationId);const note=[clean(payload.note,800),payload.service?`Služba: ${clean(payload.service,200)}`:'',payload.location?`Lokalita: ${clean(payload.location,200)}`:'',payload.page_url?`Web: ${clean(payload.page_url,500)}`:'',`Webhook: ${event.dedupeKey}`].filter(Boolean).join(' · ');const lead=await sb('leads',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({organization_id:organizationId,contact_id:contact?.id||null,status:'new',estimated_value:payload.estimated_value??null,note:note||null,source:clean(payload.source||`web:${project}`,120)})});const result=Array.isArray(lead)?lead[0]:lead;return {entityType:'lead',referenceId:String(result?.id||''),contactId:String(contact?.id||''),created:true};}
@@ -190,4 +214,49 @@ async function ingestOrder(project,payload,organizationId,event){
   };
 }
 
-export default async function handler(req,res){if(req.method!=='POST')return res.status(405).json({error:'METHOD_NOT_ALLOWED'});try{if(!authenticate(req))return res.status(401).json({error:'INTEGRATION_AUTH_REQUIRED'});const b=await body(req,EVENT_LIMIT);const project=projectKey(b.project||'');if(!PROJECTS.has(project))throw new Error('PROJECT_NOT_INTEGRATION_ALLOWLIST');const eventType=clean(b.event_type||b.type,80).toLowerCase();const eventId=clean(b.event_id||b.idempotency_key||'',180);const payload=(b.payload&&typeof b.payload==='object')?b.payload:b;const organizationId=organization(project);if(!eventType)throw new Error('EVENT_TYPE_REQUIRED');const event=await dedupe(project,eventType,eventId,payload,organizationId); event.eventType=eventType;if(event.duplicate)return res.status(200).json({ok:true,verified:true,duplicate:true,project,eventType,referenceId:event.referenceId});let result={entityType:'event',referenceId:event.referenceId,created:false};if(['lead.created','lead.submitted','contact.created'].includes(eventType))result=await ingestLead(project,payload,organizationId,event);else if(['message.created','message.received'].includes(eventType))result=await ingestMessage(project,payload,organizationId,false);else if(eventType==='inquiry.created')result=await ingestMessage(project,payload,organizationId,true);else if(['order.created','checkout.created'].includes(eventType)){if(project!=='merch')throw new Error('ORDER_PROJECT_NOT_ALLOWED');result=await ingestOrder(project,payload,organizationId,event);}return res.status(202).json({ok:true,verified:true,project,eventType,referenceId:event.referenceId,result});}catch(e){console.error('BCO_WEBHOOK_ERROR',JSON.stringify({status:e?.status||500,message:String(e?.message||'UNKNOWN_ERROR').slice(0,300)}));return sendError(res,e);}}
+export default async function handler(req,res){
+  if(req.method!=='POST')return res.status(405).json({error:'METHOD_NOT_ALLOWED'});
+  try{
+    if(!authenticate(req))return res.status(401).json({error:'INTEGRATION_AUTH_REQUIRED'});
+    const b=await body(req,EVENT_LIMIT);
+    const project=projectKey(b.project||'');
+    if(!PROJECTS.has(project))throw new Error('PROJECT_NOT_INTEGRATION_ALLOWLIST');
+    const eventType=clean(b.event_type||b.type,80).toLowerCase();
+    const eventId=clean(b.event_id||b.idempotency_key||'',180);
+    const payload=(b.payload&&typeof b.payload==='object')?b.payload:b;
+    const organizationId=organization(project);
+    if(!eventType)throw new Error('EVENT_TYPE_REQUIRED');
+
+    const event=await dedupe(project,eventType,eventId,payload,organizationId);
+    event.eventType=eventType;
+    if(event.duplicate)return res.status(200).json({
+      ok:true,
+      verified:true,
+      duplicate:true,
+      project,
+      eventType,
+      referenceId:event.referenceId
+    });
+
+    try{
+      let result={entityType:'event',referenceId:event.referenceId,created:false};
+      if(['lead.created','lead.submitted','contact.created'].includes(eventType)){
+        result=await ingestLead(project,payload,organizationId,event);
+      }else if(['message.created','message.received'].includes(eventType)){
+        result=await ingestMessage(project,payload,organizationId,false);
+      }else if(eventType==='inquiry.created'){
+        result=await ingestMessage(project,payload,organizationId,true);
+      }else if(['order.created','checkout.created'].includes(eventType)){
+        if(project!=='merch')throw new Error('ORDER_PROJECT_NOT_ALLOWED');
+        result=await ingestOrder(project,payload,organizationId,event);
+      }
+      return res.status(202).json({ok:true,verified:true,project,eventType,referenceId:event.referenceId,result});
+    }catch(error){
+      try{await releaseDedupe(event.rowId);}catch{}
+      throw error;
+    }
+  }catch(e){
+    console.error('BCO_WEBHOOK_ERROR',JSON.stringify({status:e?.status||500,message:String(e?.message||'UNKNOWN_ERROR').slice(0,300)}));
+    return sendError(res,e);
+  }
+}
