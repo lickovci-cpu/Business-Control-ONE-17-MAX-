@@ -1,5 +1,5 @@
 import {auth,noauth,projectKey,env,normalizeSecret,sendError,body} from './_lib.js';
-import {getAgent,listAgents,recordAgentEvent,agentFallbackEnabled} from './_agent-registry.js';
+import {getAgent,listAgents,recordAgentEvent} from './_agent-registry.js';
 
 function currentOrigin(req){
   const proto=String(req.headers?.['x-forwarded-proto']||'https');
@@ -43,7 +43,6 @@ export default async function handler(req,res){
         ok:true,
         project,
         agents:agents.map(publicAgent),
-        registry:{source:'supabase',fallbackEnabled:agentFallbackEnabled()},
         approvalPolicy:{
           mutatingActionsRequireHumanApproval:true,
           publicationRequiresHumanApproval:true,
