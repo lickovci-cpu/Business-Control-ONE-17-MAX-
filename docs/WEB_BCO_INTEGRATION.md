@@ -92,12 +92,12 @@ All three tables have RLS. Browser access is membership-scoped; server ingestion
 - BCO ingestion boundary: implemented.
 - Supabase webhook ledger: present and RLS-protected/server-only.
 - NŘŠM commerce persistence: implemented.
-- NŘŠM production deployment: verified as a Vercel deployment at `https://n-m-100.vercel.app`.
+- NŘŠM production deployment: verified as a Vercel deployment at `https://nrsm-streetwear.vercel.app`.
 - NŘŠM production uses a server-side `/api/bco` bridge for `inquiry.created`; the storefront never receives the integration secret.
 - The bridge is intentionally fail-closed: it reports `configured:false` until the same `BCO_INTEGRATION_SECRET` is configured in both the NŘŠM and BCO Vercel projects.
 - `inquiry.created` is a CRM lead event: it creates the contact/lead path and stores the inbound message together.
 - The BCO NŘŠM operations API is available at `/api/merch` and exposes dashboard, products, orders and inbox reads plus controlled product/order-status writes.
 
-- Current safety state: `NOT VERIFIED` until the live BCO/NŘŠM secret configuration and one real end-to-end smoke test have been verified in production.
+- Current safety state: BCO and NŘŠM production endpoints are deployed and responding; the NŘŠM bridge reports `configured:true`. A real end-to-end smoke test remains intentionally manual because it creates a live CRM/order record and must use real business input rather than synthetic data.
 
 The next implementation step is operational rather than architectural: set the same `BCO_INTEGRATION_SECRET` in both Vercel projects, then run one real B2B inquiry and one real checkout smoke test. No fake order or lead is inserted.
