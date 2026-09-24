@@ -25,7 +25,7 @@ const res={
 await handler({
   method:'GET',
   headers:{'x-app-key':'test-password'},
-  query:{project:'fve'}
+  query:{project:'jihoceske'}
 },res);
 
 assert.equal(statusCode,200);
