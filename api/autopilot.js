@@ -10,12 +10,12 @@ function authorized(req){
 }
 
 function publicBase(){
-  const raw=env('APP_PUBLIC_URL','https://business-control-one.vercel.app');
+  const raw=env('APP_PUBLIC_URL')||env('REPLIT_DEPLOYMENT_URL')||env('REPLIT_DEV_DOMAIN')||'https://business-control-one.vercel.app';
   return raw.replace(/\/$/,'');
 }
 
 function nrsmBase(){
-  const raw=env('NRSM_PUBLIC_URL','https://n-m-100.vercel.app');
+  const raw=env('NRSM_PUBLIC_URL')||'https://nrsm-streetwear-current--nrsmcollab.replit.app';
   return raw.replace(/\/$/,'');
 }
 
@@ -52,10 +52,16 @@ export default async function handler(req,res){
     const health=await probe('/api/health',{headers:{Authorization:`Bearer ${secret}`}});
     const cron=health.ok?await probe('/api/cron',{method:'POST',headers:{Authorization:`Bearer ${secret}`}}):{path:'/api/cron',ok:false,status:0,skipped:'health_failed'};
     const nrsm=await probe(`${nrsmBase()}/api/bco`);
+    const lastRevenue=Number((await kvGet('business-control:merch:last-revenue-run'))||0);
+    let revenue=null;
+    if(Date.now()-lastRevenue>=6*60*60*1000){
+      revenue=await probe('/api/merch-revenue',{method:'POST',headers:{Authorization:`Bearer ${env('CRON_SECRET')}`}});
+      if(revenue.ok)await kvSet('business-control:merch:last-revenue-run',Date.now());
+    }else revenue={ok:true,skipped:'6h-throttle'};
     const previous=await kvGet(STATE)||{};
     const checks=[health,cron,{path:'nrsm:/api/bco',ok:nrsm.ok&&nrsm.status===200&&nrsm.data?.configured===true,status:nrsm.status,ms:nrsm.ms,data:nrsm.data||null}];
     const decision=classify(checks);
-    const run={id:`night-${Date.now()}`,startedAt:started,finishedAt:new Date().toISOString(),checks,decision};
+    const run={id:`night-${Date.now()}`,startedAt:started,finishedAt:new Date().toISOString(),checks,decision,revenue};
     const history=Array.isArray(previous.history)?previous.history.slice(-(MAX_HISTORY-1)):[];
     const state={lastRun:run,history:[...history,run],status:decision.status,updatedAt:run.finishedAt};
     await kvSet(STATE,state);
