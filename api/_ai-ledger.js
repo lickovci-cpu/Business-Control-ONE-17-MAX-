@@ -1,4 +1,4 @@
-import {env,normalizeSecret} from './_lib.js';
+import {env,supabaseBaseUrl,supabaseServiceKey} from './_lib.js';
 
 const PROJECT_TO_ORG_SLUG = Object.freeze({
   jihoceske:'fve',
@@ -17,9 +17,9 @@ async function resolveOrganizationId(project){
   const slug=PROJECT_TO_ORG_SLUG[String(project||'').toLowerCase()];
   if(!slug)return null;
   if(orgCache.has(slug))return orgCache.get(slug);
-  const key=normalizeSecret(env('SUPABASE_SERVICE_ROLE_KEY')||env('SUPABASE_SERVICE_KEY'));
+  const key=supabaseServiceKey();
   if(!key)return null;
-  const base=String(env('SUPABASE_URL','https://vjzzvopwecmwuccdidzq.supabase.co')).replace(/\/$/,'');
+  const base=supabaseBaseUrl();
   try{
     const u=new URL(base+'/rest/v1/organizations');
     u.searchParams.set('select','id');
