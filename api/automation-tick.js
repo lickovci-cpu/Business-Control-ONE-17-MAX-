@@ -210,7 +210,11 @@ export async function executeAutomationTick(req){
         const context={project,organizationSlug:orgSlug,automation:{id:automation.id,name:automation.name,trigger:automation.trigger_config,action:actionConfig},state:await summarizeProject(project),startedAt};
         let result={ok:true,mode:'task_only'};
         let createdTasks=[];
-        if(configuredAgent?.active!==false&&configuredAgent?.autonomy==='autonomous'&&aiCount<MAX_AI_AUTOMATIONS_PER_TICK){
+        if(configuredAgent?.active!==false&&configuredAgent?.autonomy==='autonomous'&&aiCount>=MAX_AI_AUTOMATIONS_PER_TICK){
+          errors.push({automation:automation.name,error:'AI_TICK_BUDGET_DEFERRED'});
+          continue;
+        }
+        if(configuredAgent?.active!==false&&configuredAgent?.autonomy==='autonomous'){
           const agentResult=await runAgent(req,automation,project,context);
           if(!agentResult.ok)throw new Error(agentResult.error||'AGENT_FAILED');
           aiCount++;
