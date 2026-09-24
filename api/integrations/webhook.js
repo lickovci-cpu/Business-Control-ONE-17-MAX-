@@ -120,7 +120,7 @@ async function ingestOrder(project,payload,organizationId,event){
     if(!Number.isInteger(quantity)||quantity<1||quantity>10000)throw new Error('INVALID_ORDER_ITEM_QUANTITY_'+index);
     if(!Number.isFinite(unitPrice)||unitPrice<0)throw new Error('INVALID_ORDER_ITEM_PRICE_'+index);
     return {
-      product_id:item?.product_id||null,
+      product_id:/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(item?.product_id||'')) ? String(item.product_id) : null,
       product_name:clean(item?.product_name||item?.name||'Merch',300),
       sku:clean(item?.sku,100)||null,
       variant:(item?.variant&&typeof item.variant==='object')?item.variant:{},
