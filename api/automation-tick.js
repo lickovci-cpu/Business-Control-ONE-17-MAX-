@@ -206,10 +206,11 @@ export async function executeAutomationTick(req){
         if(!project)throw new Error('UNMAPPED_ORGANIZATION');
         const actionConfig=automation.action_config&&typeof automation.action_config==='object'?automation.action_config:{};
         const agentSlug=String(actionConfig.agent||'').toLowerCase();
+        const configuredAgent=agentSlug?await getAgent(project,agentSlug):null;
         const context={project,organizationSlug:orgSlug,automation:{id:automation.id,name:automation.name,trigger:automation.trigger_config,action:actionConfig},state:await summarizeProject(project),startedAt};
         let result={ok:true,mode:'task_only'};
         let createdTasks=[];
-        if(agentSlug==='ceo'&&aiCount<MAX_AI_AUTOMATIONS_PER_TICK){
+        if(configuredAgent?.active!==false&&configuredAgent?.autonomy==='autonomous'&&aiCount<MAX_AI_AUTOMATIONS_PER_TICK){
           const agentResult=await runAgent(req,automation,project,context);
           if(!agentResult.ok)throw new Error(agentResult.error||'AGENT_FAILED');
           aiCount++;
