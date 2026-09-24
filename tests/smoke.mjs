@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-process.env.APP_PASSWORD='test-password';process.env.BCO_API_KEY='bco-api-test';process.env.APP_CONFIRM_SECRET='confirm-test';process.env.APP_SESSION_SECRET='session-test';process.env.CRON_SECRET='cron-test';
-process.env.META_PAGE_TOKEN='legacy-fve-token';process.env.META_PAGE_ID='117';
+process.env.APP_PASSWORD='test';process.env.BCO_API_KEY='test';process.env.APP_CONFIRM_SECRET='test';process.env.APP_SESSION_SECRET='test';process.env.CRON_SECRET='test';
+process.env.META_PAGE_TOKEN='test';process.env.META_PAGE_ID='1';
 const lib=await import('../api/_lib.js');
 const conf=await import('../api/_confirm.js');
 const meta=await import('../api/_meta-config.js');
@@ -27,7 +27,7 @@ const app=await fs.readFile('public/app.js','utf8');
 for(const marker of ['state.project!==runProject','app_snapshots','leadScore','RECOVERY_KEY','dailyBrief','recordActivity','startEditLead','leadToComms','scheduleDraftSave','maybeAutoRecovery','renderPortfolio','MEDIA_THUMB_CACHE','IntersectionObserver','ensureMediaFile','clearThumbCache','useFallbackFiles','generateReel','publishReel','renderMetaConnection','generateCampaign','leadFollowKit','autoSelectReelPhotos','truthGuard','pipelineStats','renderSales','quoteSave','dealCoachRun','JOB_TEMPLATES','createJob','renderCashWatch','buildReelPreview','exportReelStoryboard','maybeDueNotification','requestPersistentStorage','runContentWorker','renderWorker','lastContentWorker'])assert.ok(app.includes(marker),marker);
 const html=await fs.readFile('public/index.html','utf8');
 for(const marker of ['Business Control ONE 17 MAX','id="todayFocus"','id="recoveryList"','id="portfolioSummary"','id="mediaLocalSearch"','id="reels"','id="reelStoryboard"','id="reelPhone"','id="sales"','id="salesQueue"','id="quoteList"','id="jobs"','id="jobBoard"','id="cashWatch"','id="enableNotifications"','id="control"','id="controlQueue"','id="controlProjects"','id="worker"','id="workerRun"','id="workerQueue"'])assert.ok(html.includes(marker),marker);
-const sw=await fs.readFile('public/sw.js','utf8');assert.ok(sw.includes('bc17-crm-live-v1'));assert.ok(sw.includes("url.pathname.startsWith('/api/')"));assert.ok(sw.includes('notificationclick'));
+const sw=await fs.readFile('public/sw.js','utf8');assert.ok(sw.includes('bc18-commercial-live-v1'));assert.ok(sw.includes("url.pathname.startsWith('/api/')"));assert.ok(sw.includes('notificationclick'));
 const session=await fs.readFile('api/session.js','utf8');assert.ok(session.includes('MAX_ATTEMPTS=8'));assert.ok(session.includes('LOCK_MS=3*60*1000'));assert.ok(session.includes('Retry-After'));
 const health=await fs.readFile('api/health.js','utf8');assert.ok(health.includes("version:'17-max'"));assert.ok(health.includes('if(!healthAuth(req))return noauth(res);'));assert.ok(health.includes('req.headers?.authorization'));
 const ai=await fs.readFile('api/ai.js','utf8');assert.ok(ai.includes("task==='salescoach'"));assert.ok(ai.includes("task==='quote'"));
