@@ -1,5 +1,5 @@
 import {randomUUID} from 'node:crypto';
-import {env,normalizeSecret,fetchJsonWithRetry,kvSetNxEx,kvDel} from './_lib.js';
+import {env,normalizeSecret,fetchJsonWithRetry,kvSetNxEx,kvDel,supabaseBaseUrl,supabaseServiceKey} from './_lib.js';
 import {getAgent,projectOrganizationId,recordAgentEvent} from './_agent-registry.js';
 
 const LOCK='business-control:automation-runtime:lock';
@@ -42,12 +42,11 @@ export function projectForOrgSlug(slug){
 }
 
 function supabaseKey(){
-  const raw=normalizeSecret(env('SUPABASE_SERVICE_ROLE_KEY')||env('SUPABASE_SERVICE_KEY'));
-  return /^[\x20-\x7E]+$/.test(raw)?raw:'';
+  return supabaseServiceKey();
 }
 
 function supabaseBase(){
-  return String(env('SUPABASE_URL','https://vjzzvopwecmwuccdidzq.supabase.co')).replace(/\/$/,'');
+  return supabaseBaseUrl();
 }
 
 async function sb(path,params={},method='GET',payload){
