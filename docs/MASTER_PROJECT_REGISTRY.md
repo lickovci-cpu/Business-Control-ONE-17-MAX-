@@ -12,10 +12,10 @@ This repository is the canonical BCO application source. Do not continue work in
 - GitHub: https://github.com/lickovci-cpu/Business-Control-ONE-17-MAX-
 - Vercel project: https://vercel.com/wemone-5402s-projects/business-control-one
 - Production: https://business-control-one.vercel.app
-- Current production deployment: dpl_HRKcKjdXd3Rr8xvnyau3PbhkRUqL
-- Current production commit: ed883e877c738f6d3a959dd119739fcab227f3f9
+- Current production deployment: dpl_UkUjTEX3sByyMU9EfP45e77XCPqf
+- Current production commit: af7977045bbdbbedabf2e1d01eb29fa7b99d087e
 - Supabase: https://supabase.com/dashboard/project/vjzzvopwecmwuccdidzq
-- Status: VERIFIED production deployment; runtime error scan clean for the last 2h.
+- Status: VERIFIED production deployment; runtime error scan clean for the last 2h; automation endpoint GET compatibility and scheduler-slot lock are deployed.
 - Automation: scheduler compatibility fix merged; actual autonomous run history still NOT VERIFIED because automation_runs=0 and ai_runs=0 at last audit.
 
 ### NŘŠM
