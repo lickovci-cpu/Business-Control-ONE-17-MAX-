@@ -247,7 +247,7 @@ export default async function handler(req,res){
   const secret=env('CRON_SECRET');
   if(!secret)return res.status(503).json({error:'CRON_SECRET_NOT_SET'});
   if(req.headers.authorization!==`Bearer ${secret}`)return res.status(401).json({error:'UNAUTHORIZED'});
-  if(req.method!=='POST')return res.status(405).json({error:'METHOD_NOT_ALLOWED'});
+  if(req.method!=='GET'&&req.method!=='POST')return res.status(405).json({error:'METHOD_NOT_ALLOWED'});
   try{
     const result=await executeAutomationTick(req);
     return res.json(result);
