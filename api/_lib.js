@@ -7,6 +7,22 @@ export function normalizeSecret(value){
   s=s.replace(/[\u200B-\u200D\u2060]/g,'');
   return s;
 }
+
+export function isPrintableSecret(value){
+  const s=normalizeSecret(value);
+  return /^[\x20-\x7E]+$/.test(s);
+}
+
+export function supabaseServiceKey(){
+  const primary=normalizeSecret(env('SUPABASE_SERVICE_ROLE_KEY'));
+  if(isPrintableSecret(primary))return primary;
+  const fallback=normalizeSecret(env('SUPABASE_SERVICE_KEY'));
+  return isPrintableSecret(fallback)?fallback:'';
+}
+
+export function supabaseBaseUrl(){
+  return String(env('SUPABASE_URL','https://vjzzvopwecmwuccdidzq.supabase.co')).replace(/\/$/,'');
+}
 const SESSION_COOKIE='bc_session';
 const SESSION_TTL=30*24*60*60;
 

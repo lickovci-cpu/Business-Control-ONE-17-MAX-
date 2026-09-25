@@ -1,4 +1,4 @@
-import {env,normalizeSecret} from './_lib.js';
+import {env,supabaseBaseUrl,supabaseServiceKey} from './_lib.js';
 
 export const PROJECT_ORGS = Object.freeze({
   jihoceske:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',
@@ -23,10 +23,10 @@ const STATIC_AGENTS = Object.freeze({
 });
 
 function key(){
-  return normalizeSecret(env('SUPABASE_SERVICE_ROLE_KEY')||env('SUPABASE_SERVICE_KEY'));
+  return supabaseServiceKey();
 }
 function baseUrl(){
-  return String(env('SUPABASE_URL','https://vjzzvopwecmwuccdidzq.supabase.co')).replace(/\/$/,'');
+  return supabaseBaseUrl();
 }
 function projectOrg(project){return PROJECT_ORGS[String(project||'').toLowerCase()]||null;}
 async function rest(path,params={}){

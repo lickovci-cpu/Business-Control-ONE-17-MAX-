@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { env, kvSetNxEx, fetchJsonWithRetry } from './_lib.js';
+import { env, kvSetNxEx, fetchJsonWithRetry, supabaseBaseUrl, supabaseServiceKey } from './_lib.js';
 
 const ORG='d2751286-da99-42c0-b8ac-6a2da8ecdabf';
-const SB_URL=env('SUPABASE_URL','https://vjzzvopwecmwuccdidzq.supabase.co');
+const SB_URL=supabaseBaseUrl();
 const HUNTER='https://api.hunter.io/v2';
 const clean=(v,max=1000)=>String(v??'').trim().slice(0,max);
-function sbKey(){const key=env('SUPABASE_SERVICE_ROLE_KEY')||env('SUPABASE_SERVICE_KEY');if(!key)throw Object.assign(new Error('SUPABASE_SERVICE_ROLE_KEY_NOT_CONFIGURED'),{status:503});return key;}
+function sbKey(){const key=supabaseServiceKey();if(!key)throw Object.assign(new Error('SUPABASE_SERVICE_ROLE_KEY_NOT_CONFIGURED'),{status:503});return key;}
 async function sb(path,params={},method='GET',payload){const key=sbKey(),u=new URL(`${SB_URL}/rest/v1/${path}`);for(const[k,v]of Object.entries(params))u.searchParams.set(k,String(v));return fetchJsonWithRetry(u,{method,headers:{apikey:key,Authorization:`Bearer ${key}`,'content-type':'application/json',Prefer:'return=representation'},...(payload===undefined?{}:{body:JSON.stringify(payload)})},2);}
 async function hunter(path,query={}){const key=env('HUNTER_API_KEY');if(!key)throw Object.assign(new Error('HUNTER_API_KEY_NOT_CONFIGURED'),{status:503});const u=new URL(`${HUNTER}${path}`);u.searchParams.set('api_key',key);for(const[k,v]of Object.entries(query))if(v!==undefined&&v!==null&&v!=='')u.searchParams.set(k,String(v));return fetchJsonWithRetry(u,{},2);}
 function fit(c,e={}){let s=40,t=`${c.industry||''} ${c.category||''} ${c.description||''}`.toLowerCase();for(const k of ['music','festival','club','bar','fashion','streetwear','record','label','merch','artist','dj','gaming','community'])if(t.includes(k))s+=6;if(e.position)s+=5;if(e.seniority==='executive')s+=10;if(e.verification?.status==='valid')s+=10;return Math.min(100,s);}
