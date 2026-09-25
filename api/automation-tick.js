@@ -2,7 +2,8 @@ import {randomUUID} from 'node:crypto';
 import {env,normalizeSecret,fetchJsonWithRetry,kvSetNxEx,kvDel,supabaseBaseUrl,supabaseServiceKey} from './_lib.js';
 import {getAgent,projectOrganizationId,recordAgentEvent} from './_agent-registry.js';
 
-const LOCK='business-control:automation-runtime:lock';
+const LOCK_PREFIX='business-control:automation-runtime:lock:';
+const TICK_SLOT_MS=5*60*1000;
 const MAX_AUTOMATIONS_PER_TICK=3;
 const MAX_AI_AUTOMATIONS_PER_TICK=1;
 
@@ -14,6 +15,8 @@ const ORG_TO_PROJECT=Object.freeze({
 
 const clean=(v,max=1000)=>String(v??'').trim().slice(0,max);
 const now=()=>new Date();
+
+export function lockKeyForTick(at=new Date()){return LOCK_PREFIX+Math.floor(at.getTime()/TICK_SLOT_MS);}
 
 export function intervalMs(config={}){
   if(config.schedule==='every_6_hours')return 6*60*60*1000;
@@ -191,7 +194,8 @@ async function markRun(automation){
 }
 
 export async function executeAutomationTick(req){
-  const lock=await kvSetNxEx(LOCK,randomUUID(),110);
+  const lockKey=lockKeyForTick();
+  const lock=await kvSetNxEx(lockKey,randomUUID(),110);
   if(!lock)throw Object.assign(new Error('AUTOMATION_TICK_ALREADY_RUNNING'),{status:409});
   const at=now(),processed=[],errors=[];
   try{
@@ -239,7 +243,7 @@ export async function executeAutomationTick(req){
     }
     return {ok:true,at:at.toISOString(),processed,errors};
   }finally{
-    await kvDel(LOCK).catch(()=>{});
+    await kvDel(lockKey).catch(()=>{});
   }
 }
 
