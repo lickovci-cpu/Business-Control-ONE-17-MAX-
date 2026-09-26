@@ -1,6 +1,6 @@
 # Hermes Agent diagnostic for Windows
-# Collects status/config metadata without printing credential values.
-# Run this in PowerShell where the Hermes installation you want to inspect is available.
+# Read-only metadata collection. It does not intentionally modify Hermes state.
+# Sensitive values in command output are redacted before being written to the report.
 
 $ErrorActionPreference = 'Continue'
 $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
@@ -15,10 +15,10 @@ $out = Join-Path $PWD "hermes-diagnostic-$stamp.txt"
 
 function Redact([string]$Value) {
   $v = $Value
-  $v = $v -replace '(?i)(api[_ -]?key|token|secret|password|authorization|cookie)(\s*[:=]\s*)\S+', '$1$2[REDACTED]'
-  $v = $v -replace '(?i)Bearer\s+[A-Za-z0-9._~+/=-]+', 'Bearer [REDACTED]'
+  $v = $v -replace '(?i)(api[_ -]?key|token|secret|password|authorization|cookie)(s*[:=]s*)S+', '$1$2[REDACTED]'
+  $v = $v -replace '(?i)Bearers+[A-Za-z0-9._~+/=-]+', 'Bearer [REDACTED]'
   $v = $v -replace '(?i)sk-[A-Za-z0-9_-]{12,}', 'sk-[REDACTED]'
-  $v = $v -replace '(?i)(client[_ -]?secret)(\s*[:=]\s*)\S+', '$1$2[REDACTED]'
+  $v = $v -replace '(?i)(client[_ -]?secret)(s*[:=]s*)S+', '$1$2[REDACTED]'
   return $v
 }
 
@@ -35,7 +35,7 @@ function Run-Redacted([string]$Label, [scriptblock]$Command) {
 
 if (-not (Get-Command hermes -ErrorAction SilentlyContinue)) {
   "ERROR: 'hermes' is not on PATH in this PowerShell session." | Tee-Object $out -Append
-  "Run this from the shell where Hermes itself is installed." | Tee-Object $out -Append
+  "Run this from the PowerShell session where Hermes is installed." | Tee-Object $out -Append
   Write-Host "Diagnostic saved to $out"
   exit 1
 }
@@ -43,15 +43,19 @@ if (-not (Get-Command hermes -ErrorAction SilentlyContinue)) {
 Run-Redacted "hermes --version" { hermes --version }
 Run-Redacted "hermes dump" { hermes dump }
 Run-Redacted "hermes doctor" { hermes doctor }
-Run-Redacted "hermes status --all" { hermes status --all }
-Run-Redacted "hermes tools --summary" { hermes tools --summary }
+Run-Redacted "hermes security audit" { hermes security audit }
+Run-Redacted "hermes status" { hermes status }
 Run-Redacted "hermes profile list" { hermes profile list }
+Run-Redacted "hermes profile show default" { hermes profile show default }
+Run-Redacted "hermes tools --summary" { hermes tools --summary }
+Run-Redacted "hermes mcp list" { hermes mcp list }
+Run-Redacted "hermes portal info" { hermes portal info }
+Run-Redacted "hermes gateway status" { hermes gateway status }
 Run-Redacted "hermes cron list" { hermes cron list }
 Run-Redacted "hermes cron status" { hermes cron status }
-Run-Redacted "hermes gateway list" { hermes gateway list }
-Run-Redacted "hermes computer-use status" { hermes computer-use status }
-Run-Redacted "hermes portal status" { hermes portal status }
-Run-Redacted "hermes plugins list" { hermes plugins list }
+Run-Redacted "hermes memory status" { hermes memory status }
+Run-Redacted "hermes curator status" { hermes curator status }
+Run-Redacted "hermes prompt-size" { hermes prompt-size }
 Run-Redacted "hermes skills list" { hermes skills list }
 
 "=== END ===" | Tee-Object $out -Append
