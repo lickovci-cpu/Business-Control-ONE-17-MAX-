@@ -28,17 +28,40 @@ Do not paste secrets into chat.
 
 ## 2. Version baseline
 
-The current official Hermes release observed on 2026-09-26 is v0.21.3 (2026.9.14).
+The inspected local installation is Hermes Agent v0.21.5+2583.gf077152 (2026-09-24 build).
 
-Do not upgrade blindly. First compare the installed version and current profile state.
+The current installation method is a managed git/source checkout under the user's local Hermes directory.
 
-## 3. Windows baseline
+Do not upgrade blindly. First run `hermes update --check`, then `hermes update --plan`. The official updater documents both as preview-only operations; `--check` compares the checkout with its update target and `--plan` inventories profiles/services before a real update. Do not run the real update until the local profile and gateway state are backed up/reviewed.
+
+## 3. Current audit snapshot
+
+Observed from the user's Windows diagnostic on 2026-09-26:
+- Windows 10 x86_64, PowerShell 5.1;
+- Hermes v0.21.5+2583.gf077152;
+- Python 3.14.7 bundled with the source installation;
+- active profile: default;
+- model: upstage/solar-pro4:free;
+- provider: nous;
+- toolsets: hermes-cli only;
+- MCP servers: 0;
+- memory: built-in;
+- gateway: running as a manually started process;
+- cron: 3 active / 5 total;
+- installed skills: 58;
+- no provider/tool API keys reported as configured.
+
+This means the current installation is functional but not yet equipped as a business research/execution agent. The largest capability gaps are toolsets and integrations, not core model execution.
+
+Important: current upstream support explicitly lists Windows 10/11 x86_64 as Tier 1, but the precise oldest supported Windows build is not stated in the public docs. Keep the existing OS until a concrete incompatibility appears.
+
+## 4. Windows baseline
 
 Native Windows is supported. Current native Hermes supports CLI/TUI, gateway, cron, browser, MCP, dashboard and auto-start. WSL2 is optional.
 
-For a clean/recovery install, use the official installer rather than copying an old Hermes directory.
+For a clean/recovery install, use the official installer rather than copying an old Hermes directory. Do not reinstall while the current source checkout is healthy; preserve the working installation until the profile/tool audit is complete.
 
-## 4. Profiles
+## 5. Profiles
 
 Recommended first profile:
 
@@ -48,7 +71,7 @@ Do not create multiple profiles until the base profile is known to work.
 
 Every profile has separate configuration, memory, sessions, skills and state. Never run two agent processes against the same Hermes home/profile.
 
-## 5. Core skill installation
+## 6. Core skill installation
 
 Install the BCO operator skill from the public canonical repository:
 
@@ -64,7 +87,7 @@ hermes skills list
 
 Skills take effect in new sessions.
 
-## 6. Operating model
+## 7. Operating model
 
 Hermes owns:
 - research;
@@ -87,7 +110,7 @@ BCO owns:
 
 Supabase remains the business source of truth.
 
-## 7. Initial automation design
+## 8. Initial automation design
 
 Do not duplicate BCO scheduling.
 
@@ -99,7 +122,7 @@ Hermes should use its own cron only for intelligence:
 
 BCO continues to own execution-oriented scheduled work.
 
-## 8. First Hermes research cycle
+## 9. First Hermes research cycle
 
 The first unattended research cycle should:
 1. inspect current BCO project state;
@@ -111,7 +134,7 @@ The first unattended research cycle should:
 7. create internal tasks only;
 8. keep external messages, ads, spending and production changes approval-gated.
 
-## 9. Current market hypotheses
+## 10. Current market hypotheses
 
 Fresh 2026 marketplace reports show meaningful demand signals around:
 - AI implementation/integration;
@@ -123,7 +146,7 @@ Fresh 2026 marketplace reports show meaningful demand signals around:
 
 Treat these as hypotheses and revalidate them on every fresh scan.
 
-## 10. Stop conditions
+## 11. Stop conditions
 
 Hermes should stop and create a review task when:
 - evidence conflicts;
@@ -134,7 +157,7 @@ Hermes should stop and create a review task when:
 - a destructive operation is proposed;
 - expected economics cannot be established.
 
-## 11. Success definition
+## 12. Success definition
 
 Hermes is not successful because it generates many ideas.
 
