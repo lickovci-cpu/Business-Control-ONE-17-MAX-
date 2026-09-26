@@ -2,7 +2,8 @@ import {randomUUID} from 'node:crypto';
 import {env,normalizeSecret,fetchJsonWithRetry,kvSetNxEx,kvDel,supabaseBaseUrl,supabaseServiceKey} from './_lib.js';
 import {getAgent,projectOrganizationId,recordAgentEvent} from './_agent-registry.js';
 
-const LOCK_PREFIX='business-control:automation-runtime:lock:';
+// v2 isolates the scheduler mutex from legacy/stale keys left by earlier deployments.
+const LOCK_PREFIX='business-control:automation-runtime:v2:lock:';
 const TICK_SLOT_MS=5*60*1000;
 const MAX_AUTOMATIONS_PER_TICK=3;
 const MAX_AI_AUTOMATIONS_PER_TICK=1;
