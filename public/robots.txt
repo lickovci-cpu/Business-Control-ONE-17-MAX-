@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://business-control-one.vercel.app/sitemap.xml
