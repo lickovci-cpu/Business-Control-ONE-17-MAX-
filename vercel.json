@@ -150,5 +150,27 @@
         }
       ]
     }
+  ],
+  "redirects": [
+    {
+      "source": "/projects",
+      "destination": "/projects.html",
+      "permanent": false
+    },
+    {
+      "source": "/fve",
+      "destination": "/fve.html",
+      "permanent": false
+    },
+    {
+      "source": "/nrsm",
+      "destination": "/nrsm.html",
+      "permanent": false
+    },
+    {
+      "source": "/mazliprint",
+      "destination": "/mazliprint.html",
+      "permanent": false
+    }
   ]
 }
