@@ -1,6 +1,6 @@
 # Hermes Agent diagnostic for Windows
-# Safe by design: collects configuration/status metadata and does not print secret values.
-# Run in PowerShell where the Hermes installation you want to inspect is available.
+# Collects status/config metadata without printing credential values.
+# Run this in PowerShell where the Hermes installation you want to inspect is available.
 
 $ErrorActionPreference = 'Continue'
 $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
@@ -13,14 +13,20 @@ $out = Join-Path $PWD "hermes-diagnostic-$stamp.txt"
 "PowerShell: $($PSVersionTable.PSVersion)" | Tee-Object $out -Append
 "" | Tee-Object $out -Append
 
+function Redact([string]$Value) {
+  $v = $Value
+  $v = $v -replace '(?i)(api[_ -]?key|token|secret|password|authorization|cookie)(\s*[:=]\s*)\S+', '$1$2[REDACTED]'
+  $v = $v -replace '(?i)Bearer\s+[A-Za-z0-9._~+/=-]+', 'Bearer [REDACTED]'
+  $v = $v -replace '(?i)sk-[A-Za-z0-9_-]{12,}', 'sk-[REDACTED]'
+  $v = $v -replace '(?i)(client[_ -]?secret)(\s*[:=]\s*)\S+', '$1$2[REDACTED]'
+  return $v
+}
+
 function Run-Redacted([string]$Label, [scriptblock]$Command) {
   "----- $Label -----" | Tee-Object $out -Append
   try {
-    $text = (& $Command 2>&1 | Out-String)
-    $text = $text -replace '(?im)^(.{0,80}(?:api[_ -]?key|token|secret|password|authorization|cookie).{0,200})$','$1 [REDACTED]'
-    $text = $text -replace '(?i)(Bearer\s+)[A-Za-z0-9._~+/=-]+','$1[REDACTED]'
-    $text = $text -replace '(?i)(sk-[A-Za-z0-9_-]+)','$1[REDACTED]'
-    $text.TrimEnd() | Tee-Object $out -Append
+    $raw = (& $Command 2>&1 | Out-String)
+    (Redact $raw).TrimEnd() | Tee-Object $out -Append
   } catch {
     "ERROR: $($_.Exception.Message)" | Tee-Object $out -Append
   }
