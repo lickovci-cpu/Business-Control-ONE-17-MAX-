@@ -1,4 +1,4 @@
-const CACHE='bco17-max-v5';
+const CACHE='bco17-max-v6';
 const SHELL=['/','/boot.js','/app.js','/styles.css','/manifest.webmanifest','/icon.svg','/crm-live.js','/commercial-live.js'];
 
 self.addEventListener('install',event=>{
