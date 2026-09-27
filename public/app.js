@@ -52,8 +52,8 @@ function toast(text,type=''){const old=$('.toast');if(old)old.remove();const d=d
 function parseJSONish(t){try{return JSON.parse(t)}catch{const m=String(t).match(/```(?:json)?\s*([\s\S]*?)```/i);if(m)try{return JSON.parse(m[1])}catch{}return null;}}
 function safeLeads(k=state.project){return pd(k).leads.slice(0,30).map(x=>({id:x.id,name:x.name,note:x.note,source:x.source,stage:x.stage,value:x.value,followUp:x.followUp,createdAt:x.createdAt}));}
 function ctx(k=state.project,extra={}){return {project:{key:k,...projects[k]},projectKey:k,leads:safeLeads(k),products:pd(k).products.slice(0,30).map(x=>({name:x.name,price:x.price,cost:x.cost,status:x.status,url:x.url})),learning:pd(k).learning.slice(0,20),...extra};}
-async function api(url,opt={}){let r;try{const headers={...(opt.body instanceof Blob?{}:{'content-type':'application/json'}),...(opt.headers||{})};if(sbSession?.access_token)headers.Authorization='Bearer '+sbSession.access_token;r=await fetch(url,{credentials:'same-origin',signal:opt.signal||AbortSignal.timeout(70000),...opt,headers});}catch(e){throw new Error(e.name==='TimeoutError'?'Server neodpověděl včas. Zkus akci znovu.':'Síťové spojení se přerušilo.');}const j=await r.json().catch(()=>({}));if(r.status===401&&String(j.error||'')==='AUTH_REQUIRED'){showAuth();throw new Error(j.error||'AUTH_REQUIRED');}if(!r.ok){const e=new Error(j.error||r.statusText);e.status=r.status;e.code=j.code;e.subcode=j.subcode;throw e;}return j;}
-async function ai(task,prompt='',context={},images=[],project=state.project){return api('/api/ai',{method:'POST',body:JSON.stringify({task,prompt,context,images,provider:state.aiProvider,project})});}
+async function api(url,opt={}){let r;try{const headers={...(opt.body instanceof Blob?{}:{'content-type':'application/json'}),...(opt.headers||{})};if(sbSession?.access_token)headers.Authorization='Bearer '+sbSession.access_token;r=await fetch(url,{credentials:'same-origin',signal:opt.signal||AbortSignal.timeout(70000),...opt,headers});}catch(e){throw new Error(e.name==='TimeoutError'?'Server neodpověděl včas. Zkus akci znovu.':'Síťové spojení se přerušilo.');}const j=await r.json().catch(()=>({}));if(r.status===401&&String(j.error||'')==='AUTH_REQUIRED'){throw Object.assign(new Error('SERVER_SESSION_REQUIRED'),{status:401,code:'SERVER_SESSION_REQUIRED'});}if(!r.ok){const e=new Error(j.error||r.statusText);e.status=r.status;e.code=j.code;e.subcode=j.subcode;throw e;}return j;}
+async function ai(task,prompt='',context={},images=[],project=state.project){try{return await api('/api/ai',{method:'POST',body:JSON.stringify({task,prompt,context,images,provider:state.aiProvider,project})});}catch(e){if(e.code==='SERVER_SESSION_REQUIRED')throw new Error('Tato AI akce vyžaduje serverovou session. Lokální CRM, zakázky a poznámky můžeš používat bez ní; Cloud přihlášení je v Nastavení.');throw e;}}
 function showAuth(){const g=$('#authGate');g.classList.remove('hidden');}
 function hideAuth(){$('#authGate').classList.add('hidden');}
 async function sessionCheck(){
@@ -61,7 +61,10 @@ async function sessionCheck(){
   if(j.authenticated){hideAuth();return true;}
   const legacy=localStorage.getItem('bc7key')||localStorage.getItem('bc6key');
   if(legacy){try{await loginPanel(legacy);localStorage.removeItem('bc7key');localStorage.removeItem('bc6key');return true;}catch{}}
-  showAuth();return false;
+  hideAuth();
+  const cloud=$('#cloud');
+  if(cloud){cloud.textContent='Lokální režim';cloud.className='pill subtle';}
+  return false;
 }
 async function loginPanel(password){const r=await fetch('/api/session',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({password})}),j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===429){const sec=Number(j.retryAfterSeconds||r.headers.get('retry-after')||180);throw new Error(`Příliš mnoho pokusů. Zkus to za ${Math.max(1,Math.ceil(sec/60))} min.`);}if(r.status===401&&Number.isFinite(Number(j.remainingAttempts)))throw new Error(`Neplatné heslo · zbývá ${j.remainingAttempts} pokusů.`);throw new Error(j.error||'Přihlášení selhalo.');}hideAuth();setTimeout(()=>health(),0);return true;}
 async function logoutPanel(){await fetch('/api/session',{method:'DELETE',credentials:'same-origin'});showAuth();}
