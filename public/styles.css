@@ -839,3 +839,8 @@ body[data-workspace="merch"] .btn.primary{background:linear-gradient(145deg,#43d
   .audit-row{grid-template-columns:1fr;gap:7px}
   .audit-open{justify-self:start}
 }
+
+@media(max-width:760px){
+  .tabs .nav-subnav{display:none}
+  .tabs .nav-subnav.show-mobile{display:flex}
+}
