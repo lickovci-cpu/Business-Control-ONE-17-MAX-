@@ -51,15 +51,31 @@
 
   <main>
     <section id="today" class="section active">
-      <div class="hero">
-        <div class="hero-copy">
-          <div class="eyebrow">AI COMMAND CENTER</div>
-          <div id="workspaceSignature" class="workspace-signature">BUSINESS CONTROL ONE</div>
-          <h1><span id="workspaceName">WORKSPACE</span> / řídicí centrum.</h1>
-          <p class="muted">Zadej cíl. Business Control připraví konkrétní další kroky pro aktivní projekt a drží CRM, obsah i follow-up v jednom toku.</p>
+      <div class="hero hero-operator">
+        <div class="hero-main">
+          <div class="hero-copy">
+            <div class="eyebrow">AI COMMAND CENTER · START HERE</div>
+            <div id="workspaceSignature" class="workspace-signature">BUSINESS CONTROL ONE</div>
+            <h1><span id="workspaceName">WORKSPACE</span> / řídicí centrum.</h1>
+            <p class="muted">Nemusíš přemýšlet, kam kliknout. Začni u <strong>TEĎ UDĚLEJ</strong>; BCO tě odvede na konkrétní další krok a zbytek drží v pozadí.</p>
+          </div>
+          <div class="command-label"><span>CO CHCEŠ VYŘEŠIT?</span><small>Jedna věta stačí.</small></div>
+          <textarea id="cmd" class="command" placeholder="Např. Vyber dnešní nejvýnosnější prioritu a připrav další krok pro získání zakázky."></textarea>
+          <div class="quick-command-row" aria-label="Rychlé akce">
+            <button class="quick-route" data-route="money">💰 Peníze</button>
+            <button class="quick-route" data-route="crm">👤 CRM</button>
+            <button class="quick-route" data-route="content">📣 Obsah</button>
+            <button class="quick-route" data-route="plan">🤖 Denní plán</button>
+          </div>
+          <div class="action-row"><button class="btn primary" id="runCmd">Vyřešit zadání</button><button class="btn secondary" id="aiCrmAudit">Projít CRM</button></div>
         </div>
-        <textarea id="cmd" class="command" placeholder="Např. Vyber dnešní 3 nejvýnosnější priority, připrav follow-up leadům a návrh příspěvku z realizace FVE."></textarea>
-        <div class="action-row"><button class="btn primary" id="runCmd">Spustit AI agenta</button><button class="btn secondary" id="aiCrmAudit">AI audit CRM</button></div>
+        <aside id="nextActionCard" class="next-action-card" aria-live="polite">
+          <div class="next-action-top"><span class="eyebrow">TEĎ UDĚLEJ</span><span id="nextActionPriority" class="pill">—</span></div>
+          <div id="nextActionTitle" class="next-action-title">Načítám první krok…</div>
+          <div id="nextActionDetail" class="muted">BCO skládá nejdůležitější další akci podle aktuálního projektu.</div>
+          <div class="next-action-meta"><span id="nextActionProject">—</span><span id="nextActionSource">—</span></div>
+          <button id="nextActionBtn" class="btn primary next-action-btn">Otevřít</button>
+        </aside>
       </div>
       <div class="grid kpi-grid">
         <div class="card kpi-card"><div class="kpi-label">FB příspěvky</div><div id="kPosts" class="kpi">–</div><span class="kpi-caption">aktivní projekt</span></div>
@@ -340,6 +356,13 @@
       </div>
     </section>
   </main>
+<nav id="mobileCommandBar" class="mobile-command-bar" aria-label="Rychlé ovládání">
+  <button class="mobile-route active" data-tab="today"><span>⌂</span><small>Dnes</small></button>
+  <button class="mobile-route" data-tab="money"><span>€</span><small>Peníze</small></button>
+  <button class="mobile-route" data-tab="crm"><span>◎</span><small>CRM</small></button>
+  <button class="mobile-route" data-tab="content"><span>◇</span><small>Obsah</small></button>
+  <button id="mobileMore" class="mobile-route"><span>☰</span><small>Více</small></button>
+</nav>
 </div>
 <script type="module" src="/app.js"></script>
 </body>
