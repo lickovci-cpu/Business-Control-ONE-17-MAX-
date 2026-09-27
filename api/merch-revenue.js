@@ -1,4 +1,5 @@
-import {auth,noauth,env,kvGet,kvSet,fetchJsonWithRetry,supabaseBaseUrl,supabaseServiceKey} from './_lib.js';
+import {auth,noauth,env,kvGet,kvSet,fetchJsonWithRetry,supabaseBaseUrl,supabaseServiceKey,supabaseRequestCredentials} from './_lib.js';
+import {cloudMember} from './_cloud-auth.js';
 
 const ORG='d2751286-da99-42c0-b8ac-6a2da8ecdabf';
 const SB_URL=supabaseBaseUrl();
@@ -9,12 +10,14 @@ function authorized(req){
   return auth(req) || (!!secret && req.headers.authorization==='Bearer '+secret);
 }
 function clean(v,max=1200){return String(v??'').trim().slice(0,max)}
-async function query(path,params={}){
-  const key=supabaseServiceKey();
-  if(!key)throw Object.assign(new Error('SUPABASE_SERVICE_ROLE_KEY_NOT_CONFIGURED'),{status:503});
+async function query(req,path,params={}){
+  const service=supabaseServiceKey();
+  const creds=supabaseRequestCredentials(req);
+  if(service&&!creds)throw Object.assign(new Error('SUPABASE_SERVICE_ROLE_KEY_NOT_CONFIGURED'),{status:503});
+  if(!creds)throw Object.assign(new Error('SUPABASE_LOGIN_REQUIRED'),{status:401});
   const u=new URL(SB_URL+'/rest/v1/'+path);
   Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,String(v)));
-  return fetchJsonWithRetry(u,{headers:{apikey:key,Authorization:'Bearer '+key}},1);
+  return fetchJsonWithRetry(u,{headers:{apikey:creds.apikey,Authorization:creds.authorization}},1);
 }
 function counts(rows=[]){return rows.reduce((a,x)=>{const k=String(x.status||'unknown');a[k]=(a[k]||0)+1;return a;},{});}
 function sum(rows=[],field){return rows.reduce((n,x)=>n+(Number(x[field])||0),0);}
@@ -22,12 +25,12 @@ function isLikelyFveText(v){
   const t=String(v??'').toLowerCase();
   return /\bfve\b|fotovolta|montážn(?:í|e) dvoj|montáže fve|solar|solars|fotovoltaika/.test(t);
 }
-async function snapshot(){
+async function snapshot(req){
   const [leads,prospects,drafts,orders]=await Promise.all([
-    query('leads',{organization_id:'eq.'+ORG,select:'id,status,estimated_value,next_action_at,updated_at',order:'updated_at.desc',limit:250}),
-    query('merch_prospects',{organization_id:'eq.'+ORG,select:'id,company_name,domain,email,status,fit_score,next_action_at,created_at',order:'fit_score.desc,created_at.asc',limit:250}),
-    query('merch_outreach_drafts',{organization_id:'eq.'+ORG,select:'id,prospect_id,status,subject,created_at,sent_at',order:'created_at.desc',limit:250}),
-    query('merch_orders',{organization_id:'eq.'+ORG,select:'id,status,total,created_at',order:'created_at.desc',limit:250})
+    query(req,'leads',{organization_id:'eq.'+ORG,select:'id,status,estimated_value,next_action_at,updated_at',order:'updated_at.desc',limit:250}),
+    query(req,'merch_prospects',{organization_id:'eq.'+ORG,select:'id,company_name,domain,email,status,fit_score,next_action_at,created_at',order:'fit_score.desc,created_at.asc',limit:250}),
+    query(req,'merch_outreach_drafts',{organization_id:'eq.'+ORG,select:'id,prospect_id,status,subject,created_at,sent_at',order:'created_at.desc',limit:250}),
+    query(req,'merch_orders',{organization_id:'eq.'+ORG,select:'id,status,total,created_at',order:'created_at.desc',limit:250})
   ]);
   const now=Date.now();
   const dueLead=(leads||[]).filter(x=>x.next_action_at&&new Date(x.next_action_at).getTime()<=now&&!['paid','closed','lost'].includes(x.status)).length;
@@ -90,14 +93,14 @@ async function plan(s){
 }
 
 export default async function handler(req,res){
-  if(!authorized(req))return noauth(res);
+  if(!(await authorized(req)))return noauth(res);
   if(!['GET','POST'].includes(req.method))return res.status(405).json({error:'METHOD_NOT_ALLOWED'});
   try{
     if(req.method==='GET')return res.json({ok:true,plan:await kvGet(PLAN_KEY)});
     const previous=await kvGet(PLAN_KEY);
     const sameDay=previous?.generatedAt&&new Date(previous.generatedAt).toISOString().slice(0,10)===new Date().toISOString().slice(0,10);
     if(sameDay)return res.json({ok:true,cached:true,plan:previous});
-    const s=await snapshot();
+    const s=await snapshot(req);
     const next=await plan(s);
     await kvSet(PLAN_KEY,next);
     return res.json({ok:true,cached:false,plan:next});
