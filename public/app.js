@@ -128,7 +128,41 @@ function renderAutopilot(){
   $$('.autopilotOpen').forEach(b=>b.onclick=()=>activateTab(b.dataset.tab));
   const summary=$('#autopilotSummary'); if(summary)summary.textContent=`${rows.length} prioritních úkolů · ${rows.filter(x=>x.score>=90).length} kritických`;
 }
-function renderAll(){applyWorkspace();renderCampaign();renderCalendar();renderCRM();renderSales();renderJobs();renderProducts();renderProjects();renderMedia();renderLearning();renderKpis();renderPortfolio();renderActivity();renderRecovery();renderReelComposer();renderAutopilot();renderOperatorGuide();$('#mediaProject').textContent=projects[state.project].name;$('#commProject').textContent=projects[state.project].name;$('#aiRunProject').textContent=projects[state.project].name;updatePostPhotoCount();}
+function safeRender(label,fn){
+  try{return fn(),true;}catch(e){
+    console.error('BCO_RENDER_ERROR',label,e);
+    const out=$('#aiOut');
+    if(out&&!window.__BCO_READY)out.textContent='BCO START CHYBA / '+label+': '+String(e?.message||e);
+    return false;
+  }
+}
+function renderAll(){
+  [
+    ['workspace',applyWorkspace],
+    ['campaign',renderCampaign],
+    ['calendar',renderCalendar],
+    ['crm',renderCRM],
+    ['sales',renderSales],
+    ['jobs',renderJobs],
+    ['products',renderProducts],
+    ['projects',renderProjects],
+    ['media',renderMedia],
+    ['learning',renderLearning],
+    ['kpis',renderKpis],
+    ['portfolio',renderPortfolio],
+    ['activity',renderActivity],
+    ['recovery',renderRecovery],
+    ['reels',renderReelComposer],
+    ['autopilot',renderAutopilot],
+    ['operator',renderOperatorGuide]
+  ].forEach(([label,fn])=>safeRender(label,fn));
+  safeRender('workspace-links',()=>{
+    $('#mediaProject').textContent=projects[state.project].name;
+    $('#commProject').textContent=projects[state.project].name;
+    $('#aiRunProject').textContent=projects[state.project].name;
+    updatePostPhotoCount();
+  });
+}
 function renderKpis(){const p=pd(),today=dayKey(),due=p.leads.filter(x=>Number(x.stage)<4&&x.followUp===today),over=p.leads.filter(x=>Number(x.stage)<4&&x.followUp&&x.followUp<today);$('#kLeads').textContent=p.leads.length;$('#kValue').textContent=money(p.leads.filter(x=>Number(x.stage)<4).reduce((a,x)=>a+(Number(x.value)||0),0));if($('#kDue'))$('#kDue').textContent=due.length;if($('#kOverdue'))$('#kOverdue').textContent=over.length;renderTodayFocus();renderPortfolio();renderAutopilot();renderOperatorGuide();}
 function renderOperatorGuide(){
   const card=$('#nextActionCard');if(!card)return;
