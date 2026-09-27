@@ -77,6 +77,24 @@
           <button id="nextActionBtn" class="btn primary next-action-btn">Otevřít</button>
         </aside>
       </div>
+      <div class="card full operator-howto" aria-label="Jak BCO funguje">
+        <div class="card-head">
+          <div><div class="section-kicker">HOW BCO WORKS</div><h2>Jak BCO používat</h2></div>
+          <span class="pill subtle">4 kroky</span>
+        </div>
+        <div class="howto-grid">
+          <div class="howto-step"><span>01</span><strong>Otevři „Dnes“</strong><p class="muted">Začni vždy kartou <b>TEĎ UDĚLEJ</b>. Ta ukazuje nejbližší konkrétní krok.</p></div>
+          <div class="howto-step"><span>02</span><strong>Vyber projekt</strong><p class="muted">Nahoře přepni workspace. CRM, obsah, zakázky a priority se řídí aktivním projektem.</p></div>
+          <div class="howto-step"><span>03</span><strong>Nech BCO připravit práci</strong><p class="muted">HERMES hledá, analyzuje a připravuje návrhy. Ty schvaluješ citlivé nebo externí akce.</p></div>
+          <div class="howto-step"><span>04</span><strong>Ověř výsledek</strong><p class="muted">Po akci musí být vidět stav: <b>HOTOVO / PROBÍHÁ / ČEKÁ / CHYBA / NO DATA</b>.</p></div>
+        </div>
+        <div class="howto-legend">
+          <span class="pill subtle">🧑 TY = rozhodnutí + schválení</span>
+          <span class="pill subtle">🤖 HERMES = hledání + návrhy</span>
+          <span class="pill subtle">⚙️ BCO = data + workflow + kontrola</span>
+          <span class="pill subtle">🔌 INTEGRACE = pouze když je skutečně připojená</span>
+        </div>
+      </div>
       <div class="grid kpi-grid">
         <div class="card kpi-card"><div class="kpi-label">FB příspěvky</div><div id="kPosts" class="kpi">–</div><span class="kpi-caption">aktivní projekt</span></div>
         <div class="card kpi-card"><div class="kpi-label">Komentáře</div><div id="kComments" class="kpi">–</div><span class="kpi-caption">nové reakce</span></div>
@@ -288,20 +306,21 @@
     <section id="distribution" class="section">
       <div class="section-title"><div><div class="section-kicker">DISTRIBUTION OS</div><h1>Distribuce / dosah</h1><p class="muted">Jeden obsahový základ → více distribučních kanálů. Publikace zůstává pod kontrolou člověka.</p></div></div>
       <div class="grid">
-        <div class="card wide"><div class="card-head"><div><div class="section-kicker">CHANNEL MATRIX</div><h2>Stav kanálů</h2></div><span class="pill subtle">27 draftů</span></div>
+        <div class="card wide"><div class="card-head"><div><div class="section-kicker">CHANNEL MATRIX</div><h2>Stav kanálů</h2></div><span class="pill subtle">LIVE STATUS</span></div>
           <div class="note-grid compact-notes">
-            <div class="item"><strong>Facebook</strong><span>BCO API připraveno / Meta připojení potřebuje token.</span></div>
-            <div class="item"><strong>Instagram</strong><span>Reels API připraveno / Meta připojení potřebuje token.</span></div>
-            <div class="item"><strong>TikTok</strong><span>Obsah připraven / API vyžaduje vlastní TikTok aplikaci + schválený scope.</span></div>
-            <div class="item"><strong>YouTube Shorts</strong><span>Obsah připraven / API vyžaduje Google autorizaci.</span></div>
-            <div class="item"><strong>Pinterest</strong><span>Obsah připraven / API vyžaduje Pinterest aplikaci.</span></div>
-            <div class="item"><strong>LinkedIn</strong><span>Obsah připraven / publikaci řešit přes připojený nástroj.</span></div>
-            <div class="item"><strong>Google Business Profile</strong><span>FVE obsah připraven / vhodné pro lokální aktuality, nabídky a akce.</span></div>
-            <div class="item"><strong>Google Merchant</strong><span>NŘŠM feed připraven k ověření po potvrzení checkoutu a fulfillmentu.</span></div><div class="item"><strong>Metricool</strong><span>Vhodný distribuční hub pro Facebook, Instagram, TikTok, YouTube, Pinterest, LinkedIn, Threads, Bluesky a Google Business Profile.</span></div>
+            <div class="item"><strong>Facebook</strong><span>Publikace: kontroluje aktivní Meta připojení. Bez platného připojení = NOT CONNECTED.</span></div>
+            <div class="item"><strong>Instagram</strong><span>Reels / obsah: kontroluje aktivní Meta připojení. Bez něj zůstává příprava lokální.</span></div>
+            <div class="item"><strong>TikTok</strong><span>Obsah lze připravit; publikace vyžaduje samostatné ověřené připojení.</span></div>
+            <div class="item"><strong>YouTube Shorts</strong><span>Obsah lze připravit; publikace vyžaduje samostatné ověřené připojení.</span></div>
+            <div class="item"><strong>Pinterest</strong><span>Obsah lze připravit; publikace vyžaduje samostatné ověřené připojení.</span></div>
+            <div class="item"><strong>LinkedIn</strong><span>Obsah lze připravit; publikace vyžaduje připojený nástroj.</span></div>
+            <div class="item"><strong>Google Business Profile</strong><span>Lokální obsah lze připravit; živý stav závisí na připojeném účtu.</span></div>
+            <div class="item"><strong>Google Merchant</strong><span>Feed lze připravit; živý stav závisí na ověřeném e-shop / Merchant napojení.</span></div>
+            <div class="item"><strong>Metricool</strong><span>Může sloužit jako distribuční hub, ale stav musí být potvrzen skutečným připojením.</span></div>
           </div>
         </div>
         <div class="card"><div class="section-kicker">FREE / ORGANIC</div><h2>Vyhledávání</h2><p class="muted">SEO stránky + sitemap + Merchant feed + IndexNow. Cílem je, aby se obsah hledal dlouhodobě, ne jen v den publikace.</p><div class="action-stack"><a class="btn" href="/projects">Veřejný rozcestník</a><a class="btn" href="https://nrsm-streetwear.vercel.app/">NŘŠM shop</a><a class="btn" href="https://mazliprint-final.vercel.app/">MazliPrint</a></div></div>
-        <div class="card"><div class="section-kicker">B2B</div><h2>Outbound</h2><p class="muted">44 aktivních prospectů + 16 neodeslaných NŘŠM draftů. Nové kontakty se připravují jako drafty, ne jako nekontrolované rozesílání.</p><a class="btn primary full-btn" href="/studio">NŘŠM Studio</a></div>
+        <div class="card"><div class="section-kicker">B2B</div><h2>Outbound</h2><p class="muted"><b>Stav prospectů: LIVE DATA / NO DATA.</b> Konkrétní počty se zobrazují pouze z ověřených dat. Nové kontakty se připravují jako drafty, ne jako nekontrolované rozesílání.</p><a class="btn primary full-btn" href="/studio">NŘŠM Studio</a></div>
       </div>
     </section>
 
