@@ -2,6 +2,8 @@
 (()=>{
   const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)], esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=v=>new Intl.NumberFormat('cs-CZ',{style:'currency',currency:'CZK',maximumFractionDigits:0}).format(Number(v)||0);
+  let liveEnabled=false;
+  function clearLive(){ $('.commercial-live').forEach(x=>x.remove()); liveEnabled=false; }
   const project=()=>{try{return window.state?.project||$('#project')?.value||'jihoceske'}catch{return 'jihoceske'}};
   const cloudToken=()=>{try{return JSON.parse(localStorage.getItem('bc81-sb-session')||'null')?.access_token||''}catch{return ''}};
   const req=async(url,opt={})=>{const headers={'content-type':'application/json',...(opt.headers||{})};const token=cloudToken();if(token)headers.Authorization='Bearer '+token;const r=await fetch(url,{credentials:'same-origin',headers,...opt});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||`HTTP ${r.status}`);return j;};
@@ -31,6 +33,8 @@
     try{const r=await req(`/api/commercial?project=${encodeURIComponent(project())}`);liveEnabled=true;render(r);}
     catch(e){clearLive();const out=$('#commercialLiveStatus');if(out)out.textContent='LOKÁLNÍ REŽIM · živá DB: '+e.message;}
   }
-  function boot(){if(!$('#commercialLiveStatus')){const host=$('#sales')||document.body;const d=document.createElement('div');d.id='commercialLiveStatus';d.className='pill subtle';d.textContent='LIVE DB · načítám…';host.prepend(d);}load();setInterval(load,60000);}
+  function boot(){
+    window.__BCO_LIVE_COMMERCIAL_RELOAD=load;
+    if(!$('#commercialLiveStatus')){const host=$('#sales')||document.body;const d=document.createElement('div');d.id='commercialLiveStatus';d.className='pill subtle';d.textContent='LIVE DB · načítám…';host.prepend(d);}load();setInterval(load,60000);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
