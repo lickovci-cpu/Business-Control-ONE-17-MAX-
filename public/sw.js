@@ -1,5 +1,5 @@
-const CACHE='bco17-max-v4';
-const SHELL=['/','/app.js','/styles.css','/manifest.webmanifest','/icon.svg','/crm-live.js','/commercial-live.js'];
+const CACHE='bco17-max-v5';
+const SHELL=['/','/boot.js','/app.js','/styles.css','/manifest.webmanifest','/icon.svg','/crm-live.js','/commercial-live.js'];
 
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL.map(x=>new Request(x,{cache:'reload'})))).then(()=>self.skipWaiting()));
