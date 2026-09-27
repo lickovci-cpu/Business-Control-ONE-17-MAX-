@@ -236,23 +236,27 @@ Current active Supabase automations:
 
 At audit time, all four had last_run_at = null and automation_runs = 0.
 
-## Important technical finding
+## Important technical finding and fix
 
 Production logs showed /api/automation-tick returning HTTP 409 every 5 minutes.
 
-The code maps a failed KV lock acquisition to HTTP 409. The KV helper also returns false when KV is not configured. This makes a missing KV connection indistinguishable from a real lock collision.
+The root ambiguity was in the lock helper: a missing KV configuration was returned as a failed lock acquisition, so the endpoint exposed 409 even when no real concurrent run existed.
 
-Operational consequence:
-- cron is firing;
-- the endpoint is reachable;
-- the automation work itself is not proven to be executing.
+A production fix was committed at:
+**a3de47c3e54cc8aa84a68dff5c0097b39066001b**
+with the following behavior:
+- KV remains an optional distributed mutex when configured;
+- when KV is not configured, the automation tick proceeds in **supabase-only** mode instead of failing 409;
+- Supabase remains the business source of truth;
+- lockMode is returned in the result for observability.
 
-The next technical fix should make this state explicit and keep the automation tick functional without making Hermes depend on a second data store for core business execution.
+The Vercel deployment for this fix was observed in BUILDING state during this audit, so successful post-deploy automation_runs evidence was not yet available at the time of writing.
 
 ## Current external blockers
 
 - Upwork account has 0 Connects, so proposals cannot currently be submitted.
 - Outlook FVE account has demonstrated spam filtering for at least two recipients; do not blindly resend identical content.
+- OPRAVÍME HNED and Gerath BAU messages were blocked by recipient-side spam filtering on 2026-09-27.
 - MazliPrint has a public funnel but the end-to-end live commerce/fulfillment flow is not yet verified.
 - FVE public website is not verified.
 - Hermes local runtime is user-managed Windows software and cannot be changed from ChatGPT without a local action.
