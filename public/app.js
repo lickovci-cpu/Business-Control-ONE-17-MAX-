@@ -2,7 +2,15 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=v=>new Intl.NumberFormat('cs-CZ',{style:'currency',currency:'CZK',maximumFractionDigits:0}).format(Number(v)||0);
 const APP_VERSION='17-max';
-const tabs=[['today','Dnes'],['money','💰 Peníze'],['control','Řídicí místnost'],['worker','Content Worker'],['content','Obsah'],['reels','Reels'],['media','Fotky'],['comms','Komunikace'],['inbox','Inbox'],['crm','CRM'],['sales','Prodej'],['jobs','Zakázky'],['analytics','Analytika'],['shop','E-shopy'],['settings','Nastavení'],['autopilot','Autopilot']];
+const tabs=[['today','Dnes'],['money','💰 Peníze'],['crm','CRM'],['sales','Prodej'],['jobs','Zakázky'],['content','Obsah'],['control','Řídicí místnost'],['autopilot','Autopilot'],['worker','Content Worker'],['reels','Reels'],['media','Fotky'],['comms','Komunikace'],['inbox','Inbox'],['analytics','Analytika'],['shop','E-shopy'],['distribution','Distribuce'],['settings','Nastavení']];
+const primaryTabs=new Set(['today','money','crm','sales','jobs','content']);
+const moreGroups=[
+  ['ŘÍZENÍ',['control','autopilot']],
+  ['OBSAH',['worker','reels','media']],
+  ['KOMUNIKACE',['comms','inbox']],
+  ['ANALYTIKA',['analytics','shop','distribution']],
+  ['SYSTÉM',['settings']]
+];
 const projects={
   jihoceske:{name:'STŘECHY / FVE',label:'TECHNICAL FIELD UNIT',theme:'fve',signature:'FIELD / SOLAR',context:'FVE subdodávky a servis: montáž konstrukcí a panelů, DC kabeláž/stringy/konektory/Tigo, dílčí montážní práce, demontáž a zpětná montáž, úpravy stávajících FVE, mytí panelů, ochranné sítě proti ptactvu a carporty. Primárně Jižní Čechy, větší zakázky po ČR. Bez vymyšlených certifikací, počtů realizací, cen nebo referencí. Elektro zapojení a revize pouze jako spolupráce s elektrikářem a revizním technikem, nikdy jako vlastní oprávnění. Bezpečně lze uvádět praktickou zkušenost z montáží, malé střechy a instalace přibližně 145 a 195 panelů.'},
   merch:{name:'NŘŠM',label:'UNDERGROUND COMMAND CENTER',theme:'nrsm',signature:'NŘŠM // 174 UNIT',context:'Originální streetwear inspirovaný DnB, neurofunkem, technem, psytrance, rave a graffiti kulturou. Výrazně a underground, ne genericky AI. Produkty, dropy a čísla se zobrazují jen z uložených dat.'},
@@ -86,19 +94,39 @@ async function sessionCheck(){
 }
 async function loginPanel(password){const r=await fetch('/api/session',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({password})}),j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===429){const sec=Number(j.retryAfterSeconds||r.headers.get('retry-after')||180);throw new Error(`Příliš mnoho pokusů. Zkus to za ${Math.max(1,Math.ceil(sec/60))} min.`);}if(r.status===401&&Number.isFinite(Number(j.remainingAttempts)))throw new Error(`Neplatné heslo · zbývá ${j.remainingAttempts} pokusů.`);throw new Error(j.error||'Přihlášení selhalo.');}hideAuth();setTimeout(()=>health(),0);return true;}
 async function logoutPanel(){await fetch('/api/session',{method:'DELETE',credentials:'same-origin'});showAuth();}
-const secondaryTabs=new Set(['worker','reels','media','comms','inbox','jobs','analytics','shop','settings','autopilot']);
+const secondaryTabs=new Set(['control','autopilot','worker','reels','media','comms','inbox','analytics','shop','distribution','settings']);
 function initTabs(){
-  const t=$('#tabs');t.innerHTML='';
+  const t=$('#tabs');if(!t)return;t.innerHTML='';
   const label=document.createElement('span');label.className='nav-label';label.textContent='COMMAND';t.appendChild(label);
-  tabs.forEach(([id,n])=>{const b=document.createElement('button');b.textContent=n;b.dataset.tab=id;if(secondaryTabs.has(id))b.classList.add('nav-secondary');b.onclick=()=>activateTab(id);t.appendChild(b);});
-  const more=document.createElement('button');more.id='navMore';more.className='nav-more';more.textContent='☰ Více';more.setAttribute('aria-expanded','false');
-  more.onclick=()=>{const on=t.classList.toggle('show-more');more.setAttribute('aria-expanded',String(on));more.textContent=on?'× Skrýt':'☰ Více';};
-  t.appendChild(more);activateTab('today');
+  for(const [id,n] of tabs.filter(([id])=>primaryTabs.has(id))){
+    const b=document.createElement('button');b.textContent=n;b.dataset.tab=id;b.className='nav-primary';b.onclick=()=>activateTab(id);t.appendChild(b);
+  }
+  const moreWrap=document.createElement('div');moreWrap.className='nav-more-wrap';
+  const more=document.createElement('button');more.id='navMore';more.className='nav-more';more.textContent='☰ Více';more.setAttribute('aria-expanded','false');moreWrap.appendChild(more);
+  const panel=document.createElement('div');panel.id='navMorePanel';panel.className='nav-more-panel';panel.setAttribute('aria-hidden','true');
+  for(const [groupName,ids] of moreGroups){
+    const g=document.createElement('div');g.className='nav-group';
+    const h=document.createElement('div');h.className='nav-group-label';h.textContent=groupName;g.appendChild(h);
+    for(const id of ids){
+      const item=tabs.find(x=>x[0]===id);if(!item)continue;
+      const b=document.createElement('button');b.textContent=item[1];b.dataset.tab=id;b.className='nav-secondary';b.onclick=()=>{activateTab(id);closeMoreNav();};g.appendChild(b);
+    }
+    panel.appendChild(g);
+  }
+  moreWrap.appendChild(panel);t.appendChild(moreWrap);
+  const closeMore=()=>closeMoreNav();
+  function closeMoreNav(){const on=t.classList.toggle('show-more',false);void on;more.setAttribute('aria-expanded','false');panel.setAttribute('aria-hidden','true');}
+  function toggleMoreNav(){const on=!t.classList.contains('show-more');t.classList.toggle('show-more',on);more.setAttribute('aria-expanded',String(on));panel.setAttribute('aria-hidden',String(!on));}
+  more.onclick=toggleMoreNav;
+  t.addEventListener('click',e=>{if(!t.classList.contains('show-more'))return;if(e.target===t||e.target===label)return;if(!moreWrap.contains(e.target))closeMoreNav();},true);
+  activateTab('today');
 }
 function activateTab(id){
+  if(!document.getElementById(id))return;
   if(id==='control')renderControlRoom();if(id==='money')loadMoneySprint(false);if(id==='autopilot')renderAutopilot();
   $('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));$('.section').forEach(x=>x.classList.toggle('active',x.id===id));
   if(secondaryTabs.has(id))$('#tabs')?.classList.add('show-more');
+  const panel=$('#navMorePanel');if(panel)panel.setAttribute('aria-hidden',String(!secondaryTabs.has(id)&&!$('#tabs')?.classList.contains('show-more')));
   if(id==='media')renderMedia();if(id==='content'||id==='inbox'||id==='reels')loadMetaStatus();if(id==='reels'){renderReelPlan();loadRecentReels();renderReelComposer();}if(id==='sales')renderSales();if(id==='jobs')renderJobs();if(id==='analytics')loadAnalytics();if(id==='comms'){loadCommStatus();loadOutbox();}if(id==='settings'){renderSettings();health();renderPwaState();}
   $('.mobile-route').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));
 }
