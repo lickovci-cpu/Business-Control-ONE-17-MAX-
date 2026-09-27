@@ -1,9 +1,8 @@
 import {createHash} from 'node:crypto';
-import {auth,noauth,body,projectKey,sendError,supabaseBaseUrl,supabaseServiceKey} from './_lib.js';
+import {auth,noauth,body,projectKey,sendError,supabaseBaseUrl,supabaseRequestCredentials} from './_lib.js';
 import {createTask,getTask,blockTask,consumeApproval,startAttempt,completeTask,failAttempt} from './_control.js';
 
 const SB_URL=supabaseBaseUrl();
-const SB_KEY=supabaseServiceKey();
 const ORGS={
   jihoceske:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',
   fve:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',
@@ -13,10 +12,10 @@ const ORGS={
 const STATUSES=new Set(['new','qualified','contacted','follow_up','offer','approved','job','delivered','invoiced','paid','closed']);
 const TRANSITIONS={new:new Set(['contacted','qualified']),qualified:new Set(['contacted','follow_up','offer']),contacted:new Set(['qualified','follow_up','offer']),follow_up:new Set(['contacted','qualified','offer']),offer:new Set(['approved']),approved:new Set(['job']),job:new Set(['delivered']),delivered:new Set(['invoiced']),invoiced:new Set(['paid']),paid:new Set(['closed']),closed:new Set()};
 const MUTATING=new Set(['create','update','status']);
-function requireDb(){if(!SB_KEY){const e=new Error('CRM_DB_NOT_CONFIGURED');e.status=503;throw e;}}
+function requireDb(req){if(!supabaseRequestCredentials(req)){const e=new Error('CRM_DB_NOT_CONFIGURED_OR_CLOUD_LOGIN_REQUIRED');e.status=503;throw e;}}
 function headerValue(name,value){const s=String(value??'');for(let i=0;i<s.length;i++)if(s.charCodeAt(i)>255){const e=new Error(`${name}_INVALID_BYTE_STRING`);e.status=503;throw e;}return s;}
 function org(project){const id=ORGS[project];if(!id){const e=new Error('CRM_PROJECT_ORG_NOT_CONFIGURED');e.status=503;throw e;}return id;}
-async function sb(path,opt={}){requireDb();const key=headerValue('SUPABASE_KEY',SB_KEY);const r=await fetch(`${SB_URL}/rest/v1/${path}`,{...opt,headers:{apikey:key,Authorization:`Bearer ${key}`,'content-type':'application/json',...(opt.headers||{})},signal:AbortSignal.timeout(15000)});const text=await r.text();let data={};try{data=text?JSON.parse(text):{}}catch{data={raw:text}}if(!r.ok){const e=new Error(data.message||data.error||`SUPABASE_HTTP_${r.status}`);e.status=502;throw e;}return data;}
+async function sb(req,path,opt={}){requireDb(req);const c=supabaseRequestCredentials(req);const key=headerValue('SUPABASE_KEY',c.apikey),authorization=headerValue('SUPABASE_AUTHORIZATION',c.authorization);const r=await fetch(`${SB_URL}/rest/v1/${path}`,{...opt,headers:{apikey:key,Authorization:authorization,'content-type':'application/json',...(opt.headers||{})},signal:AbortSignal.timeout(15000)});const text=await r.text();let data={};try{data=text?JSON.parse(text):{}}catch{data={raw:text}}if(!r.ok){const e=new Error(data.message||data.error||`SUPABASE_HTTP_${r.status}`);e.status=502;throw e;}return data;}
 function taskAction(a){return `crm:lead-${a}`;}
 function stable(v){if(Array.isArray(v))return '['+v.map(stable).join(',')+']';if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}';return JSON.stringify(v);}
 function fingerprint(v){return createHash('sha256').update(stable(v)).digest('hex');}
@@ -46,7 +45,7 @@ export default async function handler(req,res){
     if(!ORGS[project]&&req.method==='GET')return res.json({ok:true,project,verified:false,configured:false,leads:[],error:'CRM_PROJECT_ORG_NOT_CONFIGURED'});
     const organization_id=org(project);
     if(req.method==='GET'){
-      const rows=await sb(`leads?organization_id=eq.${organization_id}&select=*,contacts(id,name,phone,email)&order=created_at.desc&limit=500`);
+      const rows=await sb(req,`leads?organization_id=eq.${organization_id}&select=*,contacts(id,name,phone,email)&order=created_at.desc&limit=500`);
       return res.json({ok:true,project,organization_id,verified:true,leads:Array.isArray(rows)?rows:[]});
     }
     if(req.method!=='POST')return res.status(405).json({error:'METHOD'});
@@ -64,23 +63,23 @@ export default async function handler(req,res){
         const p=b.payload||{};if(!String(p.name||'').trim())throw new Error('LEAD_NAME_REQUIRED');
         const phone=String(p.phone||'').trim(),email=String(p.email||'').trim();
         let existing=[];
-        if(phone)existing=await sb(`contacts?organization_id=eq.${organization_id}&phone=eq.${encodeURIComponent(phone)}&select=id,name,phone,email&limit=1`);
-        if(!existing.length&&email)existing=await sb(`contacts?organization_id=eq.${organization_id}&email=eq.${encodeURIComponent(email)}&select=id,name,phone,email&limit=1`);
+        if(phone)existing=await sb(req,`contacts?organization_id=eq.${organization_id}&phone=eq.${encodeURIComponent(phone)}&select=id,name,phone,email&limit=1`);
+        if(!existing.length&&email)existing=await sb(req,`contacts?organization_id=eq.${organization_id}&email=eq.${encodeURIComponent(email)}&select=id,name,phone,email&limit=1`);
         let c=Array.isArray(existing)?existing[0]:null,newContact=false;
-        if(!c){const contact=await sb('contacts',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({organization_id,name:String(p.contact||p.name).slice(0,200),phone:phone||null,email:email||null})});c=Array.isArray(contact)?contact[0]:contact;newContact=true;}
+        if(!c){const contact=await sb(req,'contacts',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({organization_id,name:String(p.contact||p.name).slice(0,200),phone:phone||null,email:email||null})});c=Array.isArray(contact)?contact[0]:contact;newContact=true;}
         const note=[p.note||'',p.web?`Web: ${p.web}`:'',p.region?`Region: ${p.region}`:'',p.leadType?`Typ: ${p.leadType}`:'',p.priority?`Priorita: ${p.priority}`:''].filter(Boolean).join(' · ');
         try{
-          const lead=await sb('leads',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({organization_id,contact_id:c?.id||null,status:'new',estimated_value:p.estimated_value??null,note:note||null,source:p.source||null})});result=Array.isArray(lead)?lead[0]:lead;
-        }catch(e){if(newContact&&c?.id)await sb(`contacts?id=eq.${encodeURIComponent(c.id)}&organization_id=eq.${organization_id}`,{method:'DELETE'}).catch(()=>{});throw e;}
+          const lead=await sb(req,'leads',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({organization_id,contact_id:c?.id||null,status:'new',estimated_value:p.estimated_value??null,note:note||null,source:p.source||null})});result=Array.isArray(lead)?lead[0]:lead;
+        }catch(e){if(newContact&&c?.id)await sb(req,`contacts?id=eq.${encodeURIComponent(c.id)}&organization_id=eq.${organization_id}`,{method:'DELETE'}).catch(()=>{});throw e;}
       } else if(realAction==='status'){
-        const rows=await sb(`leads?id=eq.${encodeURIComponent(b.id)}&organization_id=eq.${organization_id}&select=id,status,invoiced_amount,paid_amount`);if(!Array.isArray(rows)||!rows[0])throw new Error('LEAD_NOT_FOUND');
+        const rows=await sb(req,`leads?id=eq.${encodeURIComponent(b.id)}&organization_id=eq.${organization_id}&select=id,status,invoiced_amount,paid_amount`);if(!Array.isArray(rows)||!rows[0])throw new Error('LEAD_NOT_FOUND');
         validateLeadTransition(rows[0].status,b.status);
         const now=new Date().toISOString(),patch={status:b.status,updated_at:now};if(b.status==='qualified')patch.qualified_at=now;if(b.status==='contacted')patch.last_contact_at=now;if(b.status==='offer')patch.offered_at=now;if(b.status==='approved')patch.approved_at=now;if(b.status==='delivered')patch.delivered_at=now;if(b.status==='invoiced')patch.invoiced_at=now;if(b.status==='paid')patch.paid_at=now;
         if(b.status==='invoiced'&&b.amount!=null)patch.invoiced_amount=Number(b.amount);if(b.status==='paid'&&b.amount!=null)patch.paid_amount=Number(b.amount);
-        const updated=await sb(`leads?id=eq.${encodeURIComponent(b.id)}&organization_id=eq.${organization_id}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});result=Array.isArray(updated)?updated[0]:updated;
+        const updated=await sb(req,`leads?id=eq.${encodeURIComponent(b.id)}&organization_id=eq.${organization_id}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});result=Array.isArray(updated)?updated[0]:updated;
       } else {
-        const patch=cleanPatch(b.patch||{});const current=await sb(`leads?id=eq.${encodeURIComponent(b.id)}&organization_id=eq.${organization_id}&select=contact_id`);const cid=current?.[0]?.contact_id;if(cid&&(b.patch?.name||b.patch?.phone||b.patch?.email))await sb(`contacts?id=eq.${encodeURIComponent(cid)}&organization_id=eq.${organization_id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({...(b.patch?.name?{name:b.patch.name}:{}),...(b.patch?.phone?{phone:b.patch.phone}:{}),...(b.patch?.email?{email:b.patch.email}:{})})});
-        const updated=await sb(`leads?id=eq.${encodeURIComponent(b.id)}&organization_id=eq.${organization_id}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({...patch,updated_at:new Date().toISOString()})});result=Array.isArray(updated)?updated[0]:updated;
+        const patch=cleanPatch(b.patch||{});const current=await sb(req,`leads?id=eq.${encodeURIComponent(b.id)}&organization_id=eq.${organization_id}&select=contact_id`);const cid=current?.[0]?.contact_id;if(cid&&(b.patch?.name||b.patch?.phone||b.patch?.email))await sb(req,`contacts?id=eq.${encodeURIComponent(cid)}&organization_id=eq.${organization_id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({...(b.patch?.name?{name:b.patch.name}:{}),...(b.patch?.phone?{phone:b.patch.phone}:{}),...(b.patch?.email?{email:b.patch.email}:{})})});
+        const updated=await sb(req,`leads?id=eq.${encodeURIComponent(b.id)}&organization_id=eq.${organization_id}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({...patch,updated_at:new Date().toISOString()})});result=Array.isArray(updated)?updated[0]:updated;
       }
       const referenceId=result?.id||b.id||null;
       if(!referenceId)throw new Error('RESULT_REFERENCE_REQUIRED');

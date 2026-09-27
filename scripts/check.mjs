@@ -20,5 +20,17 @@ const missing=[...new Set(literalIds.filter(id=>!ids.includes(id)&&!dynamicIds.h
 if(missing.length)throw new Error('JS references missing HTML ids: '+missing.join(', '));
 const vercel=JSON.parse(await readFile('vercel.json','utf8'));const csp=vercel.headers?.flatMap(x=>x.headers||[]).find(x=>x.key==='Content-Security-Policy')?.value||'';
 if(!csp.includes("media-src 'self' blob: https:"))throw new Error('CSP media-src missing for local Reel preview.');
+const lib=await readFile('api/_lib.js','utf8');
+const leadsSource=await readFile('api/leads.js','utf8');
+const commercialSource=await readFile('api/commercial.js','utf8');
+const crmBridge=await readFile('public/crm-live.js','utf8');
+const commercialBridge=await readFile('public/commercial-live.js','utf8');
+for(const marker of ['supabaseRequestCredentials','supabaseBearerToken','supabasePublishableKey'])if(!lib.includes(marker))throw new Error('Supabase JWT fallback missing: '+marker);
+for(const marker of ['supabaseRequestCredentials(req)','CRM_DB_NOT_CONFIGURED_OR_CLOUD_LOGIN_REQUIRED'])if(!leadsSource.includes(marker))throw new Error('CRM live fallback missing: '+marker);
+for(const marker of ['supabaseRequestCredentials(req)','COMMERCIAL_DB_NOT_CONFIGURED_OR_CLOUD_LOGIN_REQUIRED'])if(!commercialSource.includes(marker))throw new Error('Commercial live fallback missing: '+marker);
+for(const marker of ['bc81-sb-session','LOKÁLNÍ CRM','__BCO_LIVE_CRM'])if(!crmBridge.includes(marker))throw new Error('CRM bridge fallback missing: '+marker);
+for(const marker of ['bc81-sb-session','LOKÁLNÍ REŽIM','clearLive'])if(!commercialBridge.includes(marker))throw new Error('Commercial bridge fallback missing: '+marker);
+if(!app.includes('if(window.__BCO_LIVE_CRM)return'))throw new Error('Local CRM guard missing.');
+
 const comms=await readFile('api/_comms.js','utf8');if(!comms.includes('regional'))throw new Error('RCS endpoint mode missing.');
 console.log(`CHECK OK — ${js.length} JS files, ${ids.length} unique UI ids, commercial/PWA checks enabled.`);

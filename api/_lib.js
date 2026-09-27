@@ -23,6 +23,24 @@ export function supabaseServiceKey(){
 export function supabaseBaseUrl(){
   return String(env('SUPABASE_URL','https://vjzzvopwecmwuccdidzq.supabase.co')).replace(/\/$/,'');
 }
+
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY='sb_publishable_XAa2FyYnSZE9_3iZrbhD3g_F3mn-wI5';
+export function supabasePublishableKey(){
+  return normalizeSecret(env('SUPABASE_PUBLISHABLE_KEY')||env('SUPABASE_ANON_KEY')||DEFAULT_SUPABASE_PUBLISHABLE_KEY);
+}
+export function supabaseBearerToken(req){
+  const h=String(req?.headers?.authorization||'');
+  return h.startsWith('Bearer ')?normalizeSecret(h.slice(7)):'';
+}
+export function supabaseRequestCredentials(req){
+  const service=supabaseServiceKey();
+  if(service)return {apikey:service,authorization:'Bearer '+service,mode:'service'};
+  const bearer=supabaseBearerToken(req);
+  if(!bearer)return null;
+  const publishable=supabasePublishableKey();
+  if(!publishable)return null;
+  return {apikey:publishable,authorization:'Bearer '+bearer,mode:'user'};
+}
 const SESSION_COOKIE='bc_session';
 const SESSION_TTL=30*24*60*60;
 
