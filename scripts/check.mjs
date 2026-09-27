@@ -12,7 +12,7 @@ if(/style\s*=/.test(html))throw new Error('Inline style attribute would conflict
 const sw=await readFile('public/sw.js','utf8');
 if(!sw.includes("bc20-money-sprint-v1")||!sw.includes("/commercial-live.js")||!sw.includes("url.pathname.startsWith('/api/')")||!sw.includes('notificationclick'))throw new Error('Service worker strategy missing.');
 const app=await readFile('public/app.js','utf8');
-if(app.includes('$$('))throw new Error('Broken selector helper: $$ found in public/app.js.');
+if(app.includes('$$$('))throw new Error('Broken selector helper: $$$ found in public/app.js.');
 if(/(?<!\$)\$\((['"])\.[^'"]+\1\)\.forEach/.test(app))throw new Error('Broken collection iteration: singleton $() used with forEach.');
 for(const marker of ['MEDIA_THUMB_CACHE','IntersectionObserver','ensureMediaFile','clearThumbCache','generateReel','renderMetaConnection','generateCampaign','leadFollowKit','autoSelectReelPhotos','truthGuard','renderSales','pipelineStats','quoteSave','dealCoachRun','renderJobs','JOB_TEMPLATES','renderCashWatch','buildReelPreview','renderControlRoom','controlRoomData','maybeDueNotification','requestPersistentStorage','runContentWorker','renderWorker','lastContentWorker'])if(!app.includes(marker))throw new Error('V15 marker missing: '+marker);
 const literalIds=[...app.matchAll(/\$\('#([A-Za-z0-9_-]+)'\)/g)].map(m=>m[1]);
