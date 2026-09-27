@@ -487,5 +487,18 @@ async function loadMoneySprint(force=false){
     if(el('moneyMode'))el('moneyMode').textContent='NO DATA';
   }
 }
-async function init(){if(!recoveryPoints().length)saveRecoveryPoint('Start 17 MAX');initTabs();initProjects();wire();loadDraft();renderAll();renderWorker();if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).then(r=>r.update().catch(()=>{})).catch(()=>{});const ok=await sessionCheck();if(ok)await health();if(sbSession)setTimeout(()=>cloudIdentity(),80);renderCloudState();renderPwaState();setTimeout(()=>maybeDueNotification(),1200);setAutosaveState('Auto-save aktivní','ok');}
-init();
+window.__BCO_READY=false;
+window.addEventListener('error',e=>{
+  if(e?.error||e?.message){
+    const out=document.querySelector('#aiOut');
+    if(out && !window.__BCO_READY)out.textContent='BCO START CHYBA: '+String(e.message||e.error||'neznámá chyba');
+  }
+});
+window.addEventListener('unhandledrejection',e=>{
+  const out=document.querySelector('#aiOut');
+  if(out && !window.__BCO_READY)out.textContent='BCO PROMISE CHYBA: '+String(e.reason?.message||e.reason||'neznámá chyba');
+});
+async function init(){
+if(!recoveryPoints().length)saveRecoveryPoint('Start 17 MAX');initTabs();initProjects();wire();loadDraft();renderAll();renderWorker();if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).then(r=>r.update().catch(()=>{})).catch(()=>{});const ok=await sessionCheck();if(ok)await health();if(sbSession)setTimeout(()=>cloudIdentity(),80);renderCloudState();renderPwaState();setTimeout(()=>maybeDueNotification(),1200);setAutosaveState('Auto-save aktivní','ok');window.__BCO_READY=true;}
+init().catch(e=>{window.__BCO_READY=false;const out=document.querySelector('#aiOut');if(out)out.textContent='BCO START CHYBA: '+String(e?.message||e);});
+
