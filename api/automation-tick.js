@@ -2,7 +2,8 @@ import {randomUUID} from 'node:crypto';
 import {env,normalizeSecret,fetchJsonWithRetry,kvSetNxEx,kvDel,supabaseBaseUrl,supabaseServiceKey} from './_lib.js';
 import {getAgent,projectOrganizationId,recordAgentEvent} from './_agent-registry.js';
 
-// v2 isolates the scheduler mutex from legacy/stale keys left by earlier deployments.
+// v2 isolates the scheduler mutex from legacy/stale keys.
+// KV is optional for the core automation tick: Supabase remains the business source of truth.
 const LOCK_PREFIX='business-control:automation-runtime:v2:lock:';
 const TICK_SLOT_MS=5*60*1000;
 const MAX_AUTOMATIONS_PER_TICK=3;
@@ -194,10 +195,19 @@ async function markRun(automation){
   return sb('automations',{id:'eq.'+automation.id},'PATCH',{last_run_at:new Date().toISOString(),updated_at:new Date().toISOString()});
 }
 
+async function acquireTickLock(){
+  const kvConfigured=Boolean(env('KV_REST_API_URL')&&env('KV_REST_API_TOKEN'));
+  if(!kvConfigured){
+    return {acquired:true,configured:false,mode:'supabase-only'};
+  }
+  const key=lockKeyForTick();
+  const acquired=await kvSetNxEx(key,randomUUID(),110);
+  return {acquired,configured:true,mode:'kv',key};
+}
+
 export async function executeAutomationTick(req){
-  const lockKey=lockKeyForTick();
-  const lock=await kvSetNxEx(lockKey,randomUUID(),110);
-  if(!lock)throw Object.assign(new Error('AUTOMATION_TICK_ALREADY_RUNNING'),{status:409});
+  const lockState=await acquireTickLock();
+  if(!lockState.acquired)throw Object.assign(new Error('AUTOMATION_TICK_ALREADY_RUNNING'),{status:409});
   const at=now(),processed=[],errors=[];
   try{
     const due=await listDueAutomations(at);
@@ -213,7 +223,7 @@ export async function executeAutomationTick(req){
         const agentSlug=String(actionConfig.agent||'').toLowerCase();
         const configuredAgent=agentSlug?await getAgent(project,agentSlug):null;
         const context={project,organizationSlug:orgSlug,automation:{id:automation.id,name:automation.name,trigger:automation.trigger_config,action:actionConfig},state:await summarizeProject(project),startedAt};
-        let result={ok:true,mode:'task_only'};
+        let result={ok:true,mode:'task_only',lockMode:lockState.mode};
         let createdTasks=[];
         if(configuredAgent?.active!==false&&configuredAgent?.autonomy==='autonomous'&&aiCount>=MAX_AI_AUTOMATIONS_PER_TICK){
           errors.push({automation:automation.name,error:'AI_TICK_BUDGET_DEFERRED'});
@@ -227,11 +237,11 @@ export async function executeAutomationTick(req){
           const actions=extractActions(ai);
           createdTasks=await createTasks(project,orgId,automation,actions);
           await recordAgentEvent({project,agentId:agentResult.agent.id,eventType:'autonomous_tick',severity:'info',payload:{automationId:automation.id,createdTasks:createdTasks.length}});
-          result={ok:true,mode:'agent',agent:agentSlug,provider:ai.provider||null,createdTasks:createdTasks.length,structuredValid:Boolean(ai.structuredValid)};
+          result={ok:true,mode:'agent',agent:agentSlug,provider:ai.provider||null,createdTasks:createdTasks.length,structuredValid:Boolean(ai.structuredValid),lockMode:lockState.mode};
         }else{
           const title=clean(actionConfig.prompt||automation.name,400);
           createdTasks=await createTasks(project,orgId,automation,[{title,priority:'B',notes:'Automatická úloha čekající na zpracování specializovaným agentem nebo ruční kontrolu.'}]);
-          result={ok:true,mode:'task_only',agent:agentSlug||null,createdTasks:createdTasks.length};
+          result={ok:true,mode:'task_only',agent:agentSlug||null,createdTasks:createdTasks.length,lockMode:lockState.mode};
         }
         await writeRun(automation,orgId,'completed',{project,automationId:automation.id,startedAt},result);
         await markRun(automation);
@@ -242,9 +252,9 @@ export async function executeAutomationTick(req){
         errors.push({automation:automation.name,error});
       }
     }
-    return {ok:true,at:at.toISOString(),processed,errors};
+    return {ok:true,at:at.toISOString(),lockMode:lockState.mode,processed,errors};
   }finally{
-    await kvDel(lockKey).catch(()=>{});
+    if(lockState.configured&&lockState.key)await kvDel(lockState.key).catch(()=>{});
   }
 }
 
