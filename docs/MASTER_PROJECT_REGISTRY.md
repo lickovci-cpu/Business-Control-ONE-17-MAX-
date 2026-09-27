@@ -1,9 +1,8 @@
 # MASTER Project Registry
 
-Canonical working registry for the active project portfolio. Updated 2026-09-25.
+Updated: 2026-09-27
 
 ## Rule
-
 This repository is the canonical BCO application source. Do not continue work in legacy/duplicate app repositories or old Vercel projects unless explicitly needed for recovery.
 
 ## Active portfolio
@@ -12,51 +11,62 @@ This repository is the canonical BCO application source. Do not continue work in
 - GitHub: https://github.com/lickovci-cpu/Business-Control-ONE-17-MAX-
 - Vercel project: https://vercel.com/wemone-5402s-projects/business-control-one
 - Production: https://business-control-one.vercel.app
-- Current production deployment: dpl_UkUjTEX3sByyMU9EfP45e77XCPqf
-- Current production commit: af7977045bbdbbedabf2e1d01eb29fa7b99d087e
+- Current production deployment: dpl_4MV4vymTeBf82Qxx4JeqBvYR1a2U
+- Current production commit: 81e7b2264c2c33e051f6b6151759d98936539f7e
 - Supabase: https://supabase.com/dashboard/project/vjzzvopwecmwuccdidzq
-- Status: VERIFIED production deployment; runtime error scan clean for the last 2h; automation endpoint GET compatibility and scheduler-slot lock are deployed.
-- Automation: scheduler compatibility fix merged; actual autonomous run history still NOT VERIFIED because automation_runs=0 and ai_runs=0 at last audit.
+- State: HTTP 200 and no runtime errors in the last 24h at audit.
+- Important: /api/automation-tick is receiving cron calls but returning HTTP 409 every 5 minutes; actual automation run history remains unverified.
 
 ### NŘŠM
 - GitHub: https://github.com/lickovci-cpu/nrsm-streetwear-current
 - Vercel project: https://vercel.com/wemone-5402s-projects/nrsm-streetwear
 - Production: https://nrsm-streetwear.vercel.app
-- Current production deployment: dpl_66yYoEuRL81isXSYgHL4pniubiDS
-- Current production commit: c630ff2662fb4a45767ed0ad549a91006e1bab7a
-- Status: VERIFIED deployment and public page. No runtime errors in last 24h.
-- Catalog: 32 active products in Supabase and web catalog aligned at last audit.
+- Current production deployment: dpl_7c4nGbZLMWRrV1eqr5HQ68CCrRcf
+- Current production commit: 84ef55c0495951bbee6e21960262d2a4721528f4
+- State: HTTP 200 and no runtime errors in the last 24h at audit.
+- Catalog: 32 active products in Supabase at audit.
+- Social: Metricool connected to Facebook, Instagram and TikTok.
 - Remaining blocker: payments / fulfillment / legal / final commerce flow verification.
 
 ### MazliPrint
 - Vercel project: https://vercel.com/wemone-5402s-projects/mazliprint-final
 - Production: https://mazliprint-final.vercel.app
 - Current production deployment: dpl_CVjRqK2a6tLL6cNRrbMjVN5h6Lbm
-- Status: VERIFIED public landing page and production deployment.
-- Source repo: NOT VERIFIED. Current Vercel deployment metadata does not expose a GitHub repository/commit.
-- Current funnel: photo -> style -> preview promise -> WhatsApp handoff.
-- Remaining blocker: canonical source code, real upload/preview workflow, fulfillment, payment, legal, end-to-end order flow.
+- State: HTTP 200 and no runtime errors in the last 24h at audit.
+- Source repo: NOT VERIFIED.
+- Funnel: photo → style → preview promise → WhatsApp handoff.
+- Remaining blocker: canonical source, real upload/preview, fulfillment, payment, legal, end-to-end order flow.
 
 ### FVE / Jihočeské střechy a FVE
 - BCO organization: fve
-- Public website: NOT VERIFIED
-- BCO CRM / agents / automation: EXISTS
-- Priority: lead acquisition and service funnel, then connect into BCO.
+- Public website: NOT VERIFIED.
+- BCO CRM / agents / automation: EXISTS.
+- Priority: lead acquisition and subcontracting pipeline.
 
-## Known legacy/duplicate projects
+## Legacy / duplicate Vercel projects
 
-Do not use as the primary source:
+Do not use as primary source:
+- n-m-100
+- mockup-sandbox
 - merch-generator
-- N-M-
-- N-M-100-
-- nrsm-store
-- nrsm-store-final
-- NRSM-Streetwear
-- NRSM-Streetwear-Store
-- NRSMREPLITUPLOADFIXEDzip
-- old BCO Vercel projects such as business-control-app-suite, business-control-app-suite-path-test, business-control-cloud, bcc-pathprobe
-- mockup-sandbox is disposable preview infrastructure, not the source of truth
+- merch-generator1
+- nrsmreplituploadfixe-dzip
+- business-control-app-suite
+- business-control-app-suite-path-test
+- business-control-cloud
+- bcc-pathprobe
+- leonardo
+- leonardo-mcp
+- dropstate-store
 
-## Operating rule
+The Vercel account currently contains 15 projects. The three production business surfaces above are the canonical active ones.
 
-All future work should start from this registry and verify the current GitHub/Vercel/Supabase state before changing code or data.
+## Canonical operating sources
+
+- Business state: Supabase project vjzzvopwecmwuccdidzq.
+- Application/docs: GitHub repository above.
+- Runtime: Vercel production.
+- NŘŠM social distribution: Metricool brand 7108893.
+- Business email: Outlook linked accounts.
+- Remote service acquisition: Upwork.
+- Hermes: local Windows installation, managed separately from the cloud application.
