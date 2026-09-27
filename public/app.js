@@ -150,7 +150,9 @@ function activateTab(id){
   $('.section').forEach(x=>x.classList.toggle('active',x.id===id));
   renderNavSubnav(id);
   if(id==='media')renderMedia();if(id==='content'||id==='inbox'||id==='reels')loadMetaStatus();if(id==='reels'){renderReelPlan();loadRecentReels();renderReelComposer();}if(id==='sales')renderSales();if(id==='jobs')renderJobs();if(id==='analytics')loadAnalytics();if(id==='comms'){loadCommStatus();loadOutbox();}if(id==='settings'){renderSettings();health();renderPwaState();}
-  $('.mobile-route').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));
+  const mobileGroup=navGroupForTab(id);
+  $('.mobile-route[data-tab]').forEach(x=>x.classList.toggle('active',x.dataset.tab===mobileGroup.defaultTab));
+  $('#mobileMore')?.classList.toggle('active',!['today','money','sales','content'].includes(mobileGroup.key));
 }
 function applyWorkspace(){const w=projects[state.project];document.body.dataset.workspace=w.theme||state.project;$('#workspaceName').textContent=w.name;$('#workspaceLabel').textContent=w.label||'WORKSPACE';$('#workspaceSignature').textContent=w.signature||w.name;$('#cmd').placeholder=`Např. vyber dnešní priority pro ${w.name}, připrav follow-up a návrh obsahu.`;document.title=`${w.name} · Business Control ONE`;}
 function initProjects(){const s=$('#project');s.innerHTML='';Object.entries(projects).forEach(([k,v])=>s.add(new Option(v.name,k)));s.value=state.project;s.onchange=()=>switchProject(s.value);const a=$('#aiProvider'),b=$('#aiProviderSettings');a.value=b.value=state.aiProvider;a.onchange=()=>setAiProvider(a.value);b.onchange=()=>setAiProvider(b.value);applyWorkspace();renderProjects();}
