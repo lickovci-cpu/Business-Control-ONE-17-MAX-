@@ -110,7 +110,7 @@ function localAi(task,prompt='',context={},images=[],project=state.project){
   if(task==='select')return result((context.catalog||[]).slice(0,10).map(x=>x.id).filter(Boolean));
   throw new Error('Lokální engine tento typ úlohy bez serverové AI nepodporuje.');
 }
-async function ai(task,prompt='',context={},images=[],project=state.project){try{return await api('/api/ai?project='+encodeURIComponent(project),{method:'POST',body:JSON.stringify({task,prompt,context,images,provider:state.aiProvider,project})});}catch(e){if(e.code==='SERVER_SESSION_REQUIRED')return localAi(task,prompt,context,images,project);throw e;}}
+async async function ai(task,prompt='',context={},images=[],project=state.project){try{return await api('/api/ai?project='+encodeURIComponent(project),{method:'POST',body:JSON.stringify({task,prompt,context,images,provider:state.aiProvider,project})});}catch(e){const fallbackStatuses=new Set([401,408,429,500,502,503,504]);const canFallback=e?.code==='SERVER_SESSION_REQUIRED'||fallbackStatuses.has(Number(e?.status));if(canFallback)return localAi(task,prompt,context,images,project);throw e;}}
 function showAuth(){const g=$('#authGate');g.classList.remove('hidden');}
 function hideAuth(){$('#authGate').classList.add('hidden');}
 async function sessionCheck(){
