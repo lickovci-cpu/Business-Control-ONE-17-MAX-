@@ -14,9 +14,10 @@ async function previewResponse(payload,action,req,agent='user'){const task=await
 async function requireMeta(project){return resolveMeta(project);}
 async function publishInstagramReel(m,payload){if(!m.igId){const e=new Error('INSTAGRAM_NOT_CONFIGURED');e.status=409;throw e;}const created=await graph(`${m.igId}/media`,{media_type:'REELS',video_url:payload.videoUrl,caption:payload.caption||undefined,share_to_feed:payload.shareToFeed?'true':'false'},'POST',m.token);const creationId=String(created.id||'');if(!creationId)throw new Error('REEL_CONTAINER_MISSING');let last='IN_PROGRESS';for(let i=0;i<18;i++){await sleep(i<2?1400:2200);const s=await graph(`${creationId}`,{fields:'status_code,status'},'GET',m.token);last=String(s.status_code||s.status||'').toUpperCase();if(last==='FINISHED'){const out=await graph(`${m.igId}/media_publish`,{creation_id:creationId},'POST',m.token);return {id:out.id||null,creationId,status:'PUBLISHED'};}if(['ERROR','EXPIRED'].includes(last)){const e=new Error(`REEL_PROCESSING_${last}`);e.status=409;throw e;}}return {creationId,status:last||'IN_PROGRESS',pending:true};}
 export default async function handler(req,res){
-  if(!auth(req))return noauth(res);
+  const gateProject=projectKey(req.query.project||'jihoceske');
+  if(!(await authOrCloud(req,gateProject)))return noauth(res);
   try{
-    const a=String(req.query.action||'status'),project=projectKey(req.query.project||'jihoceske');
+    const a=String(req.query.action||'status'),project=projectKey(req.query.project||gateProject);
     if(a==='reauth-info')return res.json({project,required:true,graphVersion:process.env.META_GRAPH_VERSION||'v24.0',message:'Meta token je neplatný nebo expirovaný. Pro obnovení je potřeba nový User Access Token s oprávněními pro stránku a Instagram publikování.'});
     if(a==='status'){const m=await resolveMeta(project,{allowInvalid:true});return res.json({project,configured:m.configured,valid:m.valid,state:m.state,recovered:m.recovered,pageId:m.pageId||'',pageName:m.pageName||'',igConfigured:!!m.igId,adsConfigured:!!m.adAccountId,error:m.error||null});}
     if(a==='posts'){const m=await requireMeta(project);return res.json(await graph(`${m.pageId}/posts`,{fields:'id,message,created_time,permalink_url,full_picture,comments.limit(0).summary(true),reactions.limit(0).summary(true)',limit:25},'GET',m.token));}
