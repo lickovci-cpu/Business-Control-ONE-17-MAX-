@@ -17,6 +17,7 @@
       if(q){e.preventDefault();const r=q.dataset.route;route(r==='plan'?'today':r);return;}
       const id=target.id;
       if(id==='navMore'){e.preventDefault();document.querySelector('#tabs')?.classList.toggle('show-more');return;}
+      if(id==='mobileMore'){e.preventDefault();const sub=document.querySelector('#navSubnav');if(sub)sub.classList.toggle('show-mobile');return;}
       if(id==='runCmd'||id==='dailyBrief'){
         e.preventDefault();
         const out=document.querySelector('#aiOut');

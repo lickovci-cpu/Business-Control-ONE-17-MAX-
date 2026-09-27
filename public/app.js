@@ -2,7 +2,46 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=v=>new Intl.NumberFormat('cs-CZ',{style:'currency',currency:'CZK',maximumFractionDigits:0}).format(Number(v)||0);
 const APP_VERSION='17-max';
-const tabs=[['today','Dnes'],['money','💰 Peníze'],['control','Řídicí místnost'],['worker','Content Worker'],['content','Obsah'],['reels','Reels'],['media','Fotky'],['comms','Komunikace'],['inbox','Inbox'],['crm','CRM'],['sales','Prodej'],['jobs','Zakázky'],['analytics','Analytika'],['shop','E-shopy'],['settings','Nastavení'],['autopilot','Autopilot']];
+const tabs=[['today','Dnes'],['money','💰 Peníze'],['control','Řídicí místnost'],['worker','Content Worker'],['content','Obsah'],['reels','Reels'],['media','Fotky'],['comms','Komunikace'],['inbox','Inbox'],['crm','CRM'],['sales','Prodej'],['jobs','Zakázky'],['distribution','Distribuce'],['analytics','Analytika'],['shop','E-shopy'],['settings','Nastavení'],['autopilot','Autopilot']];
+const navGroups=[
+  {key:'today',label:'Dnes',icon:'⌂',defaultTab:'today',items:[['today','Přehled']]},
+  {key:'money',label:'Peníze',icon:'€',defaultTab:'money',items:[['money','Cash sprint']]},
+  {key:'sales',label:'Obchod',icon:'◎',defaultTab:'crm',items:[['crm','CRM'],['sales','Prodej'],['jobs','Zakázky']]},
+  {key:'content',label:'Obsah',icon:'◇',defaultTab:'content',items:[['content','Editor'],['reels','Reels'],['media','Fotky'],['worker','Content Worker']]},
+  {key:'comms',label:'Komunikace',icon:'✉',defaultTab:'comms',items:[['comms','Centrum'],['inbox','Inbox']]},
+  {key:'control',label:'Řízení',icon:'⌁',defaultTab:'control',items:[['control','Řídicí místnost'],['autopilot','Autopilot'],['analytics','Analytika'],['distribution','Distribuce']]},
+  {key:'shop',label:'E-shop',icon:'□',defaultTab:'shop',items:[['shop','E-shop']]},
+  {key:'settings',label:'Systém',icon:'⚙',defaultTab:'settings',items:[['settings','Nastavení']]}
+];
+const navTabMap=new Map(navGroups.flatMap(g=>g.items.map(([id])=>[id,g])));
+function navGroupForTab(id){return navTabMap.get(id)||navGroups[0];}
+const SCREEN_AUDIT=Object.freeze({
+  today:{status:'✅ FUNGUJE',actions:['✅ Rychlé přechody','🟡 Vyřešit zadání — lokální fallback / serverová AI podle připojení','🟡 AI denní plán','✅ TEĎ UDĚLEJ']},
+  money:{status:'🟡 PARTIAL',actions:['🟡 Přepočítat cash plán — živá data vyžadují autorizovaný cloud/backend']},
+  control:{status:'✅ FUNGUJE',actions:['✅ Přepočítat stav — lokální data','🟡 AI denní brief — závisí na AI režimu']},
+  worker:{status:'🟡 PARTIAL',actions:['🟡 Spustit pracovníka — AI','✅ Obnovit stav','✅ Exportovat balíček']},
+  content:{status:'🟡 PARTIAL',actions:['✅ Kontrola Meta stavu','✅ Kopírovat diagnostiku','🟡 Naplánovat / Publikovat — Meta + approval','✅ Rychlý obsah lokálně','🟡 Kampaň / 7denní plán — AI']},
+  reels:{status:'🟡 PARTIAL',actions:['✅ Náhled / storyboard / export lokálně','🟡 AI vytvořit Reel / AI výběr','🟡 Poslední Reels — Meta připojení','🟡 Publikovat Reel — Meta + approval']},
+  media:{status:'✅ FUNGUJE',actions:['✅ Vybrat složku / fotky','✅ TOP 10 lokálně','🟡 AI analyzovat','🟡 AI najít']},
+  comms:{status:'🟡 PARTIAL',actions:['✅ AI zpráva s lokálním fallbackem','🟡 Naplánovat — KV + approval','🟡 Odeslat — poskytovatel + approval','🟡 Fronta — backend storage']},
+  inbox:{status:'🔌 NOT CONNECTED',actions:['🟡 Načíst komentáře — Meta připojení','✅ Převod načteného komentáře do lokálního CRM']},
+  crm:{status:'🟡 PARTIAL',actions:['✅ Lokální lead CRUD','✅ Posun pipeline','✅ Editace / follow-up','🟡 Živé CRM API — cloud/backend připojení','🟡 AI priority']},
+  sales:{status:'✅ FUNGUJE',actions:['✅ Přepočet / cíle / export','✅ Připravit komunikaci / nabídku z leadu','🟡 Deal Coach / AI rozsah','✅ Uložení nabídky lokálně']},
+  jobs:{status:'✅ FUNGUJE',actions:['✅ Vytvořit zakázku + checklist lokálně','✅ Načíst lead','✅ Stav / platba / export','🟡 Živá komerční DB synchronizace']},
+  distribution:{status:'🟡 PARTIAL',actions:['✅ Přehled distribučních kanálů','🟡 Živé stavy integrací','✅ Odkazy na veřejné projekty','🔌 Publikace mimo připojené služby']},
+  analytics:{status:'🟡 PARTIAL',actions:['🟡 Obnovit — Meta data vyžadují připojení','✅ Lokální učení z načtených dat','⚪ Bez dat, pokud není připojený zdroj']},
+  shop:{status:'✅ FUNGUJE',actions:['✅ Přidat / upravit lokální produktový záznam','🟡 Audit nabídky přes AI','⚪ NO DATA, dokud nejsou zadány produkty']},
+  autopilot:{status:'🟡 PARTIAL',actions:['✅ Lokální priorizační fronta','🟡 Automatický tick — vyžaduje CRON_SECRET a backend konfiguraci','✅ Otevření navazujícího workflow']},
+  settings:{status:'🟡 PARTIAL',actions:['✅ Záloha / recovery / PWA pomocné akce','🟡 Cloud sync — účet + organizace','🟡 Serverová diagnostika — chráněná endpointem','🔌 Meta / externí účty podle připojení']}
+});
+function renderScreenAudit(){
+  const box=$('#screenAudit');if(!box)return;
+  box.innerHTML=Object.entries(SCREEN_AUDIT).map(([id,x])=>{
+    const group=navGroupForTab(id);
+    return '<div class="audit-row"><div class="audit-main"><strong>'+esc(group.label+' · '+(tabs.find(t=>t[0]===id)?.[1]||id))+'</strong><span class="pill '+(x.status.startsWith('✅')?'ok':x.status.startsWith('🔴')?'bad':x.status.startsWith('🔌')?'warn':'subtle')+'">'+esc(x.status)+'</span></div><div class="audit-actions">'+x.actions.map(a=>'<span class="audit-action">'+esc(a)+'</span>').join('')+'</div><button class="btn small audit-open" data-tab="'+esc(id)+'">Otevřít</button></div>';
+  }).join('');
+  $('.audit-open').forEach(b=>b.onclick=()=>activateTab(b.dataset.tab));
+}
 const projects={
   jihoceske:{name:'STŘECHY / FVE',label:'TECHNICAL FIELD UNIT',theme:'fve',signature:'FIELD / SOLAR',context:'FVE subdodávky a servis: montáž konstrukcí a panelů, DC kabeláž/stringy/konektory/Tigo, dílčí montážní práce, demontáž a zpětná montáž, úpravy stávajících FVE, mytí panelů, ochranné sítě proti ptactvu a carporty. Primárně Jižní Čechy, větší zakázky po ČR. Bez vymyšlených certifikací, počtů realizací, cen nebo referencí. Elektro zapojení a revize pouze jako spolupráce s elektrikářem a revizním technikem, nikdy jako vlastní oprávnění. Bezpečně lze uvádět praktickou zkušenost z montáží, malé střechy a instalace přibližně 145 a 195 panelů.'},
   merch:{name:'NŘŠM',label:'UNDERGROUND COMMAND CENTER',theme:'nrsm',signature:'NŘŠM // 174 UNIT',context:'Originální streetwear inspirovaný DnB, neurofunkem, technem, psytrance, rave a graffiti kulturou. Výrazně a underground, ne genericky AI. Produkty, dropy a čísla se zobrazují jen z uložených dat.'},
@@ -52,7 +91,7 @@ function toast(text,type=''){const old=$('.toast');if(old)old.remove();const d=d
 function parseJSONish(t){try{return JSON.parse(t)}catch{const m=String(t).match(/```(?:json)?\s*([\s\S]*?)```/i);if(m)try{return JSON.parse(m[1])}catch{}return null;}}
 function safeLeads(k=state.project){return pd(k).leads.slice(0,30).map(x=>({id:x.id,name:x.name,note:x.note,source:x.source,stage:x.stage,value:x.value,followUp:x.followUp,createdAt:x.createdAt}));}
 function ctx(k=state.project,extra={}){return {project:{key:k,...projects[k]},projectKey:k,leads:safeLeads(k),products:pd(k).products.slice(0,30).map(x=>({name:x.name,price:x.price,cost:x.cost,status:x.status,url:x.url})),learning:pd(k).learning.slice(0,20),...extra};}
-async function api(url,opt={}){let r;try{const headers={...(opt.body instanceof Blob?{}:{'content-type':'application/json'}),...(opt.headers||{})};if(sbSession?.access_token)headers.Authorization='Bearer '+sbSession.access_token;r=await fetch(url,{credentials:'same-origin',signal:opt.signal||AbortSignal.timeout(70000),...opt,headers});}catch(e){throw new Error(e.name==='TimeoutError'?'Server neodpověděl včas. Zkus akci znovu.':'Síťové spojení se přerušilo.');}const j=await r.json().catch(()=>({}));if(r.status===401&&String(j.error||'')==='AUTH_REQUIRED'){throw Object.assign(new Error('SERVER_SESSION_REQUIRED'),{status:401,code:'SERVER_SESSION_REQUIRED'});}if(!r.ok){const e=new Error(j.error||r.statusText);e.status=r.status;e.code=j.code;e.subcode=j.subcode;throw e;}return j;}
+async function api(url,opt={}){let r;try{const headers={...(opt.body instanceof Blob?{}:{'content-type':'application/json'}),...(opt.headers||{})};if(sbSession?.access_token)headers.Authorization='Bearer '+sbSession.access_token;r=await fetch(url,{credentials:'same-origin',signal:opt.signal||AbortSignal.timeout(70000),...opt,headers});}catch(e){throw new Error(e.name==='TimeoutError'?'Server neodpověděl včas. Zkus akci znovu.':'Síťové spojení se přerušilo.');}const j=await r.json().catch(()=>({}));if(r.status===401&&String(j.error||'')==='AUTH_REQUIRED'){throw Object.assign(new Error('NOT CONNECTED · Přihlas Cloud účet nebo panel. Lokální funkce zůstávají dostupné.'),{status:401,code:'SERVER_SESSION_REQUIRED'});}if(!r.ok){const e=new Error(j.error||r.statusText);e.status=r.status;e.code=j.code;e.subcode=j.subcode;throw e;}return j;}
 function localAi(task,prompt='',context={},images=[],project=state.project){
   const name=projects[project]?.name||project, top=priorityLeads(project).slice(0,5), next=executionQueue(project).slice(0,5).map(x=>({title:x.title,detail:x.detail}));
   const result=parsed=>({text:JSON.stringify(parsed),parsed,provider:'BCO Local Engine',model:'local-rules',project,fallbackUsed:true,attemptedProviders:['local'],structuredExpected:true,structuredValid:true});
@@ -86,21 +125,34 @@ async function sessionCheck(){
 }
 async function loginPanel(password){const r=await fetch('/api/session',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({password})}),j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===429){const sec=Number(j.retryAfterSeconds||r.headers.get('retry-after')||180);throw new Error(`Příliš mnoho pokusů. Zkus to za ${Math.max(1,Math.ceil(sec/60))} min.`);}if(r.status===401&&Number.isFinite(Number(j.remainingAttempts)))throw new Error(`Neplatné heslo · zbývá ${j.remainingAttempts} pokusů.`);throw new Error(j.error||'Přihlášení selhalo.');}hideAuth();setTimeout(()=>health(),0);return true;}
 async function logoutPanel(){await fetch('/api/session',{method:'DELETE',credentials:'same-origin'});showAuth();}
-const secondaryTabs=new Set(['worker','reels','media','comms','inbox','jobs','analytics','shop','settings','autopilot']);
 function initTabs(){
   const t=$('#tabs');t.innerHTML='';
-  const label=document.createElement('span');label.className='nav-label';label.textContent='COMMAND';t.appendChild(label);
-  tabs.forEach(([id,n])=>{const b=document.createElement('button');b.textContent=n;b.dataset.tab=id;if(secondaryTabs.has(id))b.classList.add('nav-secondary');b.onclick=()=>activateTab(id);t.appendChild(b);});
-  const more=document.createElement('button');more.id='navMore';more.className='nav-more';more.textContent='☰ Více';more.setAttribute('aria-expanded','false');
-  more.onclick=()=>{const on=t.classList.toggle('show-more');more.setAttribute('aria-expanded',String(on));more.textContent=on?'× Skrýt':'☰ Více';};
-  t.appendChild(more);activateTab('today');
+  const primary=document.createElement('div');primary.className='nav-primary-row';
+  navGroups.forEach(g=>{
+    const b=document.createElement('button');b.className='nav-primary';b.dataset.tab=g.defaultTab;b.dataset.navGroup=g.key;b.innerHTML='<span class="nav-icon">'+esc(g.icon)+'</span><span>'+esc(g.label)+'</span>';b.onclick=()=>activateTab(g.defaultTab);primary.appendChild(b);
+  });
+  const sub=document.createElement('div');sub.id='navSubnav';sub.className='nav-subnav';t.append(primary,sub);
+  renderNavSubnav('today');
+  activateTab('today');
+}
+function renderNavSubnav(id){
+  const sub=$('#navSubnav');if(!sub)return;
+  const g=navGroupForTab(id);
+  sub.innerHTML=g.items.length>1?g.items.map(([tab,label])=>'<button class="nav-sub" data-tab="'+esc(tab)+'">'+esc(label)+'</button>').join(''):'<span class="nav-current">'+esc(g.items[0]?.[1]||g.label)+'</span>';
+  $('.nav-sub').forEach(b=>b.onclick=()=>activateTab(b.dataset.tab));
+  $('.nav-primary').forEach(b=>b.classList.toggle('active',b.dataset.navGroup===g.key));
+  $('.nav-sub').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));
 }
 function activateTab(id){
+  const g=navGroupForTab(id);
   if(id==='control')renderControlRoom();if(id==='money')loadMoneySprint(false);if(id==='autopilot')renderAutopilot();
-  $('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));$('.section').forEach(x=>x.classList.toggle('active',x.id===id));
-  if(secondaryTabs.has(id))$('#tabs')?.classList.add('show-more');
+  $('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));
+  $('.section').forEach(x=>x.classList.toggle('active',x.id===id));
+  renderNavSubnav(id);
   if(id==='media')renderMedia();if(id==='content'||id==='inbox'||id==='reels')loadMetaStatus();if(id==='reels'){renderReelPlan();loadRecentReels();renderReelComposer();}if(id==='sales')renderSales();if(id==='jobs')renderJobs();if(id==='analytics')loadAnalytics();if(id==='comms'){loadCommStatus();loadOutbox();}if(id==='settings'){renderSettings();health();renderPwaState();}
-  $('.mobile-route').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));
+  const mobileGroup=navGroupForTab(id);
+  $('.mobile-route[data-tab]').forEach(x=>x.classList.toggle('active',x.dataset.tab===mobileGroup.defaultTab));
+  $('#mobileMore')?.classList.toggle('active',!['today','money','sales','content'].includes(mobileGroup.key));
 }
 function applyWorkspace(){const w=projects[state.project];document.body.dataset.workspace=w.theme||state.project;$('#workspaceName').textContent=w.name;$('#workspaceLabel').textContent=w.label||'WORKSPACE';$('#workspaceSignature').textContent=w.signature||w.name;$('#cmd').placeholder=`Např. vyber dnešní priority pro ${w.name}, připrav follow-up a návrh obsahu.`;document.title=`${w.name} · Business Control ONE`;}
 function initProjects(){const s=$('#project');s.innerHTML='';Object.entries(projects).forEach(([k,v])=>s.add(new Option(v.name,k)));s.value=state.project;s.onchange=()=>switchProject(s.value);const a=$('#aiProvider'),b=$('#aiProviderSettings');a.value=b.value=state.aiProvider;a.onchange=()=>setAiProvider(a.value);b.onchange=()=>setAiProvider(b.value);applyWorkspace();renderProjects();}
@@ -178,7 +230,7 @@ function renderTodayFocus(){const e=$('#todayFocus');if(!e)return;const rows=pri
 function renderPortfolio(){const e=$('#portfolioSummary');if(!e)return;const today=dayKey();e.innerHTML=Object.entries(projects).map(([k,v])=>{const p=pd(k),active=p.leads.filter(x=>Number(x.stage)<4),value=active.reduce((a,x)=>a+(Number(x.value)||0),0),due=active.filter(x=>x.followUp===today).length,over=active.filter(x=>x.followUp&&x.followUp<today).length,top=priorityLeads(k)[0];return '<button class="portfolio-card '+(k===state.project?'active':'')+'" data-project="'+k+'"><strong>'+esc(v.name)+'</strong><span>'+active.length+' aktivních · '+money(value)+'</span><span class="muted">'+(over?over+' po termínu · ':'')+(due?due+' dnes · ':'')+(top?'top '+esc(top.name)+' ('+top._score+')':'bez aktivních leadů')+'</span></button>';}).join('');$$('.portfolio-card').forEach(b=>b.onclick=()=>{$('#project').value=b.dataset.project;switchProject(b.dataset.project);});}
 async function dailyBrief(){const runProject=state.project,out=$('#aiOut'),top=priorityLeads(runProject).slice(0,10).map(x=>({name:x.name,stage:stages[Number(x.stage)||0],value:x.value,followUp:x.followUp,score:x._score,source:x.source,note:x.note}));out.textContent='AI připravuje denní plán…';try{const j=await ai('command','Vytvoř krátký obchodní plán na dnešek. Seřaď maximálně 5 konkrétních úkolů podle dopadu na tržby a naléhavosti. U každého napiš další krok. Neztrácej čas obecnými radami.',ctx(runProject,{today:dayKey(),priorityLeads:top}),[],runProject);if(state.project===runProject){out.textContent=`[${j.provider}]\n${j.text}`;recordActivity('ai','AI vytvořila denní plán',runProject);}}catch(e){if(state.project===runProject)out.textContent='Chyba: '+e.message;}}
 async function health(){
-  try{const h=await api('/api/health');$('#cloud').textContent='Cloud online';$('#cloud').className='pill ok';$('#health').innerHTML=`<div class=item><strong>Verze ${esc(h.version)}</strong>Session ${h.security?.sessionConfigured?'✓':'–'} · potvrzení ${h.security?.confirmationConfigured?'✓':'–'} · cron ${h.security?.cronSecretConfigured?'✓':'–'}</div><div class=item><strong>AI</strong>Gemini ${h.ai?.gemini?'✓':'–'} · OpenRouter ${h.ai?.openrouter?'✓':'–'} · Claude ${h.ai?.claude?'✓':'–'}<div class=muted>${esc(h.ai?.costMode||'free-first')} · placený fallback ${h.ai?.paidFallbacks?'ANO':'NE'}</div></div><div class=item><strong>Storage</strong>Supabase snapshots ✓ · KV ${h.kv?'✓':'–'} · Blob ${h.blob?'✓':'–'}</div>`;renderSecurityNotes(h);return h;}catch(e){$('#cloud').textContent='Cloud chyba';$('#cloud').className='pill bad';$('#health').textContent=e.message;return null;}}
+  try{const h=await api('/api/health');$('#cloud').textContent='Cloud online';$('#cloud').className='pill ok';$('#health').innerHTML=`<div class=item><strong>Verze ${esc(h.version)}</strong>Session ${h.security?.sessionConfigured?'✓':'–'} · potvrzení ${h.security?.confirmationConfigured?'✓':'–'} · cron ${h.security?.cronSecretConfigured?'✓':'–'}</div><div class=item><strong>AI</strong>Gemini ${h.ai?.gemini?'✓':'–'} · OpenRouter ${h.ai?.openrouter?'✓':'–'} · Claude ${h.ai?.claude?'✓':'–'}<div class=muted>${esc(h.ai?.costMode||'free-first')} · placený fallback ${h.ai?.paidFallbacks?'ANO':'NE'}</div></div><div class=item><strong>Storage</strong>Supabase snapshots ✓ · KV ${h.kv?'✓':'–'} · Blob ${h.blob?'✓':'–'}</div>`;renderSecurityNotes(h);return h;}catch(e){$('#cloud').textContent='Lokální režim';$('#cloud').className='pill subtle';$('#health').textContent=e?.code==='SERVER_SESSION_REQUIRED'?'Serverová diagnostika vyžaduje přihlášení. Lokální BCO zůstává dostupné.':('Diagnostika serveru: '+(e?.message||'nedostupné'));return null;}}
 function renderSecurityNotes(h={}){$('#securityNotes').innerHTML=[['Session','APP_PASSWORD se po přihlášení nedrží v localStorage; browser používá HttpOnly cookie.'],['Projektová izolace','Meta publikace, AI běhy, fotky, koncepty i fronta zpráv jsou svázané s aktivním projektem.'],['AI soukromí','Běžný AI kontext neobsahuje telefon ani e-mail leadu. Obrázky se odesílají jen při explicitní obrazové analýze.'],['Náklady',`Auto režim: ${h.ai?.costMode||'free-first'}. Placený Claude fallback: ${h.ai?.paidFallbacks?'povolen':'zakázán'}.`]].map(x=>`<div class=note><strong>${esc(x[0])}</strong><span class=muted>${esc(x[1])}</span></div>`).join('');}
 const REEL_TEMPLATES={
   proof:{label:'Proof of work',goal:'Ukázat skutečnou práci a důvěryhodnost',brief:'Začni výsledkem, pak 2–4 konkrétní detaily práce a zakonči jednoduchým CTA.'},
@@ -195,7 +247,13 @@ function truthGuard(text,project=state.project){const t=String(text||'').toLower
 function assertTruthBeforePublish(text){const risks=truthGuard(text);if(!risks.length)return true;return confirm('KONTROLA TVRZENÍ\n\n'+risks.map(x=>'• '+x).join('\n')+'\n\nText nejdřív zkontroluj. Přesto pokračovat?');}
 function downloadText(name,text,type='text/plain'){const blob=new Blob([text],{type}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1200);}
 function reelPlanScore(plan){if(!plan)return 0;let s=0;if(String(plan.hook||'').length>=8)s+=20;if((plan.shotList||[]).length>=4)s+=20;if((plan.shotList||[]).some(x=>x.onScreenText))s+=10;if((plan.shotList||[]).some(x=>x.voiceover))s+=10;if(String(plan.cta||'').length>=4)s+=15;if((plan.proofPoints||[]).length)s+=10;if((plan.captureList||[]).length===0)s+=10;if((plan.riskChecks||[]).length===0)s+=5;return Math.min(100,s);}
-async function loadMetaStatus(){try{const s=await api(`/api/meta?action=status&project=${encodeURIComponent(state.project)}`),ready=!!s.valid,label=s.state==='recovered'?'Meta: obnoveno':ready?'Meta: připraveno':s.state==='expired'?'Meta: token vypršel':s.configured?'Meta: chyba':'Meta: nenastaveno',kind=ready?'ok':s.state==='expired'?'bad':'warn';for(const id of ['metaProjectState','reelMetaState']){const e=$('#'+id);if(e){e.textContent=label;e.className='pill '+kind;}}renderMetaConnection(s);renderMetaCenter(s);return s;}catch(e){for(const id of ['metaProjectState','reelMetaState']){const x=$('#'+id);if(x){x.textContent='Meta: chyba';x.className='pill bad';}}return null;}}
+async function loadMetaStatus(){try{const s=await api(`/api/meta?action=status&project=${encodeURIComponent(state.project)}`),ready=!!s.valid,label=s.state==='recovered'?'Meta: obnoveno':ready?'Meta: připraveno':s.state==='expired'?'Meta: token vypršel':s.configured?'Meta: chyba':'Meta: nenastaveno',kind=ready?'ok':s.state==='expired'?'bad':'warn';for(const id of ['metaProjectState','reelMetaState']){const e=$('#'+id);if(e){e.textContent=label;e.className='pill '+kind;}}renderMetaConnection(s);renderMetaCenter(s);return s;}catch(e){
+  const notConnected=e?.code==='SERVER_SESSION_REQUIRED';
+  for(const id of ['metaProjectState','reelMetaState']){const x=$('#'+id);if(x){x.textContent=notConnected?'Meta: NOT CONNECTED':'Meta: chyba';x.className='pill '+(notConnected?'warn':'bad');}}
+  renderMetaConnection(notConnected?{valid:false,configured:false,state:'not_connected',error:'Cloud/Panel přihlášení není aktivní.'}:null);
+  renderMetaCenter(notConnected?{valid:false,configured:false,state:'not_connected'}:null);
+  return null;
+}}
 function renderMetaConnection(s){const boxes=['metaConnectionPanel','reelMetaPanel'];for(const id of boxes){const e=$('#'+id);if(!e)continue;if(s?.valid){e.className='meta-connection ok hidden';e.innerHTML='';continue;}e.className='meta-connection '+(s?.state==='expired'?'bad':'');const title='META CONNECTION BLOCKED',msg=s?.state==='expired'?'Důvod: uložený Meta token vypršel nebo byl odmítnut. Lokální CRM, fotky, koncepty a Reel storyboardy zůstávají dostupné. Akce: dokonči nové OAuth připojení v Meta Center; tato verze OAuth callback zatím neobsahuje.':s?.configured?'Důvod: Meta konfigurace je neplatná nebo neúplná. Publikování je zablokované, dokud nebude připojen platný účet.':'Důvod: pro tento workspace chybí Meta Page/Instagram konfigurace. Akce: nastav Meta App a bezpečný OAuth callback; ruční token není doporučený pracovní postup.';e.innerHTML=`<div><strong>${esc(title)}</strong><div class=muted>${esc(msg)}</div></div><div class=meta-actions><button class="btn small metaRetry">Zkontrolovat znovu</button></div>`;e.querySelector('.metaRetry')?.addEventListener('click',()=>loadMetaStatus());}}
 function renderMetaCenter(s){
   const text=$('#metaCenterText'),details=$('#metaCenterDetails');
@@ -444,7 +502,7 @@ function wire(){
   $('#metaCheckNow')?.addEventListener('click',()=>metaDiagnostic());
   $('.quick-route').forEach(b=>b.onclick=()=>{const r=b.dataset.route;if(r==='plan')return dailyBrief();activateTab(r||'today');});
   $('.mobile-route[data-tab]').forEach(b=>b.onclick=()=>{activateTab(b.dataset.tab);$('#tabs')?.classList.remove('show-more');});
-  $('#mobileMore')?.addEventListener('click',()=>{const nav=$('#tabs');if(!nav)return;const on=nav.classList.toggle('show-more');const more=$('#navMore');if(more){more.setAttribute('aria-expanded',String(on));more.textContent=on?'× Skrýt':'☰ Více';}if(on)window.scrollTo({top:0,behavior:'smooth'});});
+  $('#mobileMore')?.addEventListener('click',()=>{const sub=$('#navSubnav');if(!sub)return;const on=sub.classList.toggle('show-mobile');$('#mobileMore').setAttribute('aria-expanded',String(on));if(on)window.scrollTo({top:0,behavior:'smooth'});});
 
   $('#metaCopyDiag')?.addEventListener('click',async()=>{
     const s=await metaDiagnostic();
@@ -469,11 +527,12 @@ async function loadMoneySprint(force=false){
   };
   ['moneyProspects','moneyDrafts','moneyLeads','moneyOrders'].forEach(id=>{if(el(id))el(id).textContent='…';});
   try{
-    let res=await fetch('/api/merch-revenue',{method:force?'POST':'GET',credentials:'same-origin'});
+    const authHeaders=sbSession?.access_token?{Authorization:'Bearer '+sbSession.access_token}:{};
+    let res=await fetch('/api/merch-revenue',{method:force?'POST':'GET',credentials:'same-origin',headers:authHeaders});
     let data=await res.json().catch(()=>({}));
     if(!res.ok)throw new Error(data.error||'MONEY_ENDPOINT_FAILED');
     if(!data.plan){
-      res=await fetch('/api/merch-revenue',{method:'POST',credentials:'same-origin'});
+      res=await fetch('/api/merch-revenue',{method:'POST',credentials:'same-origin',headers:authHeaders});
       data=await res.json().catch(()=>({}));
       if(!res.ok)throw new Error(data.error||'MONEY_PLAN_FAILED');
     }
@@ -541,6 +600,7 @@ async function init(){
   safeRender('draft',loadDraft);
   safeRender('initial-render',renderAll);
   safeRender('worker',renderWorker);
+  safeRender('screen-audit',renderScreenAudit);
   safeRender('local-ui-ready',()=>setAutosaveState('Auto-save aktivní','ok'));
   window.__BCO_READY=true;
   window.__BCO_BOOT_PHASE='network-start';
