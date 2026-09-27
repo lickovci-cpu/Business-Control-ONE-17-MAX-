@@ -388,7 +388,7 @@ function renderControlRoom(){
 function wire(){
   $('#metaCheckNow')?.addEventListener('click',()=>metaDiagnostic());
   $('.quick-route').forEach(b=>b.onclick=()=>{const r=b.dataset.route;if(r==='plan')return dailyBrief();activateTab(r||'today');});
-  $('.mobile-route[data-tab]').forEach(b=>b.onclick=()=>activateTab(b.dataset.tab));
+  $('.mobile-route[data-tab]').forEach(b=>b.onclick=()=>{activateTab(b.dataset.tab);$('#tabs')?.classList.remove('show-more');});
   $('#mobileMore')?.addEventListener('click',()=>{const nav=$('#tabs');if(!nav)return;const on=nav.classList.toggle('show-more');const more=$('#navMore');if(more){more.setAttribute('aria-expanded',String(on));more.textContent=on?'× Skrýt':'☰ Více';}if(on)window.scrollTo({top:0,behavior:'smooth'});});
 
   $('#metaCopyDiag')?.addEventListener('click',async()=>{
