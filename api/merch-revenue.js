@@ -1,20 +1,28 @@
-import {auth,noauth,env,kvGet,kvSet,fetchJsonWithRetry,supabaseBaseUrl,supabaseServiceKey} from './_lib.js';
+import {auth,noauth,env,kvGet,kvSet,fetchJsonWithRetry,supabaseBaseUrl,supabaseServiceKey,supabasePublishableKey,supabaseBearerToken} from './_lib.js';
+import {cloudMember} from './_cloud-auth.js';
 
 const ORG='d2751286-da99-42c0-b8ac-6a2da8ecdabf';
 const SB_URL=supabaseBaseUrl();
 const PLAN_KEY='business-control:merch:revenue-plan-v2';
 
-function authorized(req){
+async function authorized(req,project='merch'){
   const secret=env('CRON_SECRET');
-  return auth(req) || (!!secret && req.headers.authorization==='Bearer '+secret);
+  if(auth(req)|| (!!secret && req.headers.authorization==='Bearer '+secret))return true;
+  return cloudMember(req,project);
 }
 function clean(v,max=1200){return String(v??'').trim().slice(0,max)}
-async function query(path,params={}){
-  const key=supabaseServiceKey();
-  if(!key)throw Object.assign(new Error('SUPABASE_SERVICE_ROLE_KEY_NOT_CONFIGURED'),{status:503});
+async function query(path,params={},req){
+  const service=supabaseServiceKey();
+  let key=service,authorization=service?'Bearer '+service:'';
+  if(!service){
+    const bearer=supabaseBearerToken(req);
+    key=supabasePublishableKey();
+    if(!bearer||!key)throw Object.assign(new Error('SUPABASE_SERVICE_ROLE_KEY_OR_CLOUD_LOGIN_REQUIRED'),{status:503});
+    authorization='Bearer '+bearer;
+  }
   const u=new URL(SB_URL+'/rest/v1/'+path);
   Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,String(v)));
-  return fetchJsonWithRetry(u,{headers:{apikey:key,Authorization:'Bearer '+key}},1);
+  return fetchJsonWithRetry(u,{headers:{apikey:key,Authorization:authorization}},1);
 }
 function counts(rows=[]){return rows.reduce((a,x)=>{const k=String(x.status||'unknown');a[k]=(a[k]||0)+1;return a;},{});}
 function sum(rows=[],field){return rows.reduce((n,x)=>n+(Number(x[field])||0),0);}
@@ -22,12 +30,12 @@ function isLikelyFveText(v){
   const t=String(v??'').toLowerCase();
   return /\bfve\b|fotovolta|montážn(?:í|e) dvoj|montáže fve|solar|solars|fotovoltaika/.test(t);
 }
-async function snapshot(){
+async function snapshot(req){
   const [leads,prospects,drafts,orders]=await Promise.all([
-    query('leads',{organization_id:'eq.'+ORG,select:'id,status,estimated_value,next_action_at,updated_at',order:'updated_at.desc',limit:250}),
-    query('merch_prospects',{organization_id:'eq.'+ORG,select:'id,company_name,domain,email,status,fit_score,next_action_at,created_at',order:'fit_score.desc,created_at.asc',limit:250}),
-    query('merch_outreach_drafts',{organization_id:'eq.'+ORG,select:'id,prospect_id,status,subject,created_at,sent_at',order:'created_at.desc',limit:250}),
-    query('merch_orders',{organization_id:'eq.'+ORG,select:'id,status,total,created_at',order:'created_at.desc',limit:250})
+    query('leads',{organization_id:'eq.'+ORG,select:'id,status,estimated_value,next_action_at,updated_at',order:'updated_at.desc',limit:250},req),
+    query('merch_prospects',{organization_id:'eq.'+ORG,select:'id,company_name,domain,email,status,fit_score,next_action_at,created_at',order:'fit_score.desc,created_at.asc',limit:250},req),
+    query('merch_outreach_drafts',{organization_id:'eq.'+ORG,select:'id,prospect_id,status,subject,created_at,sent_at',order:'created_at.desc',limit:250},req),
+    query('merch_orders',{organization_id:'eq.'+ORG,select:'id,status,total,created_at',order:'created_at.desc',limit:250},req)
   ]);
   const now=Date.now();
   const dueLead=(leads||[]).filter(x=>x.next_action_at&&new Date(x.next_action_at).getTime()<=now&&!['paid','closed','lost'].includes(x.status)).length;
@@ -90,14 +98,15 @@ async function plan(s){
 }
 
 export default async function handler(req,res){
-  if(!authorized(req))return noauth(res);
+  const project='merch';
+  if(!(await authorized(req,project)))return noauth(res);
   if(!['GET','POST'].includes(req.method))return res.status(405).json({error:'METHOD_NOT_ALLOWED'});
   try{
     if(req.method==='GET')return res.json({ok:true,plan:await kvGet(PLAN_KEY)});
     const previous=await kvGet(PLAN_KEY);
     const sameDay=previous?.generatedAt&&new Date(previous.generatedAt).toISOString().slice(0,10)===new Date().toISOString().slice(0,10);
     if(sameDay)return res.json({ok:true,cached:true,plan:previous});
-    const s=await snapshot();
+    const s=await snapshot(req);
     const next=await plan(s);
     await kvSet(PLAN_KEY,next);
     return res.json({ok:true,cached:false,plan:next});
