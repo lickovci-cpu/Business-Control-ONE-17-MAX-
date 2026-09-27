@@ -533,6 +533,31 @@ window.addEventListener('unhandledrejection',e=>{
   if(out && !window.__BCO_READY)out.textContent='BCO PROMISE CHYBA: '+String(e.reason?.message||e.reason||'neznámá chyba');
 });
 async function init(){
-if(!recoveryPoints().length)saveRecoveryPoint('Start 17 MAX');initTabs();initProjects();wire();loadDraft();renderAll();renderWorker();if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).then(r=>r.update().catch(()=>{})).catch(()=>{});const ok=await sessionCheck();if(ok)await health();if(sbSession)setTimeout(()=>cloudIdentity(),80);renderCloudState();renderPwaState();setTimeout(()=>maybeDueNotification(),1200);setAutosaveState('Auto-save aktivní','ok');window.__BCO_READY=true;}
+  window.__BCO_BOOT_PHASE='local-start';
+  try{if(!recoveryPoints().length)saveRecoveryPoint('Start 17 MAX');}catch(e){console.error('BCO_BOOT_RECOVERY',e);}
+  safeRender('tabs',initTabs);
+  safeRender('projects-init',initProjects);
+  safeRender('controls',wire);
+  safeRender('draft',loadDraft);
+  safeRender('initial-render',renderAll);
+  safeRender('worker',renderWorker);
+  safeRender('local-ui-ready',()=>setAutosaveState('Auto-save aktivní','ok'));
+  window.__BCO_READY=true;
+  window.__BCO_BOOT_PHASE='network-start';
+  if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).then(r=>r.update().catch(()=>{})).catch(e=>console.warn('BCO_SW_UPDATE',e));
+  try{
+    const ok=await sessionCheck();
+    if(ok)await health();
+  }catch(e){
+    console.error('BCO_NETWORK_INIT',e);
+    const cloud=$('#cloud');
+    if(cloud){cloud.textContent='Lokální režim · serverová kontrola selhala';cloud.className='pill subtle';}
+  }
+  try{if(sbSession)setTimeout(()=>cloudIdentity().catch(e=>console.warn('BCO_CLOUD_IDENTITY',e)),80);}catch{}
+  safeRender('cloud-state',renderCloudState);
+  safeRender('pwa-state',renderPwaState);
+  setTimeout(()=>maybeDueNotification(),1200);
+  window.__BCO_BOOT_PHASE='ready';
+}
 init().catch(e=>{window.__BCO_READY=false;const out=document.querySelector('#aiOut');if(out)out.textContent='BCO START CHYBA: '+String(e?.message||e);});
 
