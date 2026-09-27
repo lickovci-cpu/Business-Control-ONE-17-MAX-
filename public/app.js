@@ -2,7 +2,46 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=v=>new Intl.NumberFormat('cs-CZ',{style:'currency',currency:'CZK',maximumFractionDigits:0}).format(Number(v)||0);
 const APP_VERSION='17-max';
-const tabs=[['today','Dnes'],['money','💰 Peníze'],['control','Řídicí místnost'],['worker','Content Worker'],['content','Obsah'],['reels','Reels'],['media','Fotky'],['comms','Komunikace'],['inbox','Inbox'],['crm','CRM'],['sales','Prodej'],['jobs','Zakázky'],['analytics','Analytika'],['shop','E-shopy'],['settings','Nastavení'],['autopilot','Autopilot']];
+const tabs=[['today','Dnes'],['money','💰 Peníze'],['control','Řídicí místnost'],['worker','Content Worker'],['content','Obsah'],['reels','Reels'],['media','Fotky'],['comms','Komunikace'],['inbox','Inbox'],['crm','CRM'],['sales','Prodej'],['jobs','Zakázky'],['distribution','Distribuce'],['analytics','Analytika'],['shop','E-shopy'],['settings','Nastavení'],['autopilot','Autopilot']];
+const navGroups=[
+  {key:'today',label:'Dnes',icon:'⌂',defaultTab:'today',items:[['today','Přehled']]},
+  {key:'money',label:'Peníze',icon:'€',defaultTab:'money',items:[['money','Cash sprint']]},
+  {key:'sales',label:'Obchod',icon:'◎',defaultTab:'crm',items:[['crm','CRM'],['sales','Prodej'],['jobs','Zakázky']]},
+  {key:'content',label:'Obsah',icon:'◇',defaultTab:'content',items:[['content','Editor'],['reels','Reels'],['media','Fotky'],['worker','Content Worker']]},
+  {key:'comms',label:'Komunikace',icon:'✉',defaultTab:'comms',items:[['comms','Centrum'],['inbox','Inbox']]},
+  {key:'control',label:'Řízení',icon:'⌁',defaultTab:'control',items:[['control','Řídicí místnost'],['autopilot','Autopilot'],['analytics','Analytika'],['distribution','Distribuce']]},
+  {key:'shop',label:'E-shop',icon:'□',defaultTab:'shop',items:[['shop','E-shop']]},
+  {key:'settings',label:'Systém',icon:'⚙',defaultTab:'settings',items:[['settings','Nastavení']]}
+];
+const navTabMap=new Map(navGroups.flatMap(g=>g.items.map(([id])=>[id,g])));
+function navGroupForTab(id){return navTabMap.get(id)||navGroups[0];}
+const SCREEN_AUDIT=Object.freeze({
+  today:{status:'✅ FUNGUJE',actions:['✅ Rychlé přechody','🟡 Vyřešit zadání — lokální fallback / serverová AI podle připojení','🟡 AI denní plán','✅ TEĎ UDĚLEJ']},
+  money:{status:'🟡 PARTIAL',actions:['🟡 Přepočítat cash plán — živá data vyžadují autorizovaný cloud/backend']},
+  control:{status:'✅ FUNGUJE',actions:['✅ Přepočítat stav — lokální data','🟡 AI denní brief — závisí na AI režimu']},
+  worker:{status:'🟡 PARTIAL',actions:['🟡 Spustit pracovníka — AI','✅ Obnovit stav','✅ Exportovat balíček']},
+  content:{status:'🟡 PARTIAL',actions:['✅ Kontrola Meta stavu','✅ Kopírovat diagnostiku','🟡 Naplánovat / Publikovat — Meta + approval','✅ Rychlý obsah lokálně','🟡 Kampaň / 7denní plán — AI']},
+  reels:{status:'🟡 PARTIAL',actions:['✅ Náhled / storyboard / export lokálně','🟡 AI vytvořit Reel / AI výběr','🟡 Poslední Reels — Meta připojení','🟡 Publikovat Reel — Meta + approval']},
+  media:{status:'✅ FUNGUJE',actions:['✅ Vybrat složku / fotky','✅ TOP 10 lokálně','🟡 AI analyzovat','🟡 AI najít']},
+  comms:{status:'🟡 PARTIAL',actions:['✅ AI zpráva s lokálním fallbackem','🟡 Naplánovat — KV + approval','🟡 Odeslat — poskytovatel + approval','🟡 Fronta — backend storage']},
+  inbox:{status:'🔌 NOT CONNECTED',actions:['🟡 Načíst komentáře — Meta připojení','✅ Převod načteného komentáře do lokálního CRM']},
+  crm:{status:'🟡 PARTIAL',actions:['✅ Lokální lead CRUD','✅ Posun pipeline','✅ Editace / follow-up','🟡 Živé CRM API — cloud/backend připojení','🟡 AI priority']},
+  sales:{status:'✅ FUNGUJE',actions:['✅ Přepočet / cíle / export','✅ Připravit komunikaci / nabídku z leadu','🟡 Deal Coach / AI rozsah','✅ Uložení nabídky lokálně']},
+  jobs:{status:'✅ FUNGUJE',actions:['✅ Vytvořit zakázku + checklist lokálně','✅ Načíst lead','✅ Stav / platba / export','🟡 Živá komerční DB synchronizace']},
+  distribution:{status:'🟡 PARTIAL',actions:['✅ Přehled distribučních kanálů','🟡 Živé stavy integrací','✅ Odkazy na veřejné projekty','🔌 Publikace mimo připojené služby']},
+  analytics:{status:'🟡 PARTIAL',actions:['🟡 Obnovit — Meta data vyžadují připojení','✅ Lokální učení z načtených dat','⚪ Bez dat, pokud není připojený zdroj']},
+  shop:{status:'✅ FUNGUJE',actions:['✅ Přidat / upravit lokální produktový záznam','🟡 Audit nabídky přes AI','⚪ NO DATA, dokud nejsou zadány produkty']},
+  autopilot:{status:'🟡 PARTIAL',actions:['✅ Lokální priorizační fronta','🟡 Automatický tick — vyžaduje CRON_SECRET a backend konfiguraci','✅ Otevření navazujícího workflow']},
+  settings:{status:'🟡 PARTIAL',actions:['✅ Záloha / recovery / PWA pomocné akce','🟡 Cloud sync — účet + organizace','🟡 Serverová diagnostika — chráněná endpointem','🔌 Meta / externí účty podle připojení']}
+});
+function renderScreenAudit(){
+  const box=$('#screenAudit');if(!box)return;
+  box.innerHTML=Object.entries(SCREEN_AUDIT).map(([id,x])=>{
+    const group=navGroupForTab(id);
+    return '<div class="audit-row"><div class="audit-main"><strong>'+esc(group.label+' · '+(tabs.find(t=>t[0]===id)?.[1]||id))+'</strong><span class="pill '+(x.status.startsWith('✅')?'ok':x.status.startsWith('🔴')?'bad':x.status.startsWith('🔌')?'warn':'subtle')+'">'+esc(x.status)+'</span></div><div class="audit-actions">'+x.actions.map(a=>'<span class="audit-action">'+esc(a)+'</span>').join('')+'</div><button class="btn small audit-open" data-tab="'+esc(id)+'">Otevřít</button></div>';
+  }).join('');
+  $('.audit-open').forEach(b=>b.onclick=()=>activateTab(b.dataset.tab));
+}
 const projects={
   jihoceske:{name:'STŘECHY / FVE',label:'TECHNICAL FIELD UNIT',theme:'fve',signature:'FIELD / SOLAR',context:'FVE subdodávky a servis: montáž konstrukcí a panelů, DC kabeláž/stringy/konektory/Tigo, dílčí montážní práce, demontáž a zpětná montáž, úpravy stávajících FVE, mytí panelů, ochranné sítě proti ptactvu a carporty. Primárně Jižní Čechy, větší zakázky po ČR. Bez vymyšlených certifikací, počtů realizací, cen nebo referencí. Elektro zapojení a revize pouze jako spolupráce s elektrikářem a revizním technikem, nikdy jako vlastní oprávnění. Bezpečně lze uvádět praktickou zkušenost z montáží, malé střechy a instalace přibližně 145 a 195 panelů.'},
   merch:{name:'NŘŠM',label:'UNDERGROUND COMMAND CENTER',theme:'nrsm',signature:'NŘŠM // 174 UNIT',context:'Originální streetwear inspirovaný DnB, neurofunkem, technem, psytrance, rave a graffiti kulturou. Výrazně a underground, ne genericky AI. Produkty, dropy a čísla se zobrazují jen z uložených dat.'},
@@ -86,19 +125,30 @@ async function sessionCheck(){
 }
 async function loginPanel(password){const r=await fetch('/api/session',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({password})}),j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===429){const sec=Number(j.retryAfterSeconds||r.headers.get('retry-after')||180);throw new Error(`Příliš mnoho pokusů. Zkus to za ${Math.max(1,Math.ceil(sec/60))} min.`);}if(r.status===401&&Number.isFinite(Number(j.remainingAttempts)))throw new Error(`Neplatné heslo · zbývá ${j.remainingAttempts} pokusů.`);throw new Error(j.error||'Přihlášení selhalo.');}hideAuth();setTimeout(()=>health(),0);return true;}
 async function logoutPanel(){await fetch('/api/session',{method:'DELETE',credentials:'same-origin'});showAuth();}
-const secondaryTabs=new Set(['worker','reels','media','comms','inbox','jobs','analytics','shop','settings','autopilot']);
 function initTabs(){
   const t=$('#tabs');t.innerHTML='';
-  const label=document.createElement('span');label.className='nav-label';label.textContent='COMMAND';t.appendChild(label);
-  tabs.forEach(([id,n])=>{const b=document.createElement('button');b.textContent=n;b.dataset.tab=id;if(secondaryTabs.has(id))b.classList.add('nav-secondary');b.onclick=()=>activateTab(id);t.appendChild(b);});
-  const more=document.createElement('button');more.id='navMore';more.className='nav-more';more.textContent='☰ Více';more.setAttribute('aria-expanded','false');
-  more.onclick=()=>{const on=t.classList.toggle('show-more');more.setAttribute('aria-expanded',String(on));more.textContent=on?'× Skrýt':'☰ Více';};
-  t.appendChild(more);activateTab('today');
+  const primary=document.createElement('div');primary.className='nav-primary-row';
+  navGroups.forEach(g=>{
+    const b=document.createElement('button');b.className='nav-primary';b.dataset.tab=g.defaultTab;b.dataset.navGroup=g.key;b.innerHTML='<span class="nav-icon">'+esc(g.icon)+'</span><span>'+esc(g.label)+'</span>';b.onclick=()=>activateTab(g.defaultTab);primary.appendChild(b);
+  });
+  const sub=document.createElement('div');sub.id='navSubnav';sub.className='nav-subnav';t.append(primary,sub);
+  renderNavSubnav('today');
+  activateTab('today');
+}
+function renderNavSubnav(id){
+  const sub=$('#navSubnav');if(!sub)return;
+  const g=navGroupForTab(id);
+  sub.innerHTML=g.items.length>1?g.items.map(([tab,label])=>'<button class="nav-sub" data-tab="'+esc(tab)+'">'+esc(label)+'</button>').join(''):'<span class="nav-current">'+esc(g.items[0]?.[1]||g.label)+'</span>';
+  $('.nav-sub').forEach(b=>b.onclick=()=>activateTab(b.dataset.tab));
+  $('.nav-primary').forEach(b=>b.classList.toggle('active',b.dataset.navGroup===g.key));
+  $('.nav-sub').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));
 }
 function activateTab(id){
+  const g=navGroupForTab(id);
   if(id==='control')renderControlRoom();if(id==='money')loadMoneySprint(false);if(id==='autopilot')renderAutopilot();
-  $('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));$('.section').forEach(x=>x.classList.toggle('active',x.id===id));
-  if(secondaryTabs.has(id))$('#tabs')?.classList.add('show-more');
+  $('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));
+  $('.section').forEach(x=>x.classList.toggle('active',x.id===id));
+  renderNavSubnav(id);
   if(id==='media')renderMedia();if(id==='content'||id==='inbox'||id==='reels')loadMetaStatus();if(id==='reels'){renderReelPlan();loadRecentReels();renderReelComposer();}if(id==='sales')renderSales();if(id==='jobs')renderJobs();if(id==='analytics')loadAnalytics();if(id==='comms'){loadCommStatus();loadOutbox();}if(id==='settings'){renderSettings();health();renderPwaState();}
   $('.mobile-route').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));
 }
@@ -444,7 +494,7 @@ function wire(){
   $('#metaCheckNow')?.addEventListener('click',()=>metaDiagnostic());
   $('.quick-route').forEach(b=>b.onclick=()=>{const r=b.dataset.route;if(r==='plan')return dailyBrief();activateTab(r||'today');});
   $('.mobile-route[data-tab]').forEach(b=>b.onclick=()=>{activateTab(b.dataset.tab);$('#tabs')?.classList.remove('show-more');});
-  $('#mobileMore')?.addEventListener('click',()=>{const nav=$('#tabs');if(!nav)return;const on=nav.classList.toggle('show-more');const more=$('#navMore');if(more){more.setAttribute('aria-expanded',String(on));more.textContent=on?'× Skrýt':'☰ Více';}if(on)window.scrollTo({top:0,behavior:'smooth'});});
+  $('#mobileMore')?.addEventListener('click',()=>{const sub=$('#navSubnav');if(!sub)return;const on=sub.classList.toggle('show-mobile');$('#mobileMore').setAttribute('aria-expanded',String(on));if(on)window.scrollTo({top:0,behavior:'smooth'});});
 
   $('#metaCopyDiag')?.addEventListener('click',async()=>{
     const s=await metaDiagnostic();
@@ -541,6 +591,7 @@ async function init(){
   safeRender('draft',loadDraft);
   safeRender('initial-render',renderAll);
   safeRender('worker',renderWorker);
+  safeRender('screen-audit',renderScreenAudit);
   safeRender('local-ui-ready',()=>setAutosaveState('Auto-save aktivní','ok'));
   window.__BCO_READY=true;
   window.__BCO_BOOT_PHASE='network-start';
