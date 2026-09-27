@@ -844,3 +844,71 @@ body[data-workspace="merch"] .btn.primary{background:linear-gradient(145deg,#43d
   .tabs .nav-subnav{display:none}
   .tabs .nav-subnav.show-mobile{display:flex}
 }
+
+
+/* =========================================================
+   BCO 17 MAX — READABILITY / OPERATOR FINAL
+   Cíl: žádná stísněná pracovní plocha, žádný mikrotekst.
+   ========================================================= */
+
+body{font-size:14px}
+.muted{font-size:13px;line-height:1.58}
+.card h2,.card h3{font-size:18px;line-height:1.22}
+.item{font-size:13px;line-height:1.5;padding:13px}
+.item strong{font-size:13.5px}
+.btn{min-height:44px;font-size:12px}
+.btn.small{min-height:38px;padding:9px 11px;font-size:12px}
+.status-line,.inline-status{font-size:13px;line-height:1.45}
+.output{font-size:13px;line-height:1.62}
+.audit-main strong{font-size:13px;line-height:1.35}
+.audit-action{font-size:11px;line-height:1.35;white-space:normal}
+.audit-row{min-width:0}
+.nav-primary-row{gap:8px}
+.tabs .nav-primary{min-width:110px;flex:0 0 auto;font-size:12px;padding:10px 13px}
+.tabs .nav-sub{min-width:92px;font-size:12px;padding:9px 12px;white-space:nowrap}
+
+.crm-form{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(210px,1fr));
+  gap:9px;
+  align-items:stretch;
+}
+.crm-form>*{min-width:0}
+.crm-form #leadNote{grid-column:span 2}
+.crm-form .btn{width:100%}
+
+.campaign-block{padding:14px}
+.campaign-block>strong{font-size:14px}
+.campaign-block p{font-size:12px;line-height:1.55}
+.hook-option{font-size:12px;line-height:1.48;padding:11px}
+.reel-shot p{font-size:12px;line-height:1.5}
+.timeline-step{padding:10px 11px}
+.timeline-step span{font-size:10px}
+.timeline-step strong{font-size:12px;line-height:1.35}
+.quote-card{padding:13px}
+.quote-card strong{font-size:13px}
+.quote-card span{font-size:11px}
+.job-head small{font-size:11px}
+.job-task{font-size:11px;line-height:1.4;padding:7px 8px}
+.check-card{font-size:11px;line-height:1.45;padding:11px}
+.format-badge{font-size:10px}
+.quick-content-grid{gap:9px}
+
+@media(max-width:980px){
+  .crm-form{grid-template-columns:repeat(2,minmax(220px,1fr))}
+  .crm-form #leadNote{grid-column:1/-1}
+}
+@media(max-width:760px){
+  .tabs .nav-primary{min-width:104px;font-size:11px}
+  .tabs .nav-sub{min-width:92px}
+  .crm-form{grid-template-columns:1fr}
+  .crm-form #leadNote{grid-column:1/-1}
+  .item{padding:13px}
+  .item-actions{gap:7px}
+  .btn.small{min-height:40px}
+  .audit-action{font-size:11px}
+  .output{font-size:12px}
+  .campaign-grid{grid-template-columns:1fr}
+  .quick-content-grid{grid-template-columns:1fr}
+  .check-grid{grid-template-columns:1fr}
+}
