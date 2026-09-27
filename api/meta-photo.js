@@ -1,5 +1,6 @@
 import {createHash} from 'node:crypto';
 import {auth,noauth,env,projectKey,sendError,kvGet,kvSet} from './_lib.js';
+import {authOrCloud} from './_cloud-auth.js';
 import {createConfirmation,verifyConfirmation,getConfirmationData} from './_confirm.js';
 import {getTask} from './_control.js';
 import {resolveMeta} from './_meta-auth.js';
@@ -14,9 +15,11 @@ async function uploadToMeta(buf,mime,index,c){
   if(!r.ok){const e=new Error(j.error?.message||`Meta photo upload error (${r.status})`);e.status=r.status;e.code=j.error?.code;e.subcode=j.error?.error_subcode;throw e;}if(!j.id)throw new Error('META_PHOTO_ID_MISSING');return String(j.id);
 }
 export default async function handler(req,res){
-  if(!auth(req))return noauth(res);if(req.method!=='POST')return res.status(405).json({error:'METHOD_NOT_ALLOWED'});
+  const project=projectKey(req.headers['x-project']||'jihoceske');
+  if(!(await authOrCloud(req,project)))return noauth(res);
+  if(req.method!=='POST')return res.status(405).json({error:'METHOD_NOT_ALLOWED'});
   try{
-    const project=projectKey(req.headers['x-project']||'jihoceske'),manifest=decodeManifest(req.headers['x-photo-manifest']),token=String(req.headers['x-confirm-token']||'');
+    const manifest=decodeManifest(req.headers['x-photo-manifest']),token=String(req.headers['x-confirm-token']||'');
     if(!Array.isArray(manifest)||!manifest.length||manifest.length>10)throw new Error('PHOTO_MANIFEST_INVALID');
     const decoded=getConfirmationData(token);if(!decoded.taskId||!String(decoded.a||'').startsWith('control:'))throw new Error('CONTROL_APPROVAL_REQUIRED');
     const task=await getTask(decoded.taskId);if(!task)throw new Error('TASK_NOT_FOUND');
