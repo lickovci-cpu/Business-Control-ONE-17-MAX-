@@ -1,20 +1,22 @@
 import {auth,noauth,body,projectKey,sendError} from './_lib.js';
+import {authOrCloud} from './_cloud-auth.js';
 import {createTask,getTask,listTasks,requestApproval,consumeApproval,startAttempt,completeTask,blockTask,failAttempt,isMutatingAction} from './_control.js';
 
 async function taskForProject(taskId,project){const task=await getTask(taskId);if(!task)throw Object.assign(new Error('TASK_NOT_FOUND'),{status:404});if(task.project!==project)throw Object.assign(new Error('PROJECT_MISMATCH'),{status:409});return task;}
 
 export default async function handler(req,res){
-  if(!auth(req))return noauth(res);
   try{
     const action=String(req.query?.action||'list');
     if(req.method==='GET'){
       const project=projectKey(req.query?.project||'jihoceske');
+      if(!(await authOrCloud(req,project)))return noauth(res);
       if(action==='task'){const task=await taskForProject(String(req.query?.id||''),project);return res.json({ok:true,task});}
       return res.json({ok:true,project,tasks:await listTasks(project)});
     }
     if(req.method!=='POST')return res.status(405).json({error:'METHOD'});
     const b=await body(req,700000);
     const project=projectKey(b.project||req.query?.project||'jihoceske');
+    if(!(await authOrCloud(req,project)))return noauth(res);
     if(action==='create'){
       const task=await createTask({project,agent:b.agent,action:b.action,payload:b.payload||{},actor:b.actor||'agent',evidenceRequired:b.evidenceRequired!==false});
       return res.status(201).json({ok:true,task,policy:{mutating:isMutatingAction(task.action),approvalRequired:isMutatingAction(task.action)}});

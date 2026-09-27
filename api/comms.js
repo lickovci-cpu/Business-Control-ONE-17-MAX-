@@ -1,5 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {auth,noauth,body,projectKey,sendError,kvGet,kvSet,kvLpush,kvLtrim,kvLrange,kvMget,kvZadd,kvZrem} from './_lib.js';
+import {authOrCloud} from './_cloud-auth.js';
 import {sendCommunication,commsStatus} from './_comms.js';
 import {runControlledMutation,createTask,requestApproval} from './_control.js';
 const INDEX='business-control:outbox:index',DUE='business-control:outbox:due',ITEM=id=>`business-control:outbox:item:${id}`;
@@ -11,7 +12,7 @@ async function listItems(project,limit=100){const ids=await kvLrange(INDEX,0,499
 function sameProject(x,p){if(!x)return false;if(x.project!==p){const e=new Error('PROJECT_MISMATCH');e.status=409;throw e;}return true;}
 async function approvalPreview(action,project,payload,req,agent='user'){const task=await createTask({project,agent,action,payload,actor:agent,evidenceRequired:true});const approval=await requestApproval(task.id,req);return {preview:payload,confirmationToken:approval.approvalToken,controlTaskId:task.id,approvalId:approval.approvalId};}
 export default async function handler(req,res){
-  if(!auth(req))return noauth(res);
+  if(!(await authOrCloud(req,projectKey(req.query?.project||req.body?.project||'jihoceske'))))return noauth(res);
   try{
     const action=String(req.query.action||'status'),project=projectKey(req.query.project||'jihoceske');
     if(action==='status')return res.json({...commsStatus(),project});

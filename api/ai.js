@@ -1,4 +1,5 @@
 import {auth,noauth,body,env,projectKey,sendError} from './_lib.js';
+import {authOrCloud} from './_cloud-auth.js';
 import {recordAiRun} from './_ai-ledger.js';
 
 function stripPII(v,depth=0){
@@ -80,10 +81,10 @@ async function openrouter(prompt,images,maxTokens){const key=env('OPENROUTER_API
 async function custom(prompt,images,maxTokens){const url=env('CUSTOM_AI_URL'),key=env('CUSTOM_AI_TOKEN'),model=env('CUSTOM_AI_MODEL');if(!url)throw new Error('CUSTOM_AI_URL není nastaven.');const j=await checkedFetch(url,{method:'POST',headers:{'content-type':'application/json',...(key?{Authorization:`Bearer ${key}`}:{})},body:JSON.stringify({model:model||undefined,messages:[{role:'user',content:openAiContent(prompt,images)}],max_tokens:maxTokens})},'Custom AI');return j.choices?.[0]?.message?.content||j.output_text||j.output?.[0]?.content?.[0]?.text||j.text||'';}
 const available=()=>({gemini:!!env('GEMINI_API_KEY'),claude:!!env('ANTHROPIC_API_KEY'),openrouter:!!env('OPENROUTER_API_KEY'),openai:!!env('OPENAI_API_KEY'),custom:!!env('CUSTOM_AI_URL')});
 export default async function handler(req,res){
-  if(!auth(req))return noauth(res);
   try{
     if(req.method!=='POST')return res.status(405).json({error:'METHOD'});
     const startedAt=Date.now(),b=await body(req,3_800_000),task=String(b.task||'command').slice(0,40),project=projectKey(b.project||b.context?.projectKey||'jihoceske'),agent=String(b.agent||'ai').slice(0,80);
+    if(!(await authOrCloud(req,project)))return noauth(res);
     const contextObj=stripPII({...b.context,projectKey:project}),context=JSON.stringify(contextObj).slice(0,30000),prompt=promptFor(task,b,context),maxTokens=tokenBudget(task),images=validateImages((b.images||[]).slice(0,10));
     const parts=[{text:prompt},...images.map(im=>({inline_data:{mime_type:im.mime,data:im.data}}))],reqProvider=String(b.provider||'auto').toLowerCase(),configured=available(),freeFirst=env('AI_COST_MODE','free-first')==='free-first',paidAllowed=env('AI_ALLOW_PAID_FALLBACKS','false')==='true';
     const order=reqProvider!=='auto'?[reqProvider]:env('AI_PROVIDER_ORDER',freeFirst?'gemini,openrouter,openai,claude':'gemini,openai,claude,openrouter').split(',').map(x=>x.trim()).filter(Boolean),errors=[],skipped=[],attemptedProviders=[];

@@ -1,5 +1,6 @@
 import {createHash} from 'node:crypto';
 import {auth,noauth,body,projectKey,sendError,supabaseBaseUrl,supabaseRequestCredentials} from './_lib.js';
+import {authOrCloud} from './_cloud-auth.js';
 import {createTask,getTask,blockTask,consumeApproval,startAttempt,completeTask,failAttempt} from './_control.js';
 
 const SB_URL=supabaseBaseUrl();
@@ -39,9 +40,9 @@ export function validateLeadTransition(from,to){
 async function assertApprovedPayload(task,expectedTaskId,action,executionPayload,project){try{return validateApprovedPayload(task,expectedTaskId,action,executionPayload,project);}catch(e){if(e.message==='PAYLOAD_MISMATCH')await blockTask(task?.id,'PAYLOAD_MISMATCH','Vytvořit novou approval žádost se stejným payloadem',null,project).catch(()=>{});throw e;}}
 function cleanPatch(p){const out={};for(const k of ['estimated_value','source','note','next_action_at','last_contact_at','qualified_at','offered_at','approved_at','delivered_at','invoiced_at','paid_at','invoiced_amount','paid_amount'])if(Object.prototype.hasOwnProperty.call(p||{},k))out[k]=p[k]??null;return out;}
 export default async function handler(req,res){
-  if(!auth(req))return noauth(res);
   try{
     const project=projectKey(req.query?.project||'jihoceske');
+    if(!(await authOrCloud(req,project)))return noauth(res);
     if(!ORGS[project]&&req.method==='GET')return res.json({ok:true,project,verified:false,configured:false,leads:[],error:'CRM_PROJECT_ORG_NOT_CONFIGURED'});
     const organization_id=org(project);
     if(req.method==='GET'){

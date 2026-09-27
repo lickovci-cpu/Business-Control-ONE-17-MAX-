@@ -1,4 +1,5 @@
 import {auth,noauth,body,graph,projectKey,sendError} from './_lib.js';
+import {authOrCloud} from './_cloud-auth.js';
 import {createConfirmation,verifyConfirmation} from './_confirm.js';
 import {resolveMeta} from './_meta-auth.js';
 import {createTask,requestApproval,runControlledMutation} from './_control.js';

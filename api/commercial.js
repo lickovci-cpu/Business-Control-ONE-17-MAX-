@@ -1,5 +1,6 @@
 import {createHash} from 'node:crypto';
 import {auth,noauth,projectKey,sendError,body,supabaseRequestCredentials} from './_lib.js';
+import {authOrCloud} from './_cloud-auth.js';
 import {createTask,getTask,blockTask,consumeApproval,startAttempt,completeTask,failAttempt} from './_control.js';
 
 const SB_URL=process.env.SUPABASE_URL||'https://vjzzvopwecmwuccdidzq.supabase.co';
