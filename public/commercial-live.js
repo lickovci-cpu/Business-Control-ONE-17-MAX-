@@ -3,7 +3,8 @@
   const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)], esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=v=>new Intl.NumberFormat('cs-CZ',{style:'currency',currency:'CZK',maximumFractionDigits:0}).format(Number(v)||0);
   const project=()=>{try{return window.state?.project||$('#project')?.value||'jihoceske'}catch{return 'jihoceske'}};
-  const req=async(url,opt={})=>{const r=await fetch(url,{credentials:'same-origin',headers:{'content-type':'application/json',...(opt.headers||{})},...opt});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||`HTTP ${r.status}`);return j;};
+  const cloudToken=()=>{try{return JSON.parse(localStorage.getItem('bc81-sb-session')||'null')?.access_token||''}catch{return ''}};
+  const req=async(url,opt={})=>{const headers={'content-type':'application/json',...(opt.headers||{})};const token=cloudToken();if(token)headers.Authorization='Bearer '+token;const r=await fetch(url,{credentials:'same-origin',headers,...opt});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||`HTTP ${r.status}`);return j;};
   async function mutate(action,payload){const first=await req(`/api/commercial?project=${encodeURIComponent(project())}`,{method:'POST',body:JSON.stringify({action,project:project(),payload})});if(!first.approvalRequired)return first;const ok=confirm('Uložit skutečný záznam do Supabase?\n\nVyžaduje approval Control Plane.');if(!ok)return null;const approval=await req('/api/control?action=approve',{method:'POST',body:JSON.stringify({project:project(),taskId:first.task.id})});return req(`/api/commercial?project=${encodeURIComponent(project())}`,{method:'POST',body:JSON.stringify({action,project:project(),payload,taskId:first.task.id,approvalToken:approval.approvalToken})});}
   function block(title,body,actions=''){return `<div class="card commercial-live"><div class="section-kicker">LIVE DB / SUPABASE</div><h3>${esc(title)}</h3>${body}${actions?`<div class="action-row">${actions}</div>`:''}</div>`;}
   function render(d){
@@ -24,7 +25,12 @@
     const financial=(type)=>async()=>{const amount=Number((prompt(type==='income'?'Částka příjmu v Kč':'Částka výdaje v Kč','0')||'0').replace(',','.'));if(!Number.isFinite(amount)||amount<0)return alert('Neplatná částka.');const category=prompt('Kategorie / účel','');if(category===null)return;try{await mutate('create-financial',{entry_type:type,amount,currency:'CZK',occurred_on:new Date().toISOString().slice(0,10),status:'confirmed',category});await load();}catch(e){alert(`NOT VERIFIED: ${e.message}`)}};
     $('.commercial-create-income')?.addEventListener('click',financial('income'));$('.commercial-create-expense')?.addEventListener('click',financial('expense'));
   }
-  async function load(){try{const r=await req(`/api/commercial?project=${encodeURIComponent(project())}`);render(r);}catch(e){const out=$('#commercialLiveStatus');if(out)out.textContent=`NOT VERIFIED — ${e.message}`;}}
+  async function load(){
+    const token=cloudToken();
+    if(!token){clearLive();const out=$('#commercialLiveStatus');if(out)out.textContent='LOKÁLNÍ REŽIM · Cloud účet není přihlášen.';return;}
+    try{const r=await req(`/api/commercial?project=${encodeURIComponent(project())}`);liveEnabled=true;render(r);}
+    catch(e){clearLive();const out=$('#commercialLiveStatus');if(out)out.textContent='LOKÁLNÍ REŽIM · živá DB: '+e.message;}
+  }
   function boot(){if(!$('#commercialLiveStatus')){const host=$('#sales')||document.body;const d=document.createElement('div');d.id='commercialLiveStatus';d.className='pill subtle';d.textContent='LIVE DB · načítám…';host.prepend(d);}load();setInterval(load,60000);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
