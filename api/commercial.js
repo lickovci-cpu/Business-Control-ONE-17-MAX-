@@ -30,9 +30,10 @@ async function execute(action,payload,organization_id,req){
   throw new Error('UNKNOWN_ACTION');
 }
 export default async function handler(req,res){
-  if(!auth(req))return noauth(res);
+  const gateProject=projectKey(req.query?.project||'jihoceske');
+  if(!(await authOrCloud(req,gateProject)))return noauth(res);
   try{
-    const project=projectKey(req.query?.project||'jihoceske'),organization_id=org(project);
+    const project=projectKey(req.query?.project||gateProject),organization_id=org(project);
     if(req.method==='GET'){
       const [quotes,jobs,financial,opportunities]=await Promise.all([
         sb(`quotes?organization_id=eq.${organization_id}&select=id,quote_number,contact_id,opportunity_id,status,subtotal,tax,total,currency,valid_until,issued_at,accepted_at,notes,created_at,updated_at&order=created_at.desc&limit=200`),
