@@ -14,7 +14,9 @@ if(!sw.includes("bc20-money-sprint-v1")||!sw.includes("/commercial-live.js")||!s
 const app=await readFile('public/app.js','utf8');
 for(const marker of ['MEDIA_THUMB_CACHE','IntersectionObserver','ensureMediaFile','clearThumbCache','generateReel','renderMetaConnection','generateCampaign','leadFollowKit','autoSelectReelPhotos','truthGuard','renderSales','pipelineStats','quoteSave','dealCoachRun','renderJobs','JOB_TEMPLATES','renderCashWatch','buildReelPreview','renderControlRoom','controlRoomData','maybeDueNotification','requestPersistentStorage','runContentWorker','renderWorker','lastContentWorker'])if(!app.includes(marker))throw new Error('V15 marker missing: '+marker);
 const literalIds=[...app.matchAll(/\$\('#([A-Za-z0-9_-]+)'\)/g)].map(m=>m[1]);
-const missing=[...new Set(literalIds.filter(id=>!ids.includes(id)))];
+// Some UI controls are intentionally created dynamically by the runtime (e.g. More navigation).
+const dynamicIds=new Set(['navMore']);
+const missing=[...new Set(literalIds.filter(id=>!ids.includes(id)&&!dynamicIds.has(id)))];
 if(missing.length)throw new Error('JS references missing HTML ids: '+missing.join(', '));
 const vercel=JSON.parse(await readFile('vercel.json','utf8'));const csp=vercel.headers?.flatMap(x=>x.headers||[]).find(x=>x.key==='Content-Security-Policy')?.value||'';
 if(!csp.includes("media-src 'self' blob: https:"))throw new Error('CSP media-src missing for local Reel preview.');
