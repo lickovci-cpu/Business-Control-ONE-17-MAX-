@@ -36,10 +36,10 @@ export default async function handler(req,res){
     const project=projectKey(req.query?.project||gateProject),organization_id=org(project);
     if(req.method==='GET'){
       const [quotes,jobs,financial,opportunities]=await Promise.all([
-        sb(`quotes?organization_id=eq.${organization_id}&select=id,quote_number,contact_id,opportunity_id,status,subtotal,tax,total,currency,valid_until,issued_at,accepted_at,notes,created_at,updated_at&order=created_at.desc&limit=200`),
-        sb(`jobs?organization_id=eq.${organization_id}&select=id,contact_id,title,address,status,scheduled_at,note,price,direct_cost,created_at,updated_at&order=created_at.desc&limit=200`),
-        sb(`financial_entries?organization_id=eq.${organization_id}&select=id,entry_type,category,amount,currency,occurred_on,status,counterparty,reference,note,job_id,opportunity_id,created_at&order=occurred_on.desc&limit=300`),
-        sb(`opportunities?organization_id=eq.${organization_id}&select=id,contact_id,title,stage,priority,value,probability,source,next_action,next_action_at,notes,owner_user_id,created_at,updated_at&order=created_at.desc&limit=200`)
+        sb(req,`quotes?organization_id=eq.${organization_id}&select=id,quote_number,contact_id,opportunity_id,status,subtotal,tax,total,currency,valid_until,issued_at,accepted_at,notes,created_at,updated_at&order=created_at.desc&limit=200`),
+        sb(req,`jobs?organization_id=eq.${organization_id}&select=id,contact_id,title,address,status,scheduled_at,note,price,direct_cost,created_at,updated_at&order=created_at.desc&limit=200`),
+        sb(req,`financial_entries?organization_id=eq.${organization_id}&select=id,entry_type,category,amount,currency,occurred_on,status,counterparty,reference,note,job_id,opportunity_id,created_at&order=occurred_on.desc&limit=300`),
+        sb(req,`opportunities?organization_id=eq.${organization_id}&select=id,contact_id,title,stage,priority,value,probability,source,next_action,next_action_at,notes,owner_user_id,created_at,updated_at&order=created_at.desc&limit=200`)
       ]);
       const rows=a=>Array.isArray(a)?a:[],q=rows(quotes),j=rows(jobs),f=rows(financial),o=rows(opportunities),income=f.filter(x=>String(x.entry_type).toLowerCase()==='income').reduce((s,x)=>s+Number(x.amount||0),0),expense=f.filter(x=>String(x.entry_type).toLowerCase()==='expense').reduce((s,x)=>s+Number(x.amount||0),0),openQuotes=q.filter(x=>!['accepted','rejected','expired','cancelled'].includes(String(x.status||'').toLowerCase())),activeJobs=j.filter(x=>!['done','completed','cancelled','closed'].includes(String(x.status||'').toLowerCase()));
       return res.json({ok:true,verified:true,project,organization_id,source:'supabase',commercial:{quotes:q,jobs:j,financial_entries:f,opportunities:o,summary:{quoteCount:q.length,openQuoteCount:openQuotes.length,jobCount:j.length,activeJobCount:activeJobs.length,opportunityCount:o.length,income,expense,netCash:income-expense}}});
