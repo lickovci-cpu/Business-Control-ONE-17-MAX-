@@ -1,6 +1,6 @@
 # MASTER Project Registry
 
-Updated: 2026-09-27
+Updated: 2026-10-01
 
 ## Rule
 This repository is the canonical BCO application source. Do not continue work in legacy/duplicate app repositories or old Vercel projects unless explicitly needed for recovery.
@@ -11,11 +11,11 @@ This repository is the canonical BCO application source. Do not continue work in
 - GitHub: https://github.com/lickovci-cpu/Business-Control-ONE-17-MAX-
 - Vercel project: https://vercel.com/wemone-5402s-projects/business-control-one
 - Production: https://business-control-one.vercel.app
-- Current production deployment: dpl_4MV4vymTeBf82Qxx4JeqBvYR1a2U
-- Current production commit: 81e7b2264c2c33e051f6b6151759d98936539f7e
+- Current production deployment: dpl_G64DHUnsmrrwaycF69GJmq4XgJQX
+- Current production commit: 350e09a9f21fcdf85b05b371c64dfc4886e1d962
 - Supabase: https://supabase.com/dashboard/project/vjzzvopwecmwuccdidzq
-- State: HTTP 200 and no runtime errors in the last 24h at audit.
-- Important: /api/automation-tick is receiving cron calls but returning HTTP 409 every 5 minutes; actual automation run history remains unverified.
+- State: production deployment READY; root HTTP 200 verified 2026-10-01. /api/session returns configured=true and authenticated=false without a user session.
+- Automation history remains unverified from this session; do not treat older registry notes as current proof.
 
 ### NŘŠM
 - GitHub: https://github.com/lickovci-cpu/nrsm-streetwear-current
@@ -67,6 +67,6 @@ The Vercel account currently contains 15 projects. The three production business
 - Application/docs: GitHub repository above.
 - Runtime: Vercel production.
 - NŘŠM social distribution: Metricool brand 7108893.
-- Business email: Outlook linked accounts.
+- Business email: Gmail/Superhuman for 1:1; Resend prepared as a separate transactional/opt-in provider, domain verification pending.
 - Remote service acquisition: Upwork.
 - Hermes: local Windows installation, managed separately from the cloud application.
