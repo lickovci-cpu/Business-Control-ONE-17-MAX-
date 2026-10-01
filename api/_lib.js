@@ -14,6 +14,10 @@ export function isPrintableSecret(value){
 }
 
 export function supabaseServiceKey(){
+  // Current Supabase server-side secret key (sb_secret_...) is preferred.
+  const current=normalizeSecret(env('SUPABASE_SECRET_KEY'));
+  if(isPrintableSecret(current))return current;
+  // Legacy names remain supported during the 2026 key migration.
   const primary=normalizeSecret(env('SUPABASE_SERVICE_ROLE_KEY'));
   if(isPrintableSecret(primary))return primary;
   const fallback=normalizeSecret(env('SUPABASE_SERVICE_KEY'));
