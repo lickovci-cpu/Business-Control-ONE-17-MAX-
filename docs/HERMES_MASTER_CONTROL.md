@@ -1,6 +1,6 @@
 # HERMES MASTER CONTROL
 
-Updated: 2026-09-27
+Updated: 2026-10-01
 
 ## Purpose
 
@@ -19,8 +19,10 @@ Do not build duplicate CRM, duplicate project registry, or duplicate source-of-t
 - Supabase: business source of truth.
 - GitHub: canonical code and operational documentation.
 - Vercel: production runtime and deployment.
-- Outlook: direct business communication.
+- Gmail/Superhuman: direct 1:1 business communication.
+- Resend: transactional/opt-in email infrastructure; verified domain required before activation.
 - Metricool: NŘŠM social distribution and analytics.
+- Publora: optional agentic multi-network publishing; currently no accounts connected.
 - Make: optional external workflow integration.
 - Browser / web: demand research and verification.
 - Upwork: remote service acquisition.
