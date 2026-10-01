@@ -37,12 +37,12 @@ Do not build duplicate CRM, duplicate project registry, or duplicate source-of-t
 | MazliPrint | pet-photo commerce test | https://mazliprint-final.vercel.app | landing/funnel |
 | FVE | installation/subcontracting | public website not verified | lead acquisition priority |
 
-## Revenue priority
+## Revenue priority — current mode 2026-10-01
 
-1. FVE subcontracting / installation.
-2. NŘŠM warm and high-fit B2B prospects.
-3. Remote n8n / AI automation services.
-4. Local roof/facade/gutter/PV-cleaning demand.
+1. NŘŠM — first paid merch/B2B jobs, especially warm replies and high-fit event/music prospects.
+2. MazliPrint — first paid B2C orders plus pet-business partnership tests.
+3. Remote AI automation services only when a concrete buyer request is found.
+4. FVE is intentionally deprioritized for this acquisition sprint.
 5. New opportunity classes only when current buyer evidence exists.
 
 Infrastructure is subordinate to revenue. Do not add features merely because they are technically interesting.
@@ -94,6 +94,12 @@ Do not collapse these dimensions into a fake overall score.
 Keep durable facts and reusable procedures. Use session history for detailed history. Create a new skill only when a process is genuinely reusable.
 
 ## Lead acquisition engine
+
+### Active demand monitors
+- NŘŠM buyer demand radar: TinyFish monitor 37bc74fb-8799-4690-a130-f2f0c295544c, weekdays 08:30 Europe/Prague.
+- MazliPrint pet personalization radar: TinyFish monitor b2a2337f-953c-41c5-b2b4-fcb8eefeaeb8, weekdays 08:45 Europe/Prague.
+- Monitors search fresh public demand; results must be deduplicated against BCO before action.
+
 
 Hermes should continuously search:
 - freelance marketplaces;
@@ -320,6 +326,12 @@ Do the work only when at least one is true:
 - it makes a proven repeated process cheaper/faster.
 
 Otherwise defer it.
+
+
+### Current acquisition inventory — 2026-10-01
+- NŘŠM: warm/replied records exist and new public event/music prospects have been added to merch_prospects; outreach drafts remain approval-gated.
+- MazliPrint: first dedicated prospecting records and outreach drafts have been created; no prior MazliPrint merch_prospects existed.
+- Current public NŘŠM Instagram verified as @nrsm.merch; the website reference to @nrsm.official was corrected in source and awaiting Vercel redeploy.
 
 ## Success criteria
 
