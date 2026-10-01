@@ -25,11 +25,34 @@ async function sendFetch(url,opt,label){
   return j;
 }
 
-export async function sendEmail(msg){
-  const from=env('GMAIL_FROM');if(!from)throw new Error('GMAIL_FROM není nastaven.');if(!msg.to)throw new Error('Chybí e-mail příjemce.');
+export async function sendResendEmail(msg){
+  const apiKey=env('RESEND_API_KEY'),from=env('RESEND_FROM');
+  if(!apiKey||!from)throw new Error('Resend není nastaven.');
+  if(!msg.to)throw new Error('Chybí e-mail příjemce.');
+  const payload={from,to:msg.to,subject:msg.subject||'',text:msg.text||''};
+  const replyTo=msg.replyTo||env('RESEND_REPLY_TO');if(replyTo)payload.reply_to=replyTo;
+  const j=await sendFetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+apiKey,'content-type':'application/json'},body:JSON.stringify(payload)},'Resend send');
+  return {channel:'email',provider:'resend',id:j.id||null};
+}
+
+async function sendGmailEmail(msg){
+  const from=env('GMAIL_FROM');if(!from)throw new Error('GMAIL_FROM není nastaven.');
+  if(!msg.to)throw new Error('Chybí e-mail příjemce.');
   const token=await gmailAccessToken(),raw=Buffer.from(mime({to:msg.to,subject:msg.subject||'',text:msg.text||'',from}),'utf8').toString('base64url');
-  const j=await sendFetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send',{method:'POST',headers:{Authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify({raw})},'Gmail send');
-  return {channel:'email',id:j.id,threadId:j.threadId};
+  const j=await sendFetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send',{method:'POST',headers:{Authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({raw})},'Gmail send');
+  return {channel:'email',provider:'gmail',id:j.id,threadId:j.threadId};
+}
+
+export async function sendEmail(msg){
+  if(!msg.to)throw new Error('Chybí e-mail příjemce.');
+  const requested=String(env('EMAIL_PROVIDER','auto')).toLowerCase();
+  const resendReady=!!(env('RESEND_API_KEY')&&env('RESEND_FROM'));
+  const gmailReady=!!(env('GMAIL_CLIENT_ID')&&env('GMAIL_CLIENT_SECRET')&&env('GMAIL_REFRESH_TOKEN')&&env('GMAIL_FROM'));
+  const provider=requested==='auto'?(resendReady?'resend':gmailReady?'gmail':'none'):requested;
+  if(provider==='resend')return sendResendEmail(msg);
+  if(provider==='gmail')return sendGmailEmail(msg);
+  if(provider!=='none')throw new Error('EMAIL_PROVIDER musí být auto, resend nebo gmail.');
+  throw new Error('Žádný e-mail provider není nastaven.');
 }
 
 export async function sendWhatsApp(msg){
