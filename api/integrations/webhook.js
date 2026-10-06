@@ -49,9 +49,37 @@ async function releaseDedupe(rowId){
   });
 }
 async function upsertContact(project,payload,organizationId){const name=clean(payload.contact?.name||payload.name,200);const phone=clean(payload.contact?.phone||payload.phone,80);const email=clean(payload.contact?.email||payload.email,240).toLowerCase();if(!name&&!phone&&!email)throw new Error('CONTACT_DATA_REQUIRED');let rows=[];if(phone)rows=await sb(`contacts?organization_id=eq.${organizationId}&phone=eq.${encodeURIComponent(phone)}&select=id,name,phone,email&limit=1`);if(!rows.length&&email)rows=await sb(`contacts?organization_id=eq.${organizationId}&email=eq.${encodeURIComponent(email)}&select=id,name,phone,email&limit=1`);if(rows.length)return rows[0];const created=await sb('contacts',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({organization_id:organizationId,name:name||null,phone:phone||null,email:email||null})});return Array.isArray(created)?created[0]:created;}
-async function findLead(organizationId,contactId){if(!contactId)return null;const rows=await sb(`leads?organization_id=eq.${organizationId}&contact_id=eq.${contactId}&status=not.in.(closed,lost,paid)&order=created_at.desc&select=id,status&limit=1`);return rows?.[0]||null;}
+async function findLead(organizationId,contactId){if(!contactId)return null;const rows=await sb(`leads?organization_id=eq.${organizationId}&contact_id=eq.${contactId}&status=not.in.(closed,lost,paid)&order=created_at.desc&select=id,status,next_action_at&limit=1`);return rows?.[0]||null;}
+export function merchInquiryFollowupPlan(payload,at=new Date()){
+  const md=payload?.metadata&&typeof payload.metadata==='object'?payload.metadata:{};
+  const requestType=clean(md.request_type||payload.request_type||'',80).toUpperCase();
+  if(requestType!=='CUSTOM_MERCH')return null;
+  const numericScore=Number(md.brief_score??payload.brief_score);
+  const score=Number.isFinite(numericScore)?Math.max(0,Math.min(10,Math.round(numericScore))):null;
+  const delayHours=score!==null&&score>=9?2:score!==null&&score>=7?6:24;
+  const mode=score!==null&&score>=7?'prepare_concrete_next_step':'request_missing_information';
+  const nextStep=score!==null&&score>=9
+    ?'Připravit konkrétní další krok: demo/mockup → nabídka.'
+    :score!==null&&score>=7
+      ?'Připravit konkrétní další krok a ověřit chybějící detaily před nabídkou.'
+      :'Doplnit chybějící informace z briefu a potom připravit směr / nabídku.';
+  return {nextActionAt:new Date(at.getTime()+delayHours*60*60*1000).toISOString(),mode,nextStep,delayHours,briefScore:score};
+}
+async function scheduleMerchInquiryFollowup(lead,project,payload,eventType){
+  if(project!=='merch'||eventType!=='inquiry.created'||!lead?.id)return lead;
+  if(lead.next_action_at)return lead;
+  const plan=merchInquiryFollowupPlan(payload);
+  if(!plan)return lead;
+  const rows=await sb(`leads?id=eq.${encodeURIComponent(lead.id)}`,{
+    method:'PATCH',
+    headers:{Prefer:'return=representation'},
+    body:JSON.stringify({next_action_at:plan.nextActionAt})
+  });
+  const updated=Array.isArray(rows)?rows[0]:rows;
+  return updated?.id?{...lead,next_action_at:updated.next_action_at||plan.nextActionAt}:{...lead,next_action_at:plan.nextActionAt};
+}
 async function ingestLead(project,payload,organizationId,event){const contact=await upsertContact(project,payload,organizationId);const note=[clean(payload.note,800),payload.service?`Služba: ${clean(payload.service,200)}`:'',payload.location?`Lokalita: ${clean(payload.location,200)}`:'',payload.page_url?`Web: ${clean(payload.page_url,500)}`:'',`Webhook: ${event.dedupeKey}`].filter(Boolean).join(' · ');const lead=await sb('leads',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({organization_id:organizationId,contact_id:contact?.id||null,status:'new',estimated_value:payload.estimated_value??null,note:note||null,source:clean(payload.source||`web:${project}`,120)})});const result=Array.isArray(lead)?lead[0]:lead;return {entityType:'lead',referenceId:String(result?.id||''),contactId:String(contact?.id||''),created:true};}
-async function ingestMessage(project,payload,organizationId,ensureLead=false){
+async function ingestMessage(project,payload,organizationId,ensureLead=false,eventType=null){
   const contact=await upsertContact(project,payload,organizationId);
   const phone=clean(payload.phone||payload.contact?.phone,80);
   if(!phone&&!payload.body)throw new Error('MESSAGE_DATA_REQUIRED');
@@ -78,6 +106,7 @@ async function ingestMessage(project,payload,organizationId,ensureLead=false){
     });
     lead=Array.isArray(createdLead)?createdLead[0]:createdLead;
   }
+  lead=await scheduleMerchInquiryFollowup(lead,project,payload,eventType);
 
   let conversations=[];
   if(phone){
@@ -251,7 +280,7 @@ export default async function handler(req,res){
       }else if(['message.created','message.received'].includes(eventType)){
         result=await ingestMessage(project,payload,organizationId,false);
       }else if(eventType==='inquiry.created'){
-        result=await ingestMessage(project,payload,organizationId,true);
+        result=await ingestMessage(project,payload,organizationId,true,eventType);
       }else if(['order.created','checkout.created'].includes(eventType)){
         if(project!=='merch')throw new Error('ORDER_PROJECT_NOT_ALLOWED');
         result=await ingestOrder(project,payload,organizationId,event);
