@@ -83,7 +83,7 @@ async function ingestMessage(project,payload,organizationId,ensureLead=false){
   if(phone){
     conversations=await sb(`conversations?organization_id=${organizationId}&phone=${encodeURIComponent(phone)}&status=eq.open&order=updated_at.desc&select=id&limit=1`);
   }else if(contact?.id){
-    conversations=await sb(`conversations?organization_id=${organizationId}&contact_id=eq.${encodeURIComponent(contact.id)}&status=eq.open&order=updated_at.desc&select=id&limit=1`);
+    conversations=await sb(`conversations?organization_id=eq.${organizationId}&contact_id=eq.${encodeURIComponent(contact.id)}&status=eq.open&order=updated_at.desc&select=id&limit=1`);
   }
   let conversation=conversations?.[0];
   if(!conversation){
