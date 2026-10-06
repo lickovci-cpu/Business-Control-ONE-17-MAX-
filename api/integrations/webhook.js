@@ -79,7 +79,12 @@ async function ingestMessage(project,payload,organizationId,ensureLead=false){
     lead=Array.isArray(createdLead)?createdLead[0]:createdLead;
   }
 
-  let conversations=phone?await sb(`conversations?organization_id=${organizationId}&phone=${encodeURIComponent(phone)}&status=eq.open&order=updated_at.desc&select=id&limit=1`):[];
+  let conversations=[];
+  if(phone){
+    conversations=await sb(`conversations?organization_id=${organizationId}&phone=${encodeURIComponent(phone)}&status=eq.open&order=updated_at.desc&select=id&limit=1`);
+  }else if(contact?.id){
+    conversations=await sb(`conversations?organization_id=${organizationId}&contact_id=eq.${encodeURIComponent(contact.id)}&status=eq.open&order=updated_at.desc&select=id&limit=1`);
+  }
   let conversation=conversations?.[0];
   if(!conversation){
     const created=await sb('conversations',{
@@ -88,7 +93,7 @@ async function ingestMessage(project,payload,organizationId,ensureLead=false){
       body:JSON.stringify({
         organization_id:organizationId,
         contact_id:contact?.id||null,
-        phone:phone||'',
+        phone:phone||null,
         source:clean(payload.source||`web:${project}`,120),
         status:'open'
       })
