@@ -39,7 +39,17 @@ function validateImages(images){
 function tokenBudget(task){const hard=Math.max(128,Number(env('AI_MAX_OUTPUT_TOKENS','1800'))||1800),defaults={message:500,reel:1800,reelhooks:500,campaign:1800,leadkit:1500,salescoach:1200,quote:1200,contentpiece:1400,select:500,command:1200,weekly:1600,visual:1800,crm:1200,product:1200};return Math.min(hard,defaults[task]||1200);}
 const JSON_TASKS=new Set(['command','visual','select','weekly','reel','contentpiece','reelhooks','campaign','leadkit','salescoach','quote','crm','product']);
 function providerModel(provider){return ({gemini:env('GEMINI_MODEL','gemini-3.5-flash-lite'),claude:env('ANTHROPIC_MODEL','claude-haiku-4-5'),openrouter:env('OPENROUTER_MODEL','openrouter/free'),openai:env('OPENAI_MODEL','gpt-5.6-luna'),custom:env('CUSTOM_AI_MODEL','custom')})[provider]||null;}
-function parseStructuredOutput(task,text){if(!JSON_TASKS.has(task))return null;const raw=String(text||'').trim().replace(/^\`\`\`(?:json)?\\s*/i,'').replace(/\\s*\`\`\`$/,'');try{return JSON.parse(raw);}catch{return null;}}
+function parseStructuredOutput(task,text){
+  if(!JSON_TASKS.has(task))return null;
+  const raw=String(text||'').trim();
+  const candidates=[raw];
+  const fenced=raw.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  if(fenced)candidates.push(fenced[1].trim());
+  const extracted=raw.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+  if(extracted)candidates.push(extracted[1].trim());
+  for(const candidate of candidates){try{return JSON.parse(candidate);}catch{}}
+  return null;
+}
 function hasObject(value){return Boolean(value&&typeof value==='object'&&!Array.isArray(value));}
 function nonEmptyString(value){return typeof value==='string'&&value.trim().length>0;}
 function validateStructuredOutput(task,value){
