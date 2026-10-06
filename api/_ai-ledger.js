@@ -35,7 +35,7 @@ async function resolveOrganizationId(project){
 }
 
 async function insertRun(row){
-  const key=normalizeSecret(env('SUPABASE_SERVICE_ROLE_KEY')||env('SUPABASE_SERVICE_KEY'));
+  const key=supabaseServiceKey();
   if(!key)return false;
   const base=String(env('SUPABASE_URL','https://vjzzvopwecmwuccdidzq.supabase.co')).replace(/\/$/,'');
   const r=await fetch(base+'/rest/v1/ai_runs',{
