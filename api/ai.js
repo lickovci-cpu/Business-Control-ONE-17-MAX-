@@ -79,7 +79,7 @@ function validateStructuredOutput(task,value){
   if(task==='campaign'&&(!Array.isArray(value.stories)||value.stories.length!==3||!Array.isArray(value.carousel)||value.carousel.length!==5))return false;
   if(task==='reel'&&!Array.isArray(value.shotList))return false;
   if(task==='visual'&&(!Array.isArray(value.photos)||value.photos.length<1||!Array.isArray(value.albumOrder)))return false;
-  if(task==='leadkit'&&(!hasObject(value.followUps)||!hasObject(value.objections)))return false;
+  if(task==='leadkit'&&(!hasObject(value.followUps)||!Array.isArray(value.objections)))return false;
   return true;
 }
 async function checkedFetch(url,opt,label){let r;try{r=await fetch(url,{...opt,signal:AbortSignal.timeout(55000)})}catch(e){throw new Error(`${label}: ${e.name==='TimeoutError'?'timeout':'network error'}`)}const j=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(j.error?.message||j.error_description||j.error||`${label} HTTP ${r.status}`);e.status=r.status;throw e;}return j;}
