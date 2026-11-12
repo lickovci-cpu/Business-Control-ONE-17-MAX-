@@ -17,7 +17,7 @@ if(/(?<!\$)\$\((['"])\.[^'"]+\1\)\.forEach/.test(app))throw new Error('Broken co
 for(const marker of ['MEDIA_THUMB_CACHE','IntersectionObserver','ensureMediaFile','clearThumbCache','generateReel','renderMetaConnection','generateCampaign','leadFollowKit','autoSelectReelPhotos','truthGuard','renderSales','pipelineStats','quoteSave','dealCoachRun','renderJobs','JOB_TEMPLATES','renderCashWatch','buildReelPreview','renderControlRoom','controlRoomData','maybeDueNotification','requestPersistentStorage','runContentWorker','renderWorker','lastContentWorker'])if(!app.includes(marker))throw new Error('V15 marker missing: '+marker);
 const literalIds=[...app.matchAll(/\$\('#([A-Za-z0-9_-]+)'\)/g)].map(m=>m[1]);
 // Some UI controls are intentionally created dynamically by the runtime (e.g. More navigation).
-const dynamicIds=new Set(['navMore']);
+const dynamicIds=new Set(['navMore','navSubnav']);
 const missing=[...new Set(literalIds.filter(id=>!ids.includes(id)&&!dynamicIds.has(id)))];
 if(missing.length)throw new Error('JS references missing HTML ids: '+missing.join(', '));
 const vercel=JSON.parse(await readFile('vercel.json','utf8'));const csp=vercel.headers?.flatMap(x=>x.headers||[]).find(x=>x.key==='Content-Security-Policy')?.value||'';
