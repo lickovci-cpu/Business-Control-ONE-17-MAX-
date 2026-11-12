@@ -16,7 +16,7 @@ global.fetch=async(url,opt={})=>{
     assert.equal(body.model,'gpt-5.6-luna');
     assert.equal(body.input?.[0]?.role,'user');
     assert.ok(Array.isArray(body.input?.[0]?.content));
-    return new Response(JSON.stringify({output_text:'{"ok":true,"source":"openai"}'}),{status:200,headers:{'content-type':'application/json'}});
+    return new Response(JSON.stringify({output_text:'{"ok":true,"source":"openai","intent":"test","project":"jihoceske","goal":"test","tasks":[],"notes":[]}'}),{status:200,headers:{'content-type':'application/json'}});
   }
   return realFetch(url,opt);
 };
@@ -40,7 +40,7 @@ assert.equal(res.value.provider,'openai');
 assert.equal(res.value.model,'gpt-5.6-luna');
 assert.equal(res.value.structuredExpected,true);
 assert.equal(res.value.structuredValid,true);
-assert.deepEqual(res.value.parsed,{ok:true,source:'openai'});
+assert.deepEqual(res.value.parsed,{ok:true,source:'openai',intent:'test',project:'jihoceske',goal:'test',tasks:[],notes:[]});
 assert.deepEqual(res.value.attemptedProviders,['openai']);
 
 global.fetch=async(url,opt={})=>{

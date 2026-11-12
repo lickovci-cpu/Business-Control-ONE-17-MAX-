@@ -13,6 +13,9 @@
     "api/cron.js": {
       "maxDuration": 60
     },
+    "api/outbound-cron.js": {
+      "maxDuration": 60
+    },
     "api/automation-tick.js": {
       "maxDuration": 60
     },
@@ -46,6 +49,10 @@
     },
     {
       "path": "/api/automation-tick",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/outbound-cron",
       "schedule": "*/5 * * * *"
     }
   ],

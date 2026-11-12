@@ -1,5 +1,6 @@
 import {createSign,randomUUID} from 'node:crypto';
 import {env} from './_lib.js';
+import {sendOutlookEmail} from './_outlook.js';
 
 function b64url(v){return Buffer.from(v).toString('base64url');}
 class ProviderError extends Error{constructor(message,{status=0,retryable=false,uncertain=false}={}){super(message);this.status=status;this.retryable=retryable;this.uncertain=uncertain;}}
@@ -51,7 +52,8 @@ export async function sendEmail(msg){
   const provider=requested==='auto'?(resendReady?'resend':gmailReady?'gmail':'none'):requested;
   if(provider==='resend')return sendResendEmail(msg);
   if(provider==='gmail')return sendGmailEmail(msg);
-  if(provider!=='none')throw new Error('EMAIL_PROVIDER musí být auto, resend nebo gmail.');
+  if(provider==='outlook')return sendOutlookEmail({organizationId:msg.organizationId,to:msg.to,subject:msg.subject,text:msg.text});
+  if(provider!=='none')throw new Error('EMAIL_PROVIDER musí být auto, resend, gmail nebo outlook.');
   throw new Error('Žádný e-mail provider není nastaven.');
 }
 
@@ -87,5 +89,5 @@ export async function sendRcs(msg){
 }
 
 export async function sendCommunication(msg){const channel=String(msg.channel||'email').toLowerCase();if(channel==='email')return sendEmail(msg);if(channel==='whatsapp')return sendWhatsApp(msg);if(channel==='rcs')return sendRcs(msg);throw new Error('Nepodporovaný kanál.');}
-export function commsStatus(){const gmail=!!(env('GMAIL_CLIENT_ID')&&env('GMAIL_CLIENT_SECRET')&&env('GMAIL_REFRESH_TOKEN')&&env('GMAIL_FROM')),resend=!!(env('RESEND_API_KEY')&&env('RESEND_FROM')),requested=String(env('EMAIL_PROVIDER','auto')).toLowerCase(),selected=requested==='auto'?(resend?'resend':gmail?'gmail':'none'):requested;return {email:gmail||resend,emailProviders:{gmail,resend,selected},whatsapp:!!(env('WHATSAPP_ACCESS_TOKEN')&&env('WHATSAPP_PHONE_NUMBER_ID')),rcs:!!(env('RCS_SERVICE_ACCOUNT_JSON')&&env('RCS_AGENT_ID')),rcsRegion:env('RCS_REGION','europe'),rcsEndpoint:env('RCS_USE_GLOBAL_ENDPOINT','false')==='true'?'global':'regional'};}
+export function commsStatus(){const gmail=!!(env('GMAIL_CLIENT_ID')&&env('GMAIL_CLIENT_SECRET')&&env('GMAIL_REFRESH_TOKEN')&&env('GMAIL_FROM')),resend=!!(env('RESEND_API_KEY')&&env('RESEND_FROM')),outlookConfigured=!!(env('OUTLOOK_CLIENT_ID')&&env('OUTLOOK_CLIENT_SECRET')&&env('OUTLOOK_REDIRECT_URI')&&env('OUTLOOK_STATE_SECRET')&&env('OUTLOOK_TOKEN_ENCRYPTION_KEY')),requested=String(env('EMAIL_PROVIDER','auto')).toLowerCase(),selected=requested==='auto'?(resend?'resend':gmail?'gmail':'none'):requested;return {email:gmail||resend,emailProviders:{gmail,resend,outlookConfigured,selected},whatsapp:!!(env('WHATSAPP_ACCESS_TOKEN')&&env('WHATSAPP_PHONE_NUMBER_ID')),rcs:!!(env('RCS_SERVICE_ACCOUNT_JSON')&&env('RCS_AGENT_ID')),rcsRegion:env('RCS_REGION','europe'),rcsEndpoint:env('RCS_USE_GLOBAL_ENDPOINT','false')==='true'?'global':'regional'};}
 export {ProviderError};

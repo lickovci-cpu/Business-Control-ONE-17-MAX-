@@ -1,11 +1,11 @@
 import {randomUUID} from 'node:crypto';
-import {auth,noauth,body,projectKey,sendError,kvGet,kvSet,kvLpush,kvLtrim,kvLrange,kvMget,kvZadd,kvZrem} from './_lib.js';
+import {auth,noauth,body,projectKey,sendError,kvGet,kvSet,kvLpush,kvLtrim,kvLrange,kvMget,kvZadd,kvZrem,env} from './_lib.js';
 import {authOrCloud} from './_cloud-auth.js';
 import {sendCommunication,commsStatus} from './_comms.js';
 import {runControlledMutation,createTask,requestApproval} from './_control.js';
 const INDEX='business-control:outbox:index',DUE='business-control:outbox:due',ITEM=id=>`business-control:outbox:item:${id}`;
-function normalize(b,{withWhen=false}={}){const out={project:projectKey(b.project),channel:String(b.channel||'email').toLowerCase(),to:String(b.to||'').trim().slice(0,320),subject:String(b.subject||'').slice(0,998),text:String(b.text||'').slice(0,12000),templateName:String(b.templateName||''),templateLanguage:String(b.templateLanguage||'cs'),trafficType:String(b.trafficType||'SERVICEREQUEST')};if(withWhen)out.when=new Date(b.when).toISOString();return out;}
-function validate(p,{withWhen=false}={}){if(!['email','whatsapp','rcs'].includes(p.channel))throw new Error('INVALID_CHANNEL');if(!p.to||!p.text)throw new Error('MISSING_RECIPIENT_OR_TEXT');if(withWhen&&!p.when)throw new Error('INVALID_TIME');}
+function normalize(b,{withWhen=false}={}){const out={project:projectKey(b.project),organizationId:String(b.organizationId||b.organization_id||''),channel:String(b.channel||'email').toLowerCase(),to:String(b.to||'').trim().slice(0,320),subject:String(b.subject||'').slice(0,998),text:String(b.text||'').slice(0,12000),templateName:String(b.templateName||''),templateLanguage:String(b.templateLanguage||'cs'),trafficType:String(b.trafficType||'SERVICEREQUEST')};if(withWhen)out.when=new Date(b.when).toISOString();return out;}
+function validate(p,{withWhen=false}={}){if(!['email','whatsapp','rcs'].includes(p.channel))throw new Error('INVALID_CHANNEL');if(!p.to||!p.text)throw new Error('MISSING_RECIPIENT_OR_TEXT');if(p.channel==='email'&&String(env('EMAIL_PROVIDER','auto')).toLowerCase()==='outlook'&&!p.organizationId)throw new Error('OUTLOOK_ORGANIZATION_ID_REQUIRED');if(withWhen&&!p.when)throw new Error('INVALID_TIME');}
 async function getItem(id){return await kvGet(ITEM(id));}
 async function saveItem(item){const ok=await kvSet(ITEM(item.id),item);if(!ok){const e=new Error('QUEUE_STORAGE_NOT_CONFIGURED');e.status=503;throw e;}return item;}
 async function listItems(project,limit=100){const ids=await kvLrange(INDEX,0,499);if(!ids.length)return[];const rows=await kvMget(ids.map(ITEM));return rows.map(x=>{if(!x)return null;try{return typeof x==='string'?JSON.parse(x):x}catch{return null}}).filter(x=>x&&x.project===project).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,limit);}

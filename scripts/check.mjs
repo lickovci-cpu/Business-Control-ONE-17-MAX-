@@ -3,14 +3,21 @@ import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 const roots=['api','public','scripts','tests'];
 let js=[];
-for(const root of roots){for(const f of await readdir(root)){if(f.endsWith('.js')||f.endsWith('.mjs'))js.push(path.join(root,f));}}
+async function collectJs(dir){
+  for(const entry of await readdir(dir,{withFileTypes:true})){
+    const full=path.join(dir,entry.name);
+    if(entry.isDirectory())await collectJs(full);
+    else if(entry.isFile()&&(entry.name.endsWith('.js')||entry.name.endsWith('.mjs')))js.push(full);
+  }
+}
+for(const root of roots)await collectJs(root);
 for(const f of js)execFileSync(process.execPath,['--check',f],{stdio:'pipe'});
 JSON.parse(await readFile('package.json','utf8'));JSON.parse(await readFile('vercel.json','utf8'));JSON.parse(await readFile('public/manifest.webmanifest','utf8'));
 const html=await readFile('public/index.html','utf8'),ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]),dupes=ids.filter((x,i)=>ids.indexOf(x)!==i);
 if(dupes.length)throw new Error('Duplicate IDs: '+[...new Set(dupes)].join(', '));
 if(/style\s*=/.test(html))throw new Error('Inline style attribute would conflict with CSP.');
 const sw=await readFile('public/sw.js','utf8');
-if(!sw.includes("bc20-money-sprint-v1")||!sw.includes("/commercial-live.js")||!sw.includes("url.pathname.startsWith('/api/')")||!sw.includes('notificationclick'))throw new Error('Service worker strategy missing.');
+if(!sw.includes("bco17-max-v6")||!sw.includes("/commercial-live.js")||!sw.includes("url.pathname.startsWith('/api/')")||!sw.includes('notificationclick'))throw new Error('Service worker strategy missing.');
 const app=await readFile('public/app.js','utf8');
 if(app.includes('$$$('))throw new Error('Broken selector helper: $$$ found in public/app.js.');
 if(/(?<!\$)\$\((['"])\.[^'"]+\1\)\.forEach/.test(app))throw new Error('Broken collection iteration: singleton $() used with forEach.');
