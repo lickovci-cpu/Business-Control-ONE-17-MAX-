@@ -75,7 +75,7 @@ function validateStructuredOutput(task,value){
   }[task]||[];
   if(required.some(k=>!(k in value)))return false;
   if(['tasks','notes','photos','shotList','hashtags','questions','objections','scope','verify','exclusions','handoff','priorities','risks','nextActions','contentIdeas','tests','stories','carousel','publishOrder'].some(k=>k in value)&&
-     Object.entries(value).some(([k,v])=>['tasks','notes','photos','shotList','hashtags','questions','objections','scope','verify','exclusions','handoff','priorities','followUps','risks','nextActions','contentIdeas','tests','stories','carousel','publishOrder'].includes(k)&&!Array.isArray(v)))return false;
+     Object.entries(value).some(([k,v])=>['tasks','notes','photos','shotList','hashtags','questions','objections','scope','verify','exclusions','handoff','priorities','risks','nextActions','contentIdeas','tests','stories','carousel','publishOrder'].includes(k)&&!Array.isArray(v)))return false;
   if(task==='campaign'&&(!Array.isArray(value.stories)||value.stories.length!==3||!Array.isArray(value.carousel)||value.carousel.length!==5))return false;
   if(task==='reel'&&!Array.isArray(value.shotList))return false;
   if(task==='visual'&&(!Array.isArray(value.photos)||value.photos.length<1||!Array.isArray(value.albumOrder)))return false;
