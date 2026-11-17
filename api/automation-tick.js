@@ -9,6 +9,9 @@ const TICK_SLOT_MS=5*60*1000;
 const MAX_AUTOMATIONS_PER_TICK=3;
 const MAX_AI_AUTOMATIONS_PER_TICK=1;
 
+export const JOB_SUMMARY_SELECT='id,status,scheduled_at';
+export const FINANCIAL_ENTRY_SUMMARY_SELECT='id,amount,occurred_on,entry_type,status';
+
 const ORG_TO_PROJECT=Object.freeze({
   fve:'jihoceske',
   'ne-e-m':'merch',
@@ -86,15 +89,15 @@ async function summarizeProject(project){
   if(!org)return {project,leads:0,jobs:0,quotes:0,financeEntries:0,openTasks:0};
   const [leads,jobs,quotes,finance,openTasks]=await Promise.all([
     sb('leads',{organization_id:'eq.'+org,select:'id,status,estimated_value,next_action_at',limit:200}),
-    sb('jobs',{organization_id:'eq.'+org,select:'id,status,scheduled_for',limit:200}).catch(()=>[]),
+    sb('jobs',{organization_id:'eq.'+org,select:JOB_SUMMARY_SELECT,limit:200}).catch(()=>[]),
     sb('quotes',{organization_id:'eq.'+org,select:'id,status,total',limit:200}).catch(()=>[]),
-    sb('financial_entries',{organization_id:'eq.'+org,select:'id,amount,date,type,status',limit:200}).catch(()=>[]),
+    sb('financial_entries',{organization_id:'eq.'+org,select:FINANCIAL_ENTRY_SUMMARY_SELECT,limit:200}).catch(()=>[]),
     sb('tasks',{organization_id:'eq.'+org,status:'in.(open,in_progress,blocked)',select:'id,title,priority,status,due_at',limit:100}).catch(()=>[])
   ]);
   return {
     project,
     leads:Array.isArray(leads)?leads.map(x=>({status:x.status,value:x.estimated_value||null,nextActionAt:x.next_action_at||null})).slice(0,100):[],
-    jobs:Array.isArray(jobs)?jobs.map(x=>({status:x.status,scheduledFor:x.scheduled_for||null})).slice(0,100):[],
+    jobs:Array.isArray(jobs)?jobs.map(x=>({status:x.status,scheduledAt:x.scheduled_at||null})).slice(0,100):[],
     quotes:Array.isArray(quotes)?quotes.map(x=>({status:x.status,total:x.total||null})).slice(0,100):[],
     financeEntries:Array.isArray(finance)?finance.length:0,
     financeTotal:Array.isArray(finance)?finance.reduce((s,x)=>s+Number(x.amount||0),0):0,
