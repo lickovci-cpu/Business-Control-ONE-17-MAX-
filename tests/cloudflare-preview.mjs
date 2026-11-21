@@ -63,3 +63,10 @@ test('writes outside API are rejected', async () => {
   const r=await worker.fetch(new Request('https://preview.invalid/',{method:'POST'}),{ASSETS:assets});
   assert.equal(r.status,405);
 });
+
+
+test('Worker only runs on API paths and preview-only mode is enabled', async () => {
+  const config = await readFile(new URL('../wrangler.toml', import.meta.url), 'utf8');
+  assert.match(config, /run_worker_first\s*=\s*\["\/api\/\*"\]/);
+  assert.match(config, /PREVIEW_ONLY\s*=\s*"true"/);
+});
