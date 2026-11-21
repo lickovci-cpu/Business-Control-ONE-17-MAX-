@@ -97,7 +97,7 @@ begin
     returning a.id, a.organization_id, a.action_config, a.trigger_config, a.attempt_count
   ),
   inserted as (
-    insert into public.automation_runs (
+    insert into public.automation_runs as ar (
       organization_id, automation_id, status, input, started_at,
       schedule_slot, idempotency_key, lease_expires_at, attempt_count
     )
@@ -109,7 +109,7 @@ begin
            c.attempt_count
       from claimed c
     on conflict (idempotency_key) where idempotency_key is not null do nothing
-    returning id, automation_id, organization_id, attempt_count
+    returning ar.id, ar.automation_id, ar.organization_id, ar.attempt_count
   )
   select i.id, i.automation_id, i.organization_id, c.action_config, c.trigger_config, i.attempt_count
     from inserted i
