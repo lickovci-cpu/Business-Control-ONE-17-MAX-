@@ -38,7 +38,7 @@ test("mobile root is served from the isolated branch with security headers", asy
     assert.match(html,/name="viewport"/);
     assert.equal(response.headers.get("x-robots-tag"),"noindex, nofollow, noarchive");
     assert.equal(response.headers.get("x-content-type-options"),"nosniff");
-    assert.equal(response.headers.get("content-security-policy"),"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://nrsm-streetwear.vercel.app https://mazliprint-final.vercel.app; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; manifest-src 'self'; worker-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'");
+    assert.equal(response.headers.get("content-security-policy"),"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://nrsm-streetwear.vercel.app https://mazliprint-final.vercel.app; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; manifest-src 'self'; worker-src 'none'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'");
     assert.equal(response.headers.get("x-preview-source"),"isolated-github-branch");
   } finally { globalThis.fetch=originalFetch; }
 });
