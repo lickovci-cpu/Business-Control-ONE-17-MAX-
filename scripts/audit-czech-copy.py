@@ -43,7 +43,9 @@ required=(
     'P'+chr(345)+'ihl'+chr(225)+'sit se ke cloudu',
     'Z'+chr(225)+'lo'+chr(382)+'n'+chr(237)+' body',
     'Ulo'+chr(382)+'it z'+chr(225)+'lo'+chr(382)+'n'+chr(237)+' bod',
-    'Naj'+chr(237)+'t 10 fotek pomoc'+chr(237)+' AI'
+    'Naj'+chr(237)+'t 10 fotek pomoc'+chr(237)+' AI',
+    'Analyzovat vybran'+chr(233)+' fotky',
+    'N'+chr(225)+'zev firmy pro novou organizaci'
 )
 for label in required:
     if label not in html:

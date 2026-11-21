@@ -38,14 +38,14 @@ I updated `docs/bco-media-bucket-hardening-proposal.sql` to:
 - Keep the appropriate MIME allowlist per bucket.
 - Include rollback values observed during this read-only inspection.
 
-The proposal is not a migration and has not been run. Re-read the current bucket values and create a backup immediately before any future approved production change.
+The proposal is not a production migration. It is applied only to disposable local Supabase buckets in CI; it has not been run against the hosted project. Re-read the current bucket values and create a backup immediately before any future approved production change.
 
 ## Isolated implementation status
 
 - `workers/bco-private-storage.js`: verifies Auth UID and organization membership, accepts only server-generated object paths, validates MIME and file signatures, caps uploads at 4 MiB, refuses overwrite, and returns a 120-second signed download URL. It uses the caller JWT for Storage so existing RLS remains the final authorization layer.
 - `BCO_PRIVATE_STORAGE_ENABLED` defaults to false. The adapter is not connected to the public static preview Worker; the preview API remains fail-closed.
 - Tests cover missing/forged JWT, cross-organization access, job path checks, size/MIME/signature checks, and short-lived signed URLs. These are isolated tests, not a production upload test.
-- Bucket-hardening proposal has four dedicated static tests. No production bucket settings have changed.
+- Five dedicated tests verify the bucket proposal. The CI local-Supabase Auth/RLS job now applies the proposal to its disposable local buckets before exercising real JWT uploads, direct MIME rejection, and the 4 MiB size limit. No production bucket settings have changed.
 
 ## Remaining blockers
 
