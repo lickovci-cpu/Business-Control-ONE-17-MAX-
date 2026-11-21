@@ -10,6 +10,13 @@ Read-only review. No production policies, functions, or data were changed.
 - The reviewed public SECURITY DEFINER functions all have a fixed search_path. None is executable by anon. User-callable functions use auth.uid() and/or private.org_role(...); trigger-only and maintenance functions are not granted to user roles.
 - bco-command-center currently has verify_jwt=true.
 
+## Additional live precheck results
+
+- `memberships` SELECT is restricted by RLS to the caller's own membership rows or owner/admin visibility within an organization. The new Command Center resolver queries only the authenticated user's own membership.
+- Two users currently have owner/admin memberships in more than one organization. The legacy `set_my_organization_slug(new_slug)` can therefore target the wrong organization; the prepared patch adds an explicit-organization RPC and makes the legacy RPC reject ambiguous users.
+- No task assignee was found outside their task's organization membership. There are 94 tasks without an assignee; the proposed policy keeps these manager/admin-only.
+- The live Outlook registry row contains only non-secret config keys (`send_requires_approval`, `source`), but `credential_ref` and `last_checked_at` are null. `status=connected` is not a verified server-side OAuth connection.
+
 ## Findings requiring follow-up
 
 1. The deployed bco-command-center version still uses Access-Control-Allow-Origin: *, and its old organization resolver can select an arbitrary first membership. A replacement source file is prepared on bco/control-plane-v1; it is not deployed.
