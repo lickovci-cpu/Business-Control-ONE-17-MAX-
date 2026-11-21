@@ -34,6 +34,12 @@ set +a
 : "${PUBLISHABLE_KEY:?Missing local Supabase PUBLISHABLE_KEY}"
 : "${SERVICE_ROLE_KEY:?Missing local Supabase SERVICE_ROLE_KEY}"
 
+echo 'stage: apply and verify bucket limits in local Supabase only'
+psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$WORKSPACE/docs/bco-media-bucket-hardening-proposal.sql"
+psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$WORKSPACE/tests/storage-bucket-hardening-local.sql"
+
+echo 'PASS: both local private buckets enforce 4 MiB and their exact MIME allowlists'
+
 ORG_A='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 ORG_B='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 JOB_A='33333333-3333-4333-8333-333333333333'

@@ -39,6 +39,21 @@ BEGIN
          AND file_size_limit = 4194304) <> 2 THEN
     RAISE EXCEPTION 'BCO_BUCKET_HARDENING_FAILED';
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM storage.buckets WHERE id='bco-media' AND public=false
+      AND allowed_mime_types = ARRAY[
+        'image/jpeg','image/png','image/webp','image/gif',
+        'video/mp4','video/webm','video/quicktime','application/pdf'
+      ]
+  ) OR NOT EXISTS (
+    SELECT 1 FROM storage.buckets WHERE id='job-media' AND public=false
+      AND allowed_mime_types = ARRAY[
+        'image/jpeg','image/png','image/webp','application/pdf'
+      ]
+  ) THEN
+    RAISE EXCEPTION 'BCO_BUCKET_MIME_HARDENING_FAILED';
+  END IF;
 END
 $$;
 
