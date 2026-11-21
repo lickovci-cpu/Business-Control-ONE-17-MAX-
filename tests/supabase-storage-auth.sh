@@ -121,7 +121,7 @@ case "$status" in 200|201) echo "FAIL: unassigned job upload succeeded"; exit 1;
 echo 'stage: test private downloads'
 status="$(curl --max-time 20 -sS -o /tmp/bco-own-download.bin -w '%{http_code}' "$API_URL/storage/v1/object/authenticated/bco-media/$ORG_A/allowed.jpg" -H "apikey: $PUBLISHABLE_KEY" -H "Authorization: Bearer $TOKEN_A")"
 case "$status" in 200) ;; *) echo "FAIL: own private download returned $status"; exit 1;; esac
-status="$(curl -sS -o /tmp/bco-cross-download.json -w '%{http_code}' "$API_URL/storage/v1/object/authenticated/bco-media/$ORG_B/allowed.jpg" -H "apikey: $PUBLISHABLE_KEY" -H "Authorization: Bearer $TOKEN_A")"
+status="$(curl --max-time 20 -sS -o /tmp/bco-cross-download.json -w '%{http_code}' "$API_URL/storage/v1/object/authenticated/bco-media/$ORG_B/allowed.jpg" -H "apikey: $PUBLISHABLE_KEY" -H "Authorization: Bearer $TOKEN_A")"
 case "$status" in 200|206) echo "FAIL: cross-org private download succeeded"; exit 1;; *) echo "PASS: cross-org private download denied ($status)";; esac
 
 echo 'stage: test bucket MIME and size limits'
