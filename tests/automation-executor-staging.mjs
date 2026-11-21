@@ -46,10 +46,9 @@ try {
   });
   assert.equal(automation.id, automationId);
 
-  const claims = await Promise.all([
-    rpc("claim_bco_automation_runs", { p_slot: slot1, p_limit: 1 }),
-    rpc("claim_bco_automation_runs", { p_slot: slot1, p_limit: 1 })
-  ]);
+  const claims = await Promise.all(
+    Array.from({ length: 20 }, () => rpc("claim_bco_automation_runs", { p_slot: slot1, p_limit: 1 }))
+  );
   const claimed = claims.flat();
   assert.equal(claimed.length, 1, "Two concurrent claimers must produce exactly one claim");
   const first = claimed[0];
