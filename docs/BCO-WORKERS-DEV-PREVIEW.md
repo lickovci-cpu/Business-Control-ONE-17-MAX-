@@ -8,7 +8,7 @@ Status: deployed to the isolated workers.dev hostname only.
 - Static source: the allowlisted `public/` files from this branch only.
 - API: `GET /api/health` is diagnostic; every other `/api/*` route returns 503.
 - Methods: static content is GET/HEAD only.
-- Headers: noindex, nosniff, no-store, restrictive same-origin connect/form policy, frame denial.
+- Headers: noindex, nosniff, no-store, X-Frame-Options DENY, same-origin-only scripts/connections/forms, inline styles only, no external images, worker-src none (service workers disabled), object-src none.
 - No Supabase credentials, service-role key, BLOB token, or production backend binding is present.
 
 ## Deployment path
@@ -35,3 +35,18 @@ The original `vercel.json` still contains all four schedules:
 - `/api/outbound-cron` — `*/5 * * * *`
 
 The preview intentionally has no Cron Trigger and does not execute business jobs. Production scheduling remains on the existing configuration until a separate scheduler migration is backed by idempotency tests, a rollback plan, and explicit approval.
+
+## Live preview verification
+
+Verified from the connected Windows device:
+
+- `GET /` — HTTP 200; Czech HTML and mobile viewport meta present.
+- `GET /api/health` — HTTP 200; explicitly reports `preview=true` and `backend=not-connected`.
+- `GET /app.js`, `GET /styles.css`, `GET /manifest.webmanifest`, `GET /robots.txt` — HTTP 200.
+- SPA pages `/projects`, `/fve`, `/nrsm`, `/mazliprint` — HTTP 200.
+- Unknown static path — HTTP 404.
+- `GET/POST/PUT/PATCH/DELETE/OPTIONS/HEAD /api/leads` — HTTP 503 (fail-closed).
+- `POST / ` and `OPTIONS / ` — HTTP 405.
+- Live root and health responses expose the restrictive CSP, `X-Frame-Options: DENY`, and `X-Robots-Tag: noindex, nofollow, noarchive`.
+
+The preview is a static UI demonstration. It does not authenticate, save leads, upload files, execute automations, or run cron jobs. The service-worker policy is deliberately disabled to prevent cached production behavior and ensure security headers are not stripped by a client-side service worker.
