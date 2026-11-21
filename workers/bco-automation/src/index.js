@@ -66,6 +66,7 @@ export async function runTick(env, scheduledAt) {
         body: JSON.stringify({
           p_run_id: item.run_id,
           p_automation_id: item.automation_id,
+          p_organization_id: item.organization_id,
           p_success: true,
           p_output: body,
           p_error: null,
@@ -82,6 +83,7 @@ export async function runTick(env, scheduledAt) {
         body: JSON.stringify({
           p_run_id: item.run_id,
           p_automation_id: item.automation_id,
+          p_organization_id: item.organization_id,
           p_success: false,
           p_output: null,
           p_error: message,
