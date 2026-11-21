@@ -40,7 +40,7 @@ The existing Meta photo endpoint validates a waiting-approval task, project bind
 
 ### Current 1Social readiness
 
-The connected 1Social workspace previously showed NŘŠM Facebook, Instagram, and TikTok accounts. This proves the ChatGPT-side connection only. It does **not** prove that BCO's server has an authenticated remote-MCP OAuth client. Server-to-server OAuth/MCP support is still a prerequisite.
+The connected 1Social workspace previously showed NŘŠM Facebook, Instagram, and TikTok accounts. The official MCP endpoint is `https://mcp.1social.dev/mcp`; 1Social documents browser-based OAuth for MCP clients, with no API key to paste. BCO still has no implemented or verified server-side MCP OAuth client, so the endpoint and OAuth flow must be proven in an isolated read-only integration test before any write is enabled.
 
 ## 3. Proposed data contract (reuse existing rows)
 
@@ -157,12 +157,12 @@ Before making the external call:
 1. Atomically claim the exact content item / approval pair.
 2. Reject if the approval was consumed, the hash changed, the row is already published, or a prior attempt is `claimed`, `sent`, or `unknown`.
 3. Persist `claimed` and an attempt ID to the same `content_items.metadata.social.dispatch` object before network I/O.
-4. Use provider-side idempotency only if 1Social explicitly documents and exposes it. Do not assume MCP calls accept an idempotency header.
+4. 1Social's current `publish_post` tool explicitly accepts `idempotencyKey`; reusing the same key returns the original broadcast with `deduplicated=true`. Pass the deterministic key on every call and persist it before network I/O. This is provider-side deduplication for repeated calls, not a reason to retry an ambiguous call with a new key.
 5. On a confirmed provider success, persist provider post ID, permalink, and published timestamp.
 6. On a definite provider rejection, persist a sanitized error code/message and mark `failed`.
 7. On timeout, disconnect, or ambiguous response, mark `unknown`, reconcile with 1Social receipts/listing, and require a human decision before another attempt.
 
-**Exactly-once delivery cannot be promised** unless the provider supports idempotency or a reliable receipt lookup. The safe fallback is at-most-once dispatch plus manual reconciliation, not automatic retry.
+1Social documents a stable `idempotencyKey` for `publish_post`, and its response includes per-network delivery receipts. Use that provider deduplication together with the local atomic claim. Still, do not claim exactly-once delivery for every network: a network may report `unknown`, and the provider's idempotency scope/retention must be confirmed during integration tests. For an unknown result, reconcile the original broadcast by provider ID/receipt; never generate a new key to retry the same approved payload.
 
 For concurrency, prefer a conditional database update / narrowly scoped SQL RPC with row locking and a unique constraint on the existing approval/idempotency identity. Before writing that migration, inspect current constraints and prove the function is safe under the existing RLS model. A KV `SET NX EX` lock may be an additional short-lived guard but is not durable evidence of publication.
 
@@ -173,12 +173,14 @@ Create a server-only adapter behind the existing BCO API/control plane:
 - OAuth authorization and refresh handled only server-side.
 - Store OAuth credentials in a managed server secret store / encrypted server environment, never in browser bundles, Git, or `content_items.metadata`.
 - Scope the connection to the exact provider accounts and organization.
-- Adapter operations in v1: account listing, media preflight/upload if required, preview, one explicit publish call, and receipt lookup.
+- MCP endpoint: `https://mcp.1social.dev/mcp`; OAuth authorization is performed in a browser by the MCP client. No social-network password or raw network token is exposed to BCO.
+- Adapter operations in v1: account listing, media preflight/upload if required, preview, one explicit immediate `publish_post` call with a stable `idempotencyKey`, and receipt lookup via `list_posts`.
 - Reject unknown provider accounts and unsupported media/platform combinations.
-- Do not implement provider scheduling, background publishing, or automatic retries.
+- Do not implement provider scheduling, BCO background publishing, or automatic retries initiated by BCO.
+- The 1Social tool documentation says failed transient deliveries may be retried automatically by the provider. The current `publish_post` argument schema exposes no retry-disable flag. This must be tested/clarified with 1Social before pilot. If the user requires absolutely no provider-side retry after the explicit send, keep the publish endpoint disabled unless 1Social confirms a supported way to disable it.
 - Redact bearer tokens and private provider payloads from logs.
 
-The currently connected ChatGPT 1Social MCP session is not itself a server-side credential for BCO. Do not copy its session token or attempt to scrape it. If 1Social does not provide a supported remote MCP OAuth flow usable by BCO, stop and keep the approval-to-publish step operator-mediated through ChatGPT until a supported integration path exists.
+The ChatGPT 1Social connection is not a reusable server-side credential for BCO. BCO must perform its own documented MCP OAuth browser flow and store only the MCP client refresh/access credentials in a server-side encrypted secret store. Never copy the ChatGPT connector token or scrape its session.
 
 ## 8. Delivery receipt and error contract
 
@@ -250,12 +252,13 @@ No phase is automatically authorized by the previous phase. Production deploymen
 
 ## 12. Known blockers / open questions
 
-1. BCO server-side 1Social OAuth/MCP client is not currently verified.
-2. 1Social provider-side idempotency support is not verified; do not assume it.
-3. Confirm which connected account IDs map to each BCO organization before any dispatch.
-4. The live database has no dedicated Local Proof Factory organization; do not assign its content to NŘŠM or FVE by assumption.
-5. The live schema has no explicit payload-hash column in `ai_approvals`; v1 stores the snapshot/hash in `payload`. A migration is optional only if tests prove JSONB storage insufficient.
-6. The live approval table currently has zero rows; no social approval workflow is active yet.
+1. BCO server-side 1Social OAuth/MCP client is not implemented or verified, although the official endpoint and OAuth flow are documented.
+2. The 1Social `publish_post` tool exposes `idempotencyKey` and returns `deduplicated`; validate the actual remote MCP client call and deduplication behavior in tests.
+3. 1Social documents automatic retries for transient delivery failures; the exposed publish schema has no retry-disable option. Clarify whether this can be disabled before a strict manual-only pilot.
+4. Confirm which connected account IDs map to each BCO organization before any dispatch.
+5. The live database has no dedicated Local Proof Factory organization; do not assign its content to NŘŠM or FVE by assumption.
+6. The live schema has no explicit payload-hash column in `ai_approvals`; v1 stores the snapshot/hash in `payload`. A migration is optional only if tests prove JSONB storage insufficient.
+7. The live approval table currently has zero rows; no social approval workflow is active yet.
 
 ## 13. Rollback
 
