@@ -77,7 +77,7 @@ export default {
     let upstream;
     try {
       upstream=await fetch(SOURCE+path,{method:request.method,headers:{Accept:"*/*"}});
-    } catch {
+    } catch (error) {
       return json({ok:false,error:"PREVIEW_ASSET_SOURCE_UNAVAILABLE",detail:String(error).slice(0,180)},502);
     }
     if(!upstream.ok) return json({ok:false,error:"PREVIEW_ASSET_NOT_FOUND"},404);
