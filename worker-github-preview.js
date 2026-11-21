@@ -28,6 +28,7 @@ const ALLOWED = new Set([
   "/styles.css",
   "/sw.js"
 ]);
+const REWRITES = { "/projects": "/projects.html", "/fve": "/fve.html", "/nrsm": "/nrsm.html", "/mazliprint": "/mazliprint.html" };
 const TYPES = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -70,6 +71,7 @@ export default {
     try { path=decodeURIComponent(url.pathname); }
     catch { return json({ok:false,error:"INVALID_PATH"},400); }
     if(path==="/") path="/index.html";
+    if(REWRITES[path]) path=REWRITES[path];
     if(path.includes("\\") || path.includes("\0") || path.split("/").includes("..")){
       return json({ok:false,error:"INVALID_PATH"},400);
     }
