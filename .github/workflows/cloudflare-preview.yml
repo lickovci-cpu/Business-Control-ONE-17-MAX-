@@ -42,7 +42,7 @@ jobs:
         with:
           node-version: 24
       - name: Run Worker and design contract tests
-        run: node --test tests/cloudflare-preview.mjs tests/outbox-design.test.mjs
+        run: node --test tests/cloudflare-preview.mjs tests/outbox-design.test.mjs tests/cloudflare-github-preview.test.mjs
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
