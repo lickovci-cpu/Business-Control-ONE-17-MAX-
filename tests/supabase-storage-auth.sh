@@ -40,9 +40,10 @@ JOB_A='33333333-3333-4333-8333-333333333333'
 JOB_UNASSIGNED='44444444-4444-4444-8444-444444444444'
 PASSWORD='Local-Only-Test-Password-2026!'
 
+echo 'stage: create isolated Auth users'
 create_user() {
   local email="$1"
-  curl -fsS "$API_URL/auth/v1/admin/users" \
+  curl --max-time 20 -fsS "$API_URL/auth/v1/admin/users" \
     -H "apikey: $SERVICE_ROLE_KEY" \
     -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
     -H 'Content-Type: application/json' \
@@ -69,9 +70,10 @@ insert into public.job_assignments(organization_id,job_id,user_id) values
 ('$ORG_A','$JOB_A',:'user_a'::uuid);
 SQL
 
+echo 'stage: login and verify signed JWTs'
 login() {
   local email="$1"
-  curl -fsS "$API_URL/auth/v1/token?grant_type=password" \
+  curl --max-time 20 -fsS "$API_URL/auth/v1/token?grant_type=password" \
     -H "apikey: $PUBLISHABLE_KEY" \
     -H 'Content-Type: application/json' \
     -d "{\"email\":\"$email\",\"password\":\"$PASSWORD\"}" | jq -r '.access_token'
@@ -81,17 +83,17 @@ TOKEN_B="$(login 'bco-b@example.test')"
 test -n "$TOKEN_A" && test "$TOKEN_A" != "null"
 test -n "$TOKEN_B" && test "$TOKEN_B" != "null"
 
-VERIFIED_A="$(curl -fsS "$API_URL/auth/v1/user" -H "apikey: $PUBLISHABLE_KEY" -H "Authorization: Bearer $TOKEN_A" | jq -r '.id')"
+VERIFIED_A="$(curl --max-time 20 -fsS "$API_URL/auth/v1/user" -H "apikey: $PUBLISHABLE_KEY" -H "Authorization: Bearer $TOKEN_A" | jq -r '.id')"
 test "$VERIFIED_A" = "$USER_A_ID"
 echo "PASS: Supabase Auth issued and verified a real local JWT"
 
-FORGED_STATUS="$(curl -sS -o /tmp/bco-forged-jwt.json -w '%{http_code}' "$API_URL/auth/v1/user" -H "apikey: $PUBLISHABLE_KEY" -H 'Authorization: Bearer forged.invalid.token')"
+FORGED_STATUS="$(curl --max-time 20 -sS -o /tmp/bco-forged-jwt.json -w '%{http_code}' "$API_URL/auth/v1/user" -H "apikey: $PUBLISHABLE_KEY" -H 'Authorization: Bearer forged.invalid.token')"
 test "$FORGED_STATUS" = "401"
 echo "PASS: forged JWT rejected by local Supabase Auth"
 
 upload() {
   local bucket="$1" path="$2" token="$3" mime="$4" data="$5"
-  curl -sS -o /tmp/bco-storage-response.json -w '%{http_code}' \
+  curl --max-time 20 -sS -o /tmp/bco-storage-response.json -w '%{http_code}' \
     -X POST "$API_URL/storage/v1/object/$bucket/$path" \
     -H "apikey: $PUBLISHABLE_KEY" \
     -H "Authorization: Bearer $token" \
@@ -99,6 +101,7 @@ upload() {
     --data-binary "$data"
 }
 
+echo 'stage: test organization-scoped bucket uploads'
 status="$(upload bco-media "$ORG_A/allowed.jpg" "$TOKEN_A" image/jpeg 'local-test-jpeg')"
 case "$status" in 200|201) ;; *) cat /tmp/bco-storage-response.json; echo "FAIL: member upload returned $status"; exit 1;; esac
 echo "PASS: org member uploaded to own private bco-media folder"
@@ -109,22 +112,25 @@ case "$status" in 200|201) echo "FAIL: cross-org upload succeeded"; exit 1;; *) 
 status="$(upload bco-media "$ORG_B/allowed.jpg" "$TOKEN_B" image/jpeg 'org-b-test')"
 case "$status" in 200|201) ;; *) cat /tmp/bco-storage-response.json; echo "FAIL: org B member upload returned $status"; exit 1;; esac
 
+echo 'stage: test assigned and unassigned job access'
 status="$(upload job-media "$ORG_A/$JOB_A/assigned.pdf" "$TOKEN_A" application/pdf 'assigned-job-test')"
 case "$status" in 200|201) ;; *) cat /tmp/bco-storage-response.json; echo "FAIL: assigned job upload returned $status"; exit 1;; esac
 status="$(upload job-media "$ORG_A/$JOB_UNASSIGNED/unassigned.pdf" "$TOKEN_A" application/pdf 'unassigned-job-test')"
 case "$status" in 200|201) echo "FAIL: unassigned job upload succeeded"; exit 1;; *) echo "PASS: unassigned job upload denied ($status)";; esac
 
-status="$(curl -sS -o /tmp/bco-own-download.bin -w '%{http_code}' "$API_URL/storage/v1/object/authenticated/bco-media/$ORG_A/allowed.jpg" -H "apikey: $PUBLISHABLE_KEY" -H "Authorization: Bearer $TOKEN_A")"
+echo 'stage: test private downloads'
+status="$(curl --max-time 20 -sS -o /tmp/bco-own-download.bin -w '%{http_code}' "$API_URL/storage/v1/object/authenticated/bco-media/$ORG_A/allowed.jpg" -H "apikey: $PUBLISHABLE_KEY" -H "Authorization: Bearer $TOKEN_A")"
 case "$status" in 200) ;; *) echo "FAIL: own private download returned $status"; exit 1;; esac
 status="$(curl -sS -o /tmp/bco-cross-download.json -w '%{http_code}' "$API_URL/storage/v1/object/authenticated/bco-media/$ORG_B/allowed.jpg" -H "apikey: $PUBLISHABLE_KEY" -H "Authorization: Bearer $TOKEN_A")"
 case "$status" in 200|206) echo "FAIL: cross-org private download succeeded"; exit 1;; *) echo "PASS: cross-org private download denied ($status)";; esac
 
+echo 'stage: test bucket MIME and size limits'
 status="$(upload bco-media "$ORG_A/wrong-type.txt" "$TOKEN_A" text/plain 'not-allowed')"
 case "$status" in 200|201) echo "FAIL: disallowed MIME uploaded"; exit 1;; *) echo "PASS: bucket MIME allowlist enforced ($status)";; esac
 
 dd if=/dev/zero of=/tmp/bco-over-limit.bin bs=1048576 count=4 status=none
 printf x >> /tmp/bco-over-limit.bin
-status="$(curl -sS -o /tmp/bco-over-limit.json -w '%{http_code}' -X POST "$API_URL/storage/v1/object/bco-media/$ORG_A/too-large.jpg" -H "apikey: $PUBLISHABLE_KEY" -H "Authorization: Bearer $TOKEN_A" -H 'Content-Type: image/jpeg' --data-binary @/tmp/bco-over-limit.bin)"
+status="$(curl --max-time 30 -sS -o /tmp/bco-over-limit.json -w '%{http_code}' -X POST "$API_URL/storage/v1/object/bco-media/$ORG_A/too-large.jpg" -H "apikey: $PUBLISHABLE_KEY" -H "Authorization: Bearer $TOKEN_A" -H 'Content-Type: image/jpeg' --data-binary @/tmp/bco-over-limit.bin)"
 case "$status" in 200|201) echo "FAIL: oversized upload succeeded"; exit 1;; *) echo "PASS: bucket size limit enforced ($status)";; esac
 
 echo "PASS: local Supabase Auth JWT + private Storage RLS integration suite"
