@@ -141,3 +141,12 @@ Required server-side bindings before continuing:
 - The non-secret staging variables are already present in the committed Wrangler config; no client-side secrets are used.
 
 No Cloudflare Worker deployment, Cron trigger, Supabase SQL, production Edge Function, production Vercel deployment, production Vercel Cron change or paid AI call was made. Production Supabase `wemone` remains untouched.
+
+
+### Final verification addendum
+
+- GitHub Actions Control Plane Runtime run 233 for commit `f67d51689df323b3636e4ce7dbf882e2e5f3bb00` completed with `success`.
+- A second read-only Cloudflare inspection reconfirmed the existing `bco-cloudflare-preview` still has zero secrets, zero bindings and zero Cron schedules. No live Worker update has occurred.
+- The existing preview's static asset handler reads files from the pre-existing branch `infra/cloudflare-workers-preview-2026-11-21` at the remote raw-content source. That branch was inspected read-only to identify the dependency; it was not changed. The staging Worker candidate retains this already-live asset source so the existing preview routes are preserved. No asset copy or branch change was performed outside `bco/control-plane-v1`.
+- The Worker configuration in the approved branch is therefore PREPARED ONLY. Its scheduled trigger has not been installed remotely. Deploying it remains blocked on the two missing Cloudflare secret bindings and on Supabase-side confirmation of the matching executor token.
+- Actual E2E is still NOT VERIFIED: the staging Edge Function is deployed, but it has not been invoked; Cloudflare has no credentials to claim or dispatch work. The 20-request Worker test is CI/mock-only. Previously verified real database concurrency, lease, organization, retry and idempotency tests remain valid as database-level tests only, not as evidence of a full Worker-to-Edge-Function runtime flow.
