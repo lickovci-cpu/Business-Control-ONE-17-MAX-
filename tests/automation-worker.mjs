@@ -36,6 +36,9 @@ try {
   assert.equal(result.claimed, 1);
   assert.equal(result.results[0].status, "completed");
   assert.equal(calls.filter((x) => x.url.endsWith("/rpc/finish_bco_automation_run")).length, 1);
+  const successFinishCall = calls.find((x) => x.url.endsWith("/rpc/finish_bco_automation_run"));
+  assert.ok(successFinishCall);
+  assert.match(successFinishCall.body, /"p_organization_id":"org-1"/);
   assert.equal(calls.some((x) => x.method === "PATCH"), false);
   executorFails = true;
   calls = [];
@@ -48,6 +51,7 @@ try {
   assert.equal(failed.results[0].status, "failed");
   const finishCall = calls.find((x) => x.url.endsWith("/rpc/finish_bco_automation_run"));
   assert.ok(finishCall);
+  assert.match(finishCall.body, /"p_organization_id":"org-1"/);
   assert.match(finishCall.body, /"p_success":false/);
   assert.match(finishCall.body, /"p_retry_at":/);
   assert.ok(calls.some((x) => x.url.endsWith("/rpc/claim_bco_automation_runs")));
