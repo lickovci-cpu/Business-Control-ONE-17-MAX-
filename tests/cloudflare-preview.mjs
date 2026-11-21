@@ -43,7 +43,7 @@ test('static response is noindex, nosniff and blocks external connections', asyn
   assert.equal(r.status,200);
   assert.match(r.headers.get('x-robots-tag'),/noindex/);
   assert.equal(r.headers.get('x-content-type-options'),'nosniff');
-  assert.equal(r.headers.get('content-security-policy'),"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://nrsm-streetwear.vercel.app https://mazliprint-final.vercel.app; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; manifest-src 'self'; worker-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'");
+  assert.equal(r.headers.get('content-security-policy'),"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://nrsm-streetwear.vercel.app https://mazliprint-final.vercel.app; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; manifest-src 'self'; worker-src 'none'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'");
 });
 
 test('API health also carries preview CSP', async () => {
