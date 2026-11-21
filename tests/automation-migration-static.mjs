@@ -6,7 +6,15 @@ const wrangler = readFileSync(new URL("../workers/bco-automation/wrangler.jsonc"
 const securityPatch = readFileSync(new URL("../ops/sql/tasks-and-organization-security-patch.sql", import.meta.url), "utf8");
 assert.match(migration, /create unique index if not exists automation_runs_idempotency_key_uidx/i);
 assert.match(migration, /for update skip locked/i);
-assert.match(migration, /auth\.role\(\)/i);
+assert.match(migration, /coalesce\(auth\.jwt\(\)\s*->>\s*'role',\s*''\)/i);
+assert.doesNotMatch(migration, /auth\.role\(\)/i);
+assert.match(migration, /for update skip locked/i);
+assert.match(migration, /lease_expires_at <= now\(\)/i);
+assert.match(migration, /where status = 'running'/i);
+assert.match(migration, /on conflict \(idempotency_key\) where idempotency_key is not null do nothing/i);
+assert.match(migration, /next_retry_at = case when p_success then null else p_retry_at end/i);
+assert.match(worker, /export function backoffMinutes/);
+assert.match(worker, /BACKOFF_MINUTES = \[5, 15, 60\]/);
 assert.match(migration, /finish_bco_automation_run/i);
 assert.match(worker, /body\.ok !== true/);
 assert.match(worker, /AUTOMATION_EXECUTOR_TOKEN/);
