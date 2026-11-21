@@ -1,8 +1,14 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "bco-automation-preview",
+  "name": "bco-cloudflare-preview",
   "main": "src/index.js",
   "compatibility_date": "2026-11-21",
+  "vars": {
+    "SUPABASE_URL": "https://pflfbphulvutccvvhrot.supabase.co",
+    "SUPABASE_PROJECT_REF": "pflfbphulvutccvvhrot",
+    "BCO_PRODUCTION_PROJECT_REF": "vjzzvopwecmwuccdidzq",
+    "AUTOMATION_EXECUTOR_URL": "https://pflfbphulvutccvvhrot.supabase.co/functions/v1/automation-executor"
+  },
   "triggers": {
     "crons": ["*/5 * * * *"]
   },
