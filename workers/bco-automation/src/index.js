@@ -109,7 +109,6 @@ export async function runTick(env, scheduledAt) {
   const base = assertStagingTarget(env);
   const executor = executorUrl(env);
   const token = required(env, "AUTOMATION_EXECUTOR_TOKEN");
-  if (new URL(executor).origin === base) throw new Error("EXECUTOR_ORIGIN_INVALID");
 
   const slot = new Date(Math.floor(new Date(scheduledAt || Date.now()).getTime() / 300000) * 300000).toISOString();
   const claimed = await supabaseRequest(env, "rpc/claim_bco_automation_runs", {
