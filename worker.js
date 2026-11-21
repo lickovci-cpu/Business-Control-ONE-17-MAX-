@@ -2,7 +2,7 @@
  * BCO isolated preview Worker. All mutating/business API routes remain closed.
  * External network APIs and service workers are blocked by the preview CSP.
  */
-const PREVIEW_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://nrsm-streetwear.vercel.app https://mazliprint-final.vercel.app; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; manifest-src 'self'; worker-src 'none'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'";
+const PREVIEW_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; manifest-src 'self'; worker-src 'none'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'";
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
   headers: {
