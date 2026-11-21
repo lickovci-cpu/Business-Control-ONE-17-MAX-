@@ -1,34 +1,53 @@
--- PROPOSAL ONLY. DO NOT RUN AGAINST PRODUCTION WITHOUT APPROVAL + BACKUP + ROLLBACK.
--- Enforces the same upload boundary as api/cloud-storage.js even when a client
--- with a valid Supabase JWT calls Storage directly.
+-- PROPOSAL ONLY. NEVER RUN AGAINST PRODUCTION WITHOUT AN EXPLICIT APPROVAL,
+-- a fresh backup of the bucket rows, an isolated test, and a tested rollback.
+-- Read-only production inspection on 2026-11-21 found:
+-- bco-media: private, no file-size limit, no MIME allowlist.
+-- job-media: private, 15 MiB limit, JPEG/PNG/WebP/PDF allowlist.
+-- The Cloudflare upload adapter enforces 4 MiB. Match both buckets to that
+-- limit so a client cannot bypass the Worker by calling Storage directly.
+
 DO $$
+DECLARE
+  expected_count integer;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM storage.buckets WHERE id = 'bco-media' AND public = false
-  ) THEN
-    RAISE EXCEPTION 'EXPECTED_PRIVATE_BCO_MEDIA_BUCKET_NOT_FOUND';
+  SELECT count(*) INTO expected_count
+    FROM storage.buckets
+   WHERE id IN ('bco-media', 'job-media') AND public = false;
+
+  IF expected_count <> 2 THEN
+    RAISE EXCEPTION 'EXPECTED_BOTH_PRIVATE_BCO_BUCKETS';
   END IF;
 
   UPDATE storage.buckets
      SET file_size_limit = 4194304,
          allowed_mime_types = ARRAY[
-           'image/jpeg',
-           'image/png',
-           'image/webp',
-           'image/gif',
-           'video/mp4',
-           'video/webm',
-           'video/quicktime',
-           'application/pdf'
+           'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+           'video/mp4', 'video/webm', 'video/quicktime', 'application/pdf'
          ]
    WHERE id = 'bco-media' AND public = false;
 
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'BCO_MEDIA_BUCKET_HARDENING_FAILED';
+  UPDATE storage.buckets
+     SET file_size_limit = 4194304,
+         allowed_mime_types = ARRAY[
+           'image/jpeg', 'image/png', 'image/webp', 'application/pdf'
+         ]
+   WHERE id = 'job-media' AND public = false;
+
+  IF (SELECT count(*) FROM storage.buckets
+       WHERE id IN ('bco-media', 'job-media')
+         AND public = false
+         AND file_size_limit = 4194304) <> 2 THEN
+    RAISE EXCEPTION 'BCO_BUCKET_HARDENING_FAILED';
   END IF;
 END
 $$;
 
--- Rollback proposal (only if the previous bucket settings are recorded first):
--- UPDATE storage.buckets SET file_size_limit = <PREVIOUS_LIMIT>,
---   allowed_mime_types = <PREVIOUS_MIME_ARRAY> WHERE id = 'bco-media';
+-- ROLLBACK TO THE VALUES OBSERVED ON 2026-11-21 ONLY AFTER CONFIRMING THAT
+-- NO ONE HAS CHANGED THESE SETTINGS SINCE THE INSPECTION:
+-- UPDATE storage.buckets
+--    SET file_size_limit = NULL, allowed_mime_types = NULL
+--  WHERE id = 'bco-media' AND public = false;
+-- UPDATE storage.buckets
+--    SET file_size_limit = 15728640,
+--        allowed_mime_types = ARRAY['image/jpeg','image/png','image/webp','application/pdf']
+--  WHERE id = 'job-media' AND public = false;
