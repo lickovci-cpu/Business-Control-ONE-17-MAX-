@@ -128,7 +128,7 @@ create or replace function public.finish_bco_automation_run(
 returns void
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $function$
 begin
   if coalesce(auth.jwt() ->> 'role', '') <> 'service_role' then
@@ -191,7 +191,7 @@ create or replace function public.record_bco_executor_audit(
 returns uuid
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $function$
 declare
   v_ai_run_id uuid;
