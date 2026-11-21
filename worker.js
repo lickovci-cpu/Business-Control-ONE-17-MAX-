@@ -2,7 +2,7 @@
  * BCO isolated preview Worker. All mutating/business API routes remain closed.
  * External network APIs and service workers are blocked by the preview CSP.
  */
-const PREVIEW_CSP = "connect-src 'self'; form-action 'self'; worker-src 'none'";
+const PREVIEW_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://nrsm-streetwear.vercel.app https://mazliprint-final.vercel.app; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; manifest-src 'self'; worker-src 'none'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'";
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
   headers: {
@@ -10,6 +10,7 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
     'cache-control': 'no-store',
     'x-content-type-options': 'nosniff',
     'x-robots-tag': 'noindex, nofollow, noarchive',
+    'x-frame-options': 'DENY',
     'content-security-policy': PREVIEW_CSP,
   },
 });
@@ -23,6 +24,7 @@ export default {
     const headers = new Headers(response.headers);
     headers.set('x-robots-tag', 'noindex, nofollow, noarchive');
     headers.set('x-content-type-options', 'nosniff');
+    headers.set('x-frame-options', 'DENY');
     headers.set('referrer-policy', 'strict-origin-when-cross-origin');
     headers.set('cache-control', 'no-store');
     headers.set('content-security-policy', PREVIEW_CSP);
