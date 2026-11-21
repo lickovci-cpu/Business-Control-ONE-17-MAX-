@@ -31,11 +31,14 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $function$
 begin
   if coalesce(auth.jwt() ->> 'role', '') <> 'service_role' then
     raise exception 'service_role_required';
+  end if;
+  if p_slot is null then
+    raise exception 'schedule_slot_required';
   end if;
 
   update public.automation_runs
@@ -55,6 +58,12 @@ begin
        and a.trigger_type = 'scheduled'
        and (a.lease_expires_at is null or a.lease_expires_at <= now())
        and (a.next_retry_at is null or a.next_retry_at <= now())
+       and not exists (
+         select 1
+           from public.automation_runs existing_run
+          where existing_run.idempotency_key =
+            a.id::text || ':' || to_char(date_trunc('minute', p_slot at time zone 'UTC'), 'YYYYMMDDHH24MI')
+       )
        and (
          a.last_run_at is null
          or a.last_run_at <= now() - make_interval(mins =>
