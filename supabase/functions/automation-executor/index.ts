@@ -103,6 +103,167 @@ async function finalizeFailure(
   });
 }
 
+
+async function buildCeoInternalPlan(db: ReturnType<typeof createClient>, organizationId: string): Promise<Json> {
+  const now = new Date();
+  const nowMs = now.getTime();
+  const [leads, opportunities, tasks] = await Promise.all([
+    db.from("leads")
+      .select("id,status,estimated_value,next_action_at,created_at", { count: "exact" })
+      .eq("organization_id", organizationId)
+      .in("status", ["new", "contacted", "qualified", "follow_up", "offer", "approved", "job", "delivered", "invoiced"])
+      .order("next_action_at", { ascending: true, nullsFirst: false })
+      .limit(100),
+    db.from("opportunities")
+      .select("id,title,stage,priority,value,probability,next_action,next_action_at,created_at", { count: "exact" })
+      .eq("organization_id", organizationId)
+      .in("stage", ["lead", "qualification", "meeting", "proposal", "negotiation"])
+      .order("next_action_at", { ascending: true, nullsFirst: false })
+      .limit(100),
+    db.from("tasks")
+      .select("id,title,status,priority,due_at,entity_type,entity_id", { count: "exact" })
+      .eq("organization_id", organizationId)
+      .in("status", ["open", "in_progress", "blocked"])
+      .order("due_at", { ascending: true, nullsFirst: false })
+      .limit(100)
+  ]);
+  for (const result of [leads, opportunities, tasks]) {
+    if (result.error) throw new Error("INTERNAL_PLAN_QUERY_FAILED");
+  }
+
+  const candidates: Array<Json> = [];
+  let overdueCount = 0;
+  for (const lead of (leads.data ?? []) as Array<Json>) {
+    const due = stringValue(lead.next_action_at);
+    const overdue = Boolean(due && Date.parse(due) < nowMs);
+    if (overdue) overdueCount++;
+    const status = stringValue(lead.status);
+    const value = Number(lead.estimated_value ?? 0);
+    const stageScore: Record<string, number> = {
+      approved: 50, offer: 45, qualified: 40, job: 35, invoiced: 35,
+      follow_up: 30, contacted: 20, delivered: 15, new: 10
+    };
+    candidates.push({
+      type: "lead", id: lead.id, status,
+      estimated_value: Number.isFinite(value) ? value : 0,
+      next_action_at: due || null,
+      overdue,
+      score: (overdue ? 100 : 0) + (stageScore[status] ?? 0) + Math.min(Math.max(value, 0) / 10000, 20)
+    });
+  }
+  for (const opportunity of (opportunities.data ?? []) as Array<Json>) {
+    const due = stringValue(opportunity.next_action_at);
+    const overdue = Boolean(due && Date.parse(due) < nowMs);
+    if (overdue) overdueCount++;
+    const priority = stringValue(opportunity.priority);
+    const stage = stringValue(opportunity.stage);
+    const value = Number(opportunity.value ?? 0);
+    const probability = Number(opportunity.probability ?? 0);
+    const priorityScore: Record<string, number> = { A: 50, B: 30, C: 10 };
+    const stageScore: Record<string, number> = {
+      negotiation: 40, proposal: 35, meeting: 25, qualification: 20, lead: 10
+    };
+    candidates.push({
+      type: "opportunity", id: opportunity.id, title: stringValue(opportunity.title),
+      stage, priority, value: Number.isFinite(value) ? value : 0,
+      probability: Number.isFinite(probability) ? probability : 0,
+      next_action: stringValue(opportunity.next_action),
+      next_action_at: due || null,
+      overdue,
+      score: (overdue ? 100 : 0) + (priorityScore[priority] ?? 0) + (stageScore[stage] ?? 0) +
+        Math.min(Math.max(probability, 0), 100) / 10 + Math.min(Math.max(value, 0) / 10000, 20)
+    });
+  }
+  for (const task of (tasks.data ?? []) as Array<Json>) {
+    const due = stringValue(task.due_at);
+    const overdue = Boolean(due && Date.parse(due) < nowMs);
+    if (overdue) overdueCount++;
+    const priority = stringValue(task.priority);
+    const status = stringValue(task.status);
+    const priorityScore: Record<string, number> = { A: 50, B: 30, C: 10 };
+    candidates.push({
+      type: "task", id: task.id, title: stringValue(task.title), status, priority,
+      due_at: due || null, overdue,
+      score: (overdue ? 100 : 0) + (priorityScore[priority] ?? 0) + (status === "blocked" ? 20 : 0)
+    });
+  }
+  candidates.sort((a, b) => Number(b.score ?? 0) - Number(a.score ?? 0));
+  const priorities = candidates.slice(0, 10);
+  const recommendations: string[] = [];
+  if (overdueCount > 0) recommendations.push("Nejprve vyřeš " + overdueCount + " položek po termínu.");
+  if ((leads.count ?? 0) > 0) recommendations.push("Zkontroluj další kroky u otevřených leadů a doplň termíny kontaktování.");
+  if ((opportunities.count ?? 0) > 0) recommendations.push("Posuň obchodní příležitosti s nejvyšší prioritou a pravděpodobností.");
+  if ((tasks.count ?? 0) > 0) recommendations.push("Vyřeš úkoly podle priority a termínu, zejména blokované položky.");
+  if (recommendations.length === 0) recommendations.push("Pipeline je prázdná. Nejdřív vlož ověřené leady nebo úkoly; žádné záznamy nebyly vytvořeny automaticky.");
+  return {
+    mode: "deterministic_internal_planner",
+    generated_at: now.toISOString(),
+    organization_id: organizationId,
+    counts: {
+      open_leads: leads.count ?? 0,
+      active_opportunities: opportunities.count ?? 0,
+      open_tasks: tasks.count ?? 0,
+      overdue_in_sample: overdueCount,
+      sample_limit_per_table: 100
+    },
+    priorities,
+    recommendations,
+    side_effects: "read_only"
+  };
+}
+
+async function finalizeSuccess(
+  db: ReturnType<typeof createClient>,
+  run: RunContext,
+  agent: AgentContext,
+  output: Json
+): Promise<Response> {
+  const audit = await db.rpc("record_bco_executor_audit", {
+    p_organization_id: run.organizationId,
+    p_automation_id: run.automationId,
+    p_agent_id: agent.id,
+    p_agent_slug: agent.slug,
+    p_task: "autonomous_tick",
+    p_run_id: run.runId,
+    p_status: "completed",
+    p_provider: null,
+    p_model: null,
+    p_error: null,
+    p_event_type: "automation_run_completed",
+    p_payload: output
+  });
+  if (audit.error || typeof audit.data !== "string") {
+    console.error("automation-executor success audit failed", { code: "AUDIT_WRITE_FAILED" });
+    return await finalizeFailure(db, run, "AUDIT_WRITE_FAILED", agent);
+  }
+
+  const aiRunUpdate = await db.from("ai_runs").update({ output }).eq("id", audit.data)
+    .eq("organization_id", run.organizationId);
+  if (aiRunUpdate.error) {
+    console.error("automation-executor output audit update failed", { code: "AI_RUN_OUTPUT_UPDATE_FAILED" });
+  }
+
+  const finish = await db.rpc("finish_bco_automation_run", {
+    p_run_id: run.runId,
+    p_automation_id: run.automationId,
+    p_organization_id: run.organizationId,
+    p_success: true,
+    p_output: output,
+    p_error: null,
+    p_retry_at: null
+  });
+  if (finish.error) {
+    await db.from("ai_runs").update({
+      status: "failed", error: "RUN_FINALIZATION_FAILED", completed_at: new Date().toISOString()
+    }).eq("id", audit.data).eq("organization_id", run.organizationId);
+    return denied(409, "RUN_FINALIZATION_FAILED", { audit_written: true });
+  }
+  return jsonResponse(200, {
+    ok: true, finalized: true, status: "completed", audit_written: true,
+    mode: "deterministic_internal_planner"
+  });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return denied(405, "METHOD_NOT_ALLOWED");
 
