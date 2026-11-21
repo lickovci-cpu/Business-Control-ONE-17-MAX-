@@ -76,9 +76,9 @@ export default {
     if(!ALLOWED.has(path)) return json({ok:false,error:"NOT_FOUND"},404);
     let upstream;
     try {
-      upstream=await fetch(SOURCE+path,{method:request.method,redirect:"error",headers:{Accept:"*/*"}});
+      upstream=await fetch(SOURCE+path,{method:request.method,headers:{Accept:"*/*"}});
     } catch {
-      return json({ok:false,error:"PREVIEW_ASSET_SOURCE_UNAVAILABLE"},502);
+      return json({ok:false,error:"PREVIEW_ASSET_SOURCE_UNAVAILABLE",detail:String(error).slice(0,180)},502);
     }
     if(!upstream.ok) return json({ok:false,error:"PREVIEW_ASSET_NOT_FOUND"},404);
     const headers=new Headers(SECURITY);
