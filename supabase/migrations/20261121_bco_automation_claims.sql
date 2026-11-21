@@ -34,7 +34,7 @@ security definer
 set search_path = public, pg_temp
 as $function$
 begin
-  if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
+  if coalesce(auth.role(), '') <> 'service_role' then
     raise exception 'service_role_required';
   end if;
 

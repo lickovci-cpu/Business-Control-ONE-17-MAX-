@@ -46,7 +46,6 @@ export async function runTick(env, scheduledAt) {
   });
   const results = [];
   for (const item of Array.isArray(claimed) ? claimed : []) {
-    const now = new Date().toISOString();
     try {
       const response = await fetch(executor, {
         method: "POST",
