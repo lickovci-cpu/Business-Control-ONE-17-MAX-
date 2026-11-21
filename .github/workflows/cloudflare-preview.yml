@@ -1,0 +1,52 @@
+name: BCO Cloudflare isolated preview
+
+on:
+  push:
+    branches:
+      - infra/cloudflare-workers-preview-2026-11-21
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: 7bcfaba8091e97f6a78e3a61426c9b8a
+    steps:
+      - name: Checkout isolated preview branch
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run Worker, outbox and security design tests
+        run: node --test tests/cloudflare-preview.mjs tests/outbox-design.test.mjs
+      - name: Verify static preview has no server-side credentials
+        shell: bash
+        run: |
+          test -s public/index.html
+          test -s public/app.js
+          test ! -e .env.local
+          test ! -d .vercel
+          if grep -R -n -E 'sb_secret_|service_role|OPENAI_API_KEY|BLOB_READ_WRITE_TOKEN|BCO_INTEGRATION_SECRET=' public; then
+            echo "Server-side credential marker found in public assets"
+            exit 1
+          fi
+      - name: Install pinned Wrangler
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
+        run: npm install --no-save --package-lock=false wrangler@4.166.0
+      - name: Deploy isolated workers.dev preview only
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+          packageManager: npm
+          wranglerVersion: "4.166.0"
+          command: deploy --config wrangler.toml --name bco-cloudflare-preview
+      - name: Report missing deployment credential
+        if: ${{ env.CLOUDFLARE_API_TOKEN == '' }}
+        run: echo "Tests passed; deployment skipped until CLOUDFLARE_API_TOKEN is configured."
