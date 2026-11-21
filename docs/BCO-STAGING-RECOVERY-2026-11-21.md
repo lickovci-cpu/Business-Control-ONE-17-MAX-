@@ -79,3 +79,65 @@ Vercel's check for the new branch deployment reports the account-blocked failure
 ## Safety
 
 No production SQL was applied. No production Cron was edited or disabled. No production data was copied into staging. No secrets were printed or copied to the browser. No paid service was enabled. All staging test data was removed and verified absent.
+
+
+## 2026-11-21 — E2E continuation
+
+### Code and CI
+
+The branch `bco/control-plane-v1` was updated through commit `762a92531e384d2ff5fdd834b4491a9148dd2c8e`. The Control Plane Runtime GitHub Actions push workflow completed successfully for that commit (run 232). This validates the repository's checks and tests; it does not constitute a live Edge Function or Worker E2E test.
+
+Executor changes:
+- The executor now attempts `record_bco_executor_audit` before terminal `finish_bco_automation_run`.
+- Every terminal rejection after an exact, active, organization-scoped run is loaded attempts a failed finish with the existing 5/15/60-minute retry schedule.
+- An expired lease is rejected without direct updates or stale finish attempts; the claim RPC remains responsible for reaping it.
+- The executor returns `finalized: true` after its own finish, preventing the Worker from finishing the same run twice.
+- Missing provider configuration returns `PROVIDER_SECRET_MISSING`; even with provider secrets configured, this release returns `PROVIDER_ADAPTER_NOT_IMPLEMENTED`. No AI provider request or paid inference is possible in this code path.
+
+Worker changes:
+- The scheduler source and preview server are combined in one Worker source/config targeting the existing name `bco-cloudflare-preview`.
+- The Worker pins `SUPABASE_PROJECT_REF` and validates that it is not the production project before any database request.
+- It dispatches a batch of up to 20 runs concurrently.
+- On an executor transport/protocol error it re-reads the exact run, writes a scoped fallback audit where an agent can be resolved, and calls finish only while the exact lease remains active. A stale lease is left to the database reaper.
+- The Worker configuration contains one intended `*/5 * * * *` schedule. This configuration is committed only; it has not been deployed remotely.
+
+The static executor and worker tests were updated. GitHub Actions reports success for the latest source commit. The Worker test covers 20 mocked dispatches, tenant pinning, executor-owned finalization and fallback retry/audit. Real database claim concurrency, tenant checks, retry and idempotency were already verified in the previous staging run above.
+
+### Staging Edge Function deployment
+
+- `automation-executor` was deployed to Supabase project `pflfbphulvutccvvhrot` in Apppka only.
+- Remote status: ACTIVE, version 1; deployment checksum `58529cc76f8bf77366545245ba83274d11c300e7654f4d20d6bbe4dcc5a75958`.
+- `verify_jwt=false` is intentional: the function validates its own bearer token in constant-time comparison. If `AUTOMATION_EXECUTOR_TOKEN` is missing, it returns `503 EXECUTOR_TOKEN_NOT_CONFIGURED`.
+- The function's custom secret presence cannot be enumerated through the connected Supabase tools. No secret values were read or printed.
+- No invocation was made because the remote Cloudflare Worker currently has no secret bindings. Supabase unified logs showed only `pgbouncer_logs` in the inspected one-hour window; no function invocation/runtime evidence was available.
+
+### Current Cloudflare state
+
+Read-only Cloudflare API inspection found three scripts:
+- `bco-cloudflare-preview`
+- `nrsm-streetwear-preview`
+- `platform-health-probe`
+
+All three currently have zero Cron schedules. The existing `bco-cloudflare-preview` has zero secret bindings and zero ordinary bindings. Its existing static preview deployment was not updated. No new Worker or Cron trigger was deployed.
+
+The Cloudflare account's Billing Read scope is unavailable to the connected OAuth integration (billing usage endpoint returned HTTP 403). Therefore the current account subscription cannot be independently verified. Official Workers Free documentation currently specifies 100,000 requests/day, 10 ms CPU per invocation, 128 MB memory, 50 subrequests/request and five Cron Triggers per account. These documented limits do not prove the account itself is on Free. No Cloudflare resource or paid plan was purchased.
+
+### Acceptance status and blockers
+
+- Supabase Apppka organization: Free plan; BCO-STAGING: ACTIVE_HEALTHY.
+- Edge Function staging deployment: VERIFIED.
+- Edge Function custom secret presence: UNVERIFIED through current connector.
+- Existing Cloudflare Worker source/config: PREPARED IN BRANCH, NOT DEPLOYED.
+- Cloudflare secret bindings: BLOCKED; remote secret list is empty.
+- Cloudflare Cron Trigger: NOT DEPLOYED; remote schedule list is empty.
+- Worker → claim → executor → finish → ai_runs: NOT VERIFIED end-to-end.
+- Real 20-way E2E, retry, lease, tenant and idempotency tests: NOT RUN. Only CI mocks plus the previously completed direct DB tests are verified.
+- Runtime logs/errors and E2E rollback: NOT TESTED because the Worker has not been enabled.
+- Cloudflare current account plan: UNVERIFIED because Billing Read scope is not available.
+
+Required server-side bindings before continuing:
+- Supabase BCO-STAGING Edge Function secret: `AUTOMATION_EXECUTOR_TOKEN`.
+- Existing Cloudflare `bco-cloudflare-preview` Worker secrets: `AUTOMATION_EXECUTOR_TOKEN` (same value) and staging `SUPABASE_SERVICE_ROLE_KEY`.
+- The non-secret staging variables are already present in the committed Wrangler config; no client-side secrets are used.
+
+No Cloudflare Worker deployment, Cron trigger, Supabase SQL, production Edge Function, production Vercel deployment, production Vercel Cron change or paid AI call was made. Production Supabase `wemone` remains untouched.
