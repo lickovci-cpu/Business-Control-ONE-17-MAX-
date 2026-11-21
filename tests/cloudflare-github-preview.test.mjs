@@ -86,3 +86,38 @@ test("upstream failure is converted into a bounded preview 502", async () => {
     assert.match(body.detail,/network unavailable/);
   } finally { globalThis.fetch=originalFetch; }
 });
+
+test("BCO navigation rewrites resolve to allowlisted static pages", async () => {
+  const aliases = [
+    ["/projects","/projects.html"],
+    ["/fve","/fve.html"],
+    ["/nrsm","/nrsm.html"],
+    ["/mazliprint","/mazliprint.html"]
+  ];
+  globalThis.fetch=async (url) => new Response(String(url),{status:200});
+  try {
+    for (const [route,target] of aliases) {
+      const response=await worker.fetch(new Request("https://preview.example"+route));
+      assert.equal(response.status,200);
+      assert.ok((await response.text()).endsWith("/public"+target));
+    }
+  } finally { globalThis.fetch=originalFetch; }
+});
+
+test("every local asset referenced by the BCO mobile entry page is allowlisted", async () => {
+  const html=await readFile(new URL("../public/index.html",import.meta.url),"utf8");
+  const allowBlock=source.match(/const ALLOWED = new Set\(\[([\s\S]*?)\]\);/);
+  const rewriteBlock=source.match(/const REWRITES = \{([^}]+)\}/);
+  assert.ok(allowBlock);
+  assert.ok(rewriteBlock);
+  const allowed=new Set([...allowBlock[1].matchAll(/"([^"]+)"/g)].map(m=>m[1]));
+  const rewrites=Object.fromEntries([...rewriteBlock[1].matchAll(/"([^"]+)"\s*:\s*"([^"]+)"/g)].map(m=>[m[1],m[2]]));
+  const refs=[...html.matchAll(/(?:src|href)=["']([^"']+)["']/gi)].map(m=>m[1]);
+  for (const ref of refs) {
+    if (/^(https?:|data:|mailto:|tel:|#|javascript:)/i.test(ref)) continue;
+    const path=new URL(ref,"https://preview.example/").pathname;
+    if (path.startsWith("/api/")) continue;
+    const resolved=rewrites[path] || path;
+    assert.ok(allowed.has(resolved), `unserved local reference: ${ref} -> ${resolved}`);
+  }
+});
