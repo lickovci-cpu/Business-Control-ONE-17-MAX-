@@ -34,10 +34,10 @@ Supabase staging advisors show the same inherited warnings as production: three 
 
 ## Apply in staging
 
-1. Apply `20261121143116_bco_automation_claims.sql` only to the isolated staging database.
+1. On a fresh isolated staging project, apply the six versioned migrations in order: `20261121142726_bco_schema_only_baseline.sql`, `20261121142907_bco_staging_privilege_sequence_alignment.sql`, `20261121142952_bco_staging_maintain_grants.sql`, `20261121143018_bco_staging_view_maintain_grant.sql`, `20261121143116_bco_automation_claims.sql`, then `20261121143157_bco_automation_claim_ambiguity_fix.sql`. The current Apppka staging ledger already records all six versions.
 2. Confirm the new scheduler columns exist and have the intended types/defaults.
-3. Confirm the partial unique index on `automation_runs.idempotency_key` exists.
-4. Confirm both RPCs are `SECURITY DEFINER` with fixed `search_path`, reject callers whose JWT role is not `service_role`, revoke execute from `PUBLIC`, `anon`, and `authenticated`, and grant execute only to `service_role`.
+3. Confirm the partial unique indexes on `automation_runs.idempotency_key`, automations due scheduling, and ai_runs automation-run idempotency exist.
+4. Confirm all three RPCs are `SECURITY DEFINER` with fixed `search_path`, reject callers whose JWT role is not `service_role`, revoke execute from `PUBLIC`, `anon`, and `authenticated`, and grant execute only to `service_role`.
 5. Run 20 concurrent claim calls for the same slot against one synthetic due automation. Exactly one caller may claim it. Then run 20 concurrent calls against 20 synthetic due automations; all returned run IDs and automation IDs must be unique, and no duplicate idempotency key may be created.
 6. Test a running row with an expired lease. It must be settled as failed and have its lease cleared; a later eligible slot must be claimable.
 7. Test a non-expired lease. A second claimant must skip it.
@@ -81,4 +81,4 @@ The rehearsal above deliberately ends with `ROLLBACK`, so it validates the SQL t
 
 ## Production gate
 
-Production remains BLOCKED until: a restorable backup is verified; the full staging concurrency/lease/idempotency/backoff test passes; Supabase advisors are clean; the executor and provider secret are ready; Cloudflare bindings/secrets are configured; and a documented rollback owner and window are agreed. This runbook does not authorize production application or deployment.
+Production remains BLOCKED until: a restorable backup is verified; the full staging concurrency/lease/idempotency/backoff test passes; inherited Supabase advisor findings are resolved or explicitly accepted with evidence; the executor and provider secret are ready; Cloudflare bindings/secrets are configured; and a documented rollback owner and window are agreed. This runbook does not authorize production application or deployment.
