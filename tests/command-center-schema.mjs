@@ -8,6 +8,6 @@ assert.ok(SEARCH_FIELDS.opportunities.includes("title"));
 assert.ok(!SEARCH_FIELDS.opportunities.includes("name"));
 assert.equal(activeFilter("opportunities").column, "stage");
 assert.equal(activeFilter("tasks").column, "status");
-assert.match(searchOr(["title", "stage"], "test"), /title\\.ilike/);
+assert.match(searchOr(["title", "stage"], "test"), /title\.ilike/);
 assert.equal(SUMMARY_FILTERS.opportunities.column, "stage");
 console.log("COMMAND CENTER SCHEMA OK");
