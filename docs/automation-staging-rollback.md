@@ -15,7 +15,7 @@ Status: PREPARATION ONLY. The migration `20261121_bco_automation_claims.sql` has
 2. Confirm the new scheduler columns exist and have the intended types/defaults.
 3. Confirm the partial unique index on `automation_runs.idempotency_key` exists.
 4. Confirm both RPCs are `SECURITY DEFINER` with fixed `search_path`, reject callers whose JWT role is not `service_role`, revoke execute from `PUBLIC`, `anon`, and `authenticated`, and grant execute only to `service_role`.
-5. Run two concurrent claim calls for the same slot against synthetic due rows. Exactly one caller may claim a given automation/slot; no duplicate idempotency key may be created.
+5. Run 20 concurrent claim calls for the same slot against one synthetic due automation. Exactly one caller may claim it. Then run 20 concurrent calls against 20 synthetic due automations; all returned run IDs and automation IDs must be unique, and no duplicate idempotency key may be created.
 6. Test a running row with an expired lease. It must be settled as failed and have its lease cleared; a later eligible slot must be claimable.
 7. Test a non-expired lease. A second claimant must skip it.
 8. Test idempotency by repeating the same slot. It must not create a second run.
