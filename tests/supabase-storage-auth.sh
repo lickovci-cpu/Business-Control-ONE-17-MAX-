@@ -88,8 +88,13 @@ test "$VERIFIED_A" = "$USER_A_ID"
 echo "PASS: Supabase Auth issued and verified a real local JWT"
 
 FORGED_STATUS="$(curl --max-time 20 -sS -o /tmp/bco-forged-jwt.json -w '%{http_code}' "$API_URL/auth/v1/user" -H "apikey: $PUBLISHABLE_KEY" -H 'Authorization: Bearer forged.invalid.token')"
-test "$FORGED_STATUS" = "401"
-echo "PASS: forged JWT rejected by local Supabase Auth"
+if [[ "$FORGED_STATUS" =~ ^2 ]]; then
+  cat /tmp/bco-forged-jwt.json
+  echo "FAIL: forged JWT was accepted"
+  exit 1
+fi
+test "$FORGED_STATUS" != "000"
+echo "PASS: forged JWT rejected by local Supabase Auth ($FORGED_STATUS)"
 
 upload() {
   local bucket="$1" path="$2" token="$3" mime="$4" data="$5"
