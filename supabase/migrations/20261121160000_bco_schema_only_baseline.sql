@@ -15,7 +15,7 @@ AS $function$
       then '420'||regexp_replace(coalesce(input,''),'[^0-9]','','g')
     else regexp_replace(coalesce(input,''),'[^0-9]','','g')
   end
-$function$
+$function$;
 
 
 CREATE SEQUENCE IF NOT EXISTS public.audit_log_id_seq AS bigint INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1 NO CYCLE;
@@ -916,7 +916,7 @@ AS $function$
     when private.org_role(org)='worker' then exists(select 1 from public.job_assignments a where a.organization_id=org and a.job_id=job and a.user_id=(select auth.uid()))
     else false
   end
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.is_assigned_job(org uuid, jid uuid)
@@ -924,7 +924,7 @@ CREATE OR REPLACE FUNCTION private.is_assigned_job(org uuid, jid uuid)
  LANGUAGE sql
  STABLE SECURITY DEFINER
  SET search_path TO 'public', 'pg_temp'
-AS $function$ select exists(select 1 from public.job_assignments a where a.organization_id=org and a.job_id=jid and a.user_id=(select auth.uid())) $function$
+AS $function$ select exists(select 1 from public.job_assignments a where a.organization_id=org and a.job_id=jid and a.user_id=(select auth.uid())) $function$;
 
 
 CREATE OR REPLACE FUNCTION private.is_org_member(org uuid)
@@ -932,7 +932,7 @@ CREATE OR REPLACE FUNCTION private.is_org_member(org uuid)
  LANGUAGE sql
  STABLE SECURITY DEFINER
  SET search_path TO 'public', 'pg_temp'
-AS $function$ select exists(select 1 from public.memberships m where m.organization_id=org and m.user_id=(select auth.uid())) $function$
+AS $function$ select exists(select 1 from public.memberships m where m.organization_id=org and m.user_id=(select auth.uid())) $function$;
 
 
 CREATE OR REPLACE FUNCTION private.org_role(org uuid)
@@ -940,7 +940,7 @@ CREATE OR REPLACE FUNCTION private.org_role(org uuid)
  LANGUAGE sql
  STABLE SECURITY DEFINER
  SET search_path TO 'public', 'pg_temp'
-AS $function$ select m.role from public.memberships m where m.organization_id=org and m.user_id=(select auth.uid()) limit 1 $function$
+AS $function$ select m.role from public.memberships m where m.organization_id=org and m.user_id=(select auth.uid()) limit 1 $function$;
 
 
 CREATE OR REPLACE FUNCTION public.audit_business_change()
@@ -968,7 +968,7 @@ begin
   insert into public.audit_log(organization_id,actor_user_id,action,entity_type,entity_id,metadata)
   values(org,(select auth.uid()),tg_table_name||'.'||lower(tg_op),tg_table_name,eid,meta);
   return case when tg_op='DELETE' then old else new end;
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION public.bco_dashboard_metrics(target_org_id uuid)
@@ -1000,7 +1000,7 @@ begin
   ) into result;
   return result;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.bco_finance_metrics(target_org_id uuid, from_date date DEFAULT NULL::date, to_date date DEFAULT NULL::date)
@@ -1020,7 +1020,7 @@ AS $function$
     'cash_result', coalesce((select sum(case when entry_type='income' then amount else -amount end) from f where status='paid'),0),
     'entry_count', count(*)
   ) from f;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.bco_jobs_metrics(target_org_id uuid)
@@ -1038,7 +1038,7 @@ AS $function$
     'direct_cost', coalesce((select sum(coalesce(direct_cost,0)) from public.jobs where organization_id=target_org_id and status in ('done','paid')),0),
     'margin', coalesce((select sum(coalesce(price,0)-coalesce(direct_cost,0)) from public.jobs where organization_id=target_org_id and status in ('done','paid')),0)
   );
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.bco_sales_metrics(target_org_id uuid)
@@ -1055,7 +1055,7 @@ AS $function$
     'lost_value', coalesce((select sum(coalesce(o.value,0)) from public.opportunities o where o.organization_id=target_org_id and o.stage='lost'),0),
     'high_priority', coalesce((select count(*) from public.opportunities o where o.organization_id=target_org_id and o.priority='A' and o.stage not in ('won','lost')),0)
   );
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.claim_team_invite(invite_token text)
@@ -1084,7 +1084,7 @@ begin
   insert into public.audit_log(organization_id,actor_user_id,action,entity_type,entity_id,metadata)
   values(inv.organization_id,uid,'team.invite_accepted','membership',uid::text,jsonb_build_object('role',inv.role));
   return query select inv.organization_id, org_name, inv.role;
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION public.create_my_organization(org_name text, org_slug text DEFAULT NULL::text)
@@ -1110,7 +1110,7 @@ begin
   insert into public.audit_log(organization_id,actor_user_id,action,entity_type,entity_id,metadata)
   values(result.id,uid,'organization.created','organization',result.id::text,jsonb_build_object('name',result.name));
   return result;
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION public.create_team_invite(org_id uuid, invite_email text, invite_role text DEFAULT 'worker'::text)
@@ -1141,7 +1141,7 @@ begin
   values(org_id,uid,'team.invite_created','team_invite',iid::text,jsonb_build_object('email',clean_email,'role',invite_role));
   return query select iid, raw_token, exp;
 end
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.disable_integration_webhook(org_id uuid, webhook_kind text)
@@ -1160,7 +1160,7 @@ begin
   values(org_id,uid,'integration.webhook_disabled','integration',jsonb_build_object('kind',webhook_kind));
   return n>0;
 end
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.list_org_members(org_id uuid)
@@ -1178,7 +1178,7 @@ begin
     where m.organization_id=org_id
     order by case m.role when 'owner' then 1 when 'admin' then 2 when 'manager' then 3 when 'worker' then 4 else 5 end, m.created_at;
 end
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.maintenance_cleanup()
@@ -1192,7 +1192,7 @@ begin
   delete from public.webhook_events where created_at < now() - interval '90 days';
   delete from public.team_invites where accepted_at is null and expires_at < now() - interval '30 days';
   delete from public.team_invites where accepted_at is not null and accepted_at < now() - interval '90 days';
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION public.quote_items_recalculate_totals()
@@ -1211,7 +1211,7 @@ begin
   end if;
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.recalculate_quote_totals(target_quote_id uuid)
@@ -1241,7 +1241,7 @@ begin
    returning * into q;
   return q;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.remove_org_member(org_id uuid, member_user_id uuid)
@@ -1263,7 +1263,7 @@ begin
   insert into public.audit_log(organization_id,actor_user_id,action,entity_type,entity_id,metadata)
   values(org_id,actor,'team.member_removed','membership',member_user_id::text,jsonb_build_object('role',member_role));
 end
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.rotate_integration_webhook(org_id uuid, webhook_kind text)
@@ -1291,14 +1291,14 @@ begin
   values(org_id,uid,'integration.webhook_rotated','integration',jsonb_build_object('kind',webhook_kind));
   return query select raw_token, webhook_kind, ts;
 end
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.set_merch_updated_at()
  RETURNS trigger
  LANGUAGE plpgsql
  SET search_path TO 'public'
-AS $function$ begin new.updated_at = now(); return new; end $function$
+AS $function$ begin new.updated_at = now(); return new; end $function$;
 
 
 CREATE OR REPLACE FUNCTION public.set_my_organization_slug(new_slug text)
@@ -1319,7 +1319,7 @@ begin
   if clean is null or length(clean)<3 or length(clean)>80 then raise exception 'invalid_slug'; end if;
   update public.organizations set slug=clean where id=org returning * into result;
   return result;
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION public.start_job_timer(target_job_id uuid)
@@ -1343,7 +1343,7 @@ begin
   insert into public.audit_log(organization_id,actor_user_id,action,entity_type,entity_id,metadata)
   values(org,uid,'time.started','job',target_job_id::text,jsonb_build_object('time_entry_id',r.id));
   return r;
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION public.stop_job_timer(entry_id uuid)
@@ -1368,7 +1368,7 @@ begin
   values(r.organization_id,uid,'time.stopped','job',r.job_id::text,jsonb_build_object('time_entry_id',r.id,'minutes',round(extract(epoch from (r.ended_at-r.started_at))/60)));
   return r;
 end
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.touch_ai_agents_updated_at()
@@ -1380,7 +1380,7 @@ begin
   new.updated_at = now();
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.touch_updated_at()
@@ -1388,7 +1388,7 @@ CREATE OR REPLACE FUNCTION public.touch_updated_at()
  LANGUAGE plpgsql
  SET search_path TO 'public', 'pg_temp'
 AS $function$
-begin new.updated_at=now(); return new; end $function$
+begin new.updated_at=now(); return new; end $function$;
 
 
 CREATE OR REPLACE FUNCTION public.update_my_organization_profile(org_id uuid, new_name text, new_slug text, new_phone text DEFAULT NULL::text, new_email text DEFAULT NULL::text, new_address text DEFAULT NULL::text, new_ico text DEFAULT NULL::text)
@@ -1414,7 +1414,7 @@ begin
     returning * into r;
   return r;
 end
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.update_org_integration_settings(org_id uuid, new_booking_enabled boolean, new_booking_intro text, new_sms_enabled boolean, new_sms_provider text, new_sms_sender text, new_missed_call_template text)
@@ -1441,7 +1441,7 @@ begin
   values(org_id,(select auth.uid()),'organization.integrations_updated','organization',org_id::text,jsonb_build_object('sms_enabled',r.sms_enabled,'booking_enabled',r.booking_enabled));
   return r;
 end
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.update_org_member_role(org_id uuid, member_user_id uuid, new_role text)
@@ -1464,7 +1464,7 @@ begin
   insert into public.audit_log(organization_id,actor_user_id,action,entity_type,entity_id,metadata)
   values(org_id,actor,'team.role_changed','membership',member_user_id::text,jsonb_build_object('from',old_role,'to',new_role));
 end
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.update_org_sms_limits(org_id uuid, new_daily_limit integer, new_monthly_limit integer)
@@ -1484,7 +1484,7 @@ begin
   values(org_id,(select auth.uid()),'sms.limits_updated','organization',jsonb_build_object('daily',new_daily_limit,'monthly',new_monthly_limit));
   return r;
 end
-$function$
+$function$;
 
 
 CREATE OR REPLACE VIEW public.lead_followup_queue WITH (security_invoker=true) AS  SELECT l.id AS lead_id,
