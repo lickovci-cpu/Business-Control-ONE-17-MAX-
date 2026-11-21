@@ -100,7 +100,20 @@ try {
   const earlyRetry = await rpc("claim_bco_automation_runs", { p_slot: new Date(Date.now() + 60_000).toISOString(), p_limit: 1 });
   assert.equal(earlyRetry.length, 0, "next_retry_at must prevent an early retry");
 
-  console.log("STAGING AUTOMATION TESTS PASSED: concurrency, same-slot idempotency, lease expiry, org-scoped finish, retry gate");
+  // Once retry is due, it must bypass the normal interval gate.
+  await api(`automations?id=eq.${automationId}`, {
+    method: "PATCH", headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({
+      next_retry_at: new Date(Date.now() - 60_000).toISOString(),
+      last_run_at: new Date().toISOString(),
+      lease_expires_at: null
+    })
+  });
+  const dueRetry = await rpc("claim_bco_automation_runs", { p_slot: new Date(Date.now() + 120_000).toISOString(), p_limit: 1 });
+  assert.equal(dueRetry.length, 1, "A due retry must bypass the normal interval gate");
+  createdRunIds.push(dueRetry[0].run_id);
+
+  console.log("STAGING AUTOMATION TESTS PASSED: concurrency, same-slot idempotency, lease expiry, org-scoped finish, early retry gate and retry priority");
 } finally {
   await api(`automation_runs?automation_id=eq.${automationId}`, { method: "DELETE", headers: { Prefer: "return=minimal" } }).catch(() => {});
   await api(`automations?id=eq.${automationId}`, { method: "DELETE", headers: { Prefer: "return=minimal" } }).catch(() => {});
