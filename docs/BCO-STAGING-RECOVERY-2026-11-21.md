@@ -19,6 +19,8 @@
 
 All 72 repository branches were enumerated. The GitHub migration-path history contains 11 commits. The production Supabase migration ledger contains 56 applied records, while 49 historical migration files are absent from the tracked repository history. They were not fabricated. A catalog-derived schema-only baseline was committed at supabase/migrations/20261121142726_bco_schema_only_baseline.sql.
 
+The six GitHub migration filenames now match the exact six version values recorded by the Apppka staging migration ledger. The original baseline and scheduler migrations were preserved as applied; the subsequent privilege, sequence, MAINTAIN-grant and function-ambiguity corrections remain separate ordered migrations.
+
 The baseline was compared with production by catalog signatures. Before the scheduler migration, the following matched exactly:
 
 - 42 tables, 477 columns
