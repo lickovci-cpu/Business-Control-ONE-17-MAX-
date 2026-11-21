@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 const source = readFileSync(new URL("../supabase/functions/automation-executor/index.ts", import.meta.url), "utf8");
-const migration = readFileSync(new URL("../supabase/migrations/20261121_bco_automation_claims.sql", import.meta.url), "utf8");
+const migration = readFileSync(new URL("../supabase/migrations/20261121143116_bco_automation_claims.sql", import.meta.url), "utf8");
 assert.match(source, /\.eq\("id", runId\)\.eq\("automation_id", automationId\)\.eq\("organization_id", organizationId\)/);
 assert.match(source, /\.eq\("id", automationId\)\.eq\("organization_id", organizationId\)/);
 assert.match(source, /\.eq\("organization_id", organizationId\)\.eq\("slug", slug\)/);
