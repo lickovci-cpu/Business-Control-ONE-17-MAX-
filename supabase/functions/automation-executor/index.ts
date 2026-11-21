@@ -20,18 +20,11 @@ function safeEqual(a: string, b: string): boolean {
   for (let i = 0; i < n; i++) diff |= (aa[i] ?? 0) ^ (bb[i] ?? 0);
   return diff === 0;
 }
-function stringValue(v: unknown): string {
-  return typeof v === "string" ? v.trim() : "";
-}
-function isUuid(v: unknown): v is string {
-  return typeof v === "string" && UUID.test(v);
-}
-function asJson(v: unknown): Json {
-  return v && typeof v === "object" && !Array.isArray(v) ? v as Json : {};
-}
+function stringValue(v: unknown): string { return typeof v === "string" ? v.trim() : ""; }
+function isUuid(v: unknown): v is string { return typeof v === "string" && UUID.test(v); }
+function asJson(v: unknown): Json { return v && typeof v === "object" && !Array.isArray(v) ? v as Json : {}; }
 function allowedActions(v: unknown): Set<string> {
-  if (!Array.isArray(v)) return new Set();
-  return new Set(v.filter((x): x is string => typeof x === "string"));
+  return Array.isArray(v) ? new Set(v.filter((x): x is string => typeof x === "string")) : new Set();
 }
 function retryAt(attemptCount: unknown): string {
   const attempt = Number.isInteger(attemptCount) && Number(attemptCount) > 0 ? Number(attemptCount) : 1;
@@ -48,8 +41,7 @@ Deno.serve(async (req: Request) => {
   if (!suppliedToken || !safeEqual(suppliedToken, configuredToken)) return response(401, "UNAUTHORIZED");
 
   let body: Json;
-  try { body = asJson(await req.json()); }
-  catch { return response(400, "INVALID_JSON"); }
+  try { body = asJson(await req.json()); } catch { return response(400, "INVALID_JSON"); }
   const runId = body.run_id, automationId = body.automation_id, organizationId = body.organization_id;
   if (![runId, automationId, organizationId].every(isUuid)) return response(400, "INVALID_IDENTIFIERS");
 
@@ -65,11 +57,8 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     if (runResult.error) throw runResult.error;
     const run = runResult.data as Json | null;
-    if (!run || run.status !== "running" ||
-        typeof run.lease_expires_at !== "string" ||
-        Date.parse(run.lease_expires_at) <= Date.now()) {
-      return response(409, "RUN_NOT_ACTIVE_OR_LEASE_EXPIRED");
-    }
+    if (!run || run.status !== "running" || typeof run.lease_expires_at !== "string" ||
+        Date.parse(run.lease_expires_at) <= Date.now()) return response(409, "RUN_NOT_ACTIVE_OR_LEASE_EXPIRED");
 
     const automationResult = await db.from("automations")
       .select("id,organization_id,active,action_config,trigger_config")
@@ -100,9 +89,7 @@ Deno.serve(async (req: Request) => {
           : action === "classify_new_messages" && slug === "email"
             ? ["read_email", "classify_email"]
             : [];
-    if (concreteActions.length === 0 || concreteActions.some((x) => !allowlist.has(x))) {
-      return response(403, "ACTION_NOT_ALLOWED");
-    }
+    if (concreteActions.length === 0 || concreteActions.some((x) => !allowlist.has(x))) return response(403, "ACTION_NOT_ALLOWED");
 
     // This release is deliberately read/draft-only. Even a valid approval is not
     // an execution capability for sending, publishing, scheduling, spending or deployment.
@@ -125,29 +112,19 @@ Deno.serve(async (req: Request) => {
     const providerReady = missing.length === 0;
     const reason = providerReady ? "PROVIDER_ADAPTER_NOT_IMPLEMENTED" : "PROVIDER_SECRET_MISSING";
     const audit = await db.rpc("record_bco_executor_audit", {
-      p_organization_id: organizationId,
-      p_automation_id: automationId,
-      p_agent_id: agent.id,
-      p_agent_slug: slug,
-      p_task: action,
-      p_run_id: runId,
-      p_status: "blocked",
+      p_organization_id: organizationId, p_automation_id: automationId,
+      p_agent_id: agent.id, p_agent_slug: slug, p_task: action, p_run_id: runId,
+      p_status: "failed",
       p_provider: providerReady ? Deno.env.get("AI_PROVIDER") : null,
       p_model: providerReady ? Deno.env.get("AI_PROVIDER_MODEL") : null,
-      p_error: reason,
-      p_event_type: "automation_run_blocked",
+      p_error: reason, p_event_type: "automation_run_blocked",
       p_payload: { run_id: runId, automation_id: automationId, reason }
     });
     if (audit.error) throw audit.error;
 
     const finish = await db.rpc("finish_bco_automation_run", {
-      p_run_id: runId,
-      p_automation_id: automationId,
-      p_organization_id: organizationId,
-      p_success: false,
-      p_output: {},
-      p_error: reason,
-      p_retry_at: retryAt(run.attempt_count)
+      p_run_id: runId, p_automation_id: automationId, p_organization_id: organizationId,
+      p_success: false, p_output: {}, p_error: reason, p_retry_at: retryAt(run.attempt_count)
     });
     if (finish.error) throw finish.error;
     return response(503, reason);
