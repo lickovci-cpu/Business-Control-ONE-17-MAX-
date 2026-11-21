@@ -1,0 +1,26 @@
+# BCO Cloudflare workers.dev preview
+
+Status: deployed to the isolated workers.dev hostname only.
+
+- Worker: `bco-cloudflare-preview`
+- URL: `https://bco-cloudflare-preview.lickovci.workers.dev/`
+- Worker source: `worker-github-preview.js`
+- Static source: the allowlisted `public/` files from this branch only.
+- API: `GET /api/health` is diagnostic; every other `/api/*` route returns 503.
+- Methods: static content is GET/HEAD only.
+- Headers: noindex, nosniff, no-store, restrictive same-origin connect/form policy, frame denial.
+- No Supabase credentials, service-role key, BLOB token, or production backend binding is present.
+
+## Deployment path
+
+The GitHub Actions environment does not currently provide a usable `CLOUDFLARE_API_TOKEN`. The workflow correctly skips Wrangler deployment when that secret is empty. To finish the requested preview without waiting for a GitHub secret, the first isolated workers.dev deployment was made through the already-connected Cloudflare account integration.
+
+This temporary Worker proxies only the fixed allowlist of static files from this exact public GitHub branch. It is not an open proxy and cannot forward arbitrary URLs. It does not connect to BCO APIs, Supabase, Vercel, or any production domain.
+
+When `CLOUDFLARE_API_TOKEN` is configured in GitHub Actions, the normal Wrangler workflow can replace this temporary GitHub-backed Worker with the native Cloudflare static-assets deployment defined by `wrangler.toml`. That future deployment must pass the same tests first.
+
+## Rollback
+
+The previous Cloudflare Worker script was absent before this preview deployment. Rollback is therefore to disable the preview Worker subdomain or delete only the `bco-cloudflare-preview` Worker script. Do not change the account-level workers.dev subdomain, custom domains, DNS, or production workers.
+
+No production database, custom domain, DNS record, Vercel project, or production worker was changed.
