@@ -1,0 +1,13 @@
+import assert from "node:assert/strict";
+import { SEARCH_FIELDS, SUMMARY_FILTERS, activeFilter, searchOr } from "../supabase/functions/bco-command-center/core.js";
+assert.deepEqual(SEARCH_FIELDS.contacts, ["name", "email", "phone", "address"]);
+assert.ok(!SEARCH_FIELDS.contacts.includes("first_name"));
+assert.ok(!SEARCH_FIELDS.leads.includes("name"));
+assert.ok(SEARCH_FIELDS.leads.includes("note"));
+assert.ok(SEARCH_FIELDS.opportunities.includes("title"));
+assert.ok(!SEARCH_FIELDS.opportunities.includes("name"));
+assert.equal(activeFilter("opportunities").column, "stage");
+assert.equal(activeFilter("tasks").column, "status");
+assert.match(searchOr(["title", "stage"], "test"), /title\\.ilike/);
+assert.equal(SUMMARY_FILTERS.opportunities.column, "stage");
+console.log("COMMAND CENTER SCHEMA OK");
