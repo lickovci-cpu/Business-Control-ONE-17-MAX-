@@ -1,6 +1,29 @@
 # BCO scheduler migration — staging and rollback runbook
 
-Status: PREPARATION ONLY. The migration `20261121_bco_automation_claims.sql` has not been applied to production. Do not run this document against the production project.
+Status: APPLIED AND VERIFIED IN BCO-STAGING ONLY. Production project vjzzvopwecmwuccdidzq has not been modified. The isolated staging project is pflfbphulvutccvvhrot in organization Apppka. Never run this runbook against production.
+
+## Verified staging baseline (2026-11-21)
+
+The isolated Apppka project was built from a schema-only catalog export of production. No production application rows, auth users, storage objects, credentials or secrets were copied. After baseline and privilege alignment, the following production/staging catalog signatures matched exactly: 42 tables, 477 columns, 180 constraints (83 foreign keys), 146 indexes, 133 RLS policies, 30 functions, 20 triggers, one view, two sequences, table grants, schema grants and function grants. All 42 staging tables were verified at zero rows after test cleanup.
+
+The production project reports 56 applied migration records, while the GitHub migration-path history contains 11 commits and the tracked historical migration set does not contain 49 of those applied migration files. The missing historical files were not fabricated. A schema-only baseline was generated from the live catalog and stored at supabase/migrations/20261121160000_bco_schema_only_baseline.sql. PostgreSQL versions differ (production 17.6, staging 17.12); the app schema was compared by catalog signatures rather than assuming binary-identical server versions.
+
+The scheduler migration and its staging-only correction are applied in staging. Synthetic test rows were removed and verified absent. The rollback rehearsal below was executed with ROLLBACK; the nine added scheduler columns, three RPC functions and three scheduler indexes remained present afterward.
+
+## Verified scheduler tests
+
+- 20 simultaneous claim calls against one due automation: exactly one claim.
+- 20 simultaneous claim calls against 20 due automations: 20 unique automation IDs and 20 unique run IDs.
+- Repeating the same slot after clearing the lease: zero additional run rows.
+- Expired lease: stale run changed to failed, lease cleared, and a new slot was claimable.
+- Non-expired lease: a second claim returned zero rows.
+- Wrong organization_id on finish: rejected; correct organization completed the run.
+- Future next_retry_at: early claim returned zero rows; due retry was claimed despite a recent last_run_at and a 60-minute interval.
+- Two concurrent audit calls for the same automation run returned the same ai_runs.id; exactly one ai_runs row was created.
+- Claim without a service-role JWT: rejected with service_role_required.
+- GitHub Actions runtime check, npm run check, smoke, control-plane, control-plane API and npm test: passed. Dependency installation reported three npm audit findings (one moderate, two high); no automatic dependency upgrade was performed.
+
+Supabase staging advisors show the same inherited warnings as production: three RLS-enabled tables without policies and 14 authenticated-executable SECURITY DEFINER functions. The three new scheduler RPCs are SECURITY DEFINER, have a fixed search_path, reject non-service-role JWTs, deny execute to anon and authenticated, and grant execute to service_role only. Do not interpret inherited warnings as newly introduced by the scheduler migration.
 
 ## Staging prerequisite
 
@@ -30,9 +53,11 @@ Run only after recording the exact pre-migration state and confirming no staging
 ```sql
 begin;
 
-drop function if exists public.finish_bco_automation_run(uuid, uuid, boolean, jsonb, text, timestamptz);
+drop function if exists public.record_bco_executor_audit(uuid, uuid, uuid, text, text, uuid, text, text, text, text, text, jsonb);
+drop function if exists public.finish_bco_automation_run(uuid, uuid, uuid, boolean, jsonb, text, timestamptz);
 drop function if exists public.claim_bco_automation_runs(timestamptz, integer);
 
+drop index if exists public.ai_runs_automation_run_uidx;
 drop index if exists public.automation_runs_idempotency_key_uidx;
 drop index if exists public.automations_due_scheduler_idx;
 
