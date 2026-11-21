@@ -8,7 +8,7 @@ global.fetch = async (url, options = {}) => {
     return new Response(JSON.stringify([{ run_id: "run-1", automation_id: "auto-1", organization_id: "org-1", action_config: { action: "autonomous_tick" }, trigger_config: {}, attempt_count: 1 }]), { status: 200 });
   }
   if (String(url) === "https://executor.example/run") return new Response(JSON.stringify({ ok: true, mode: "test" }), { status: 200 });
-  return new Response("", { status: 204 });
+  return new Response("{}", { status: 200 });
 };
 try {
   await assert.rejects(() => runTick({ SUPABASE_URL: "https://db.example", SUPABASE_SERVICE_ROLE_KEY: "test" }, new Date("2026-11-21T10:00:00Z")), /MISSING_AUTOMATION_EXECUTOR_URL/);
