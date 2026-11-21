@@ -5,6 +5,7 @@ type Json = Record<string, unknown>;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EXTERNAL_ACTIONS = new Set(["send_email", "publish", "schedule", "spend", "external_write", "production_deploy"]);
 const REQUIRED_PROVIDER_ENV = ["AI_PROVIDER", "AI_PROVIDER_MODEL", "AI_PROVIDER_URL", "AI_PROVIDER_API_KEY"] as const;
+const BACKOFF_MINUTES = [5, 15, 60] as const;
 
 function response(status: number, error: string, extra: Json = {}) {
   return new Response(JSON.stringify({ ok: false, error, ...extra }), {
@@ -32,6 +33,11 @@ function allowedActions(v: unknown): Set<string> {
   if (!Array.isArray(v)) return new Set();
   return new Set(v.filter((x): x is string => typeof x === "string"));
 }
+function retryAt(attemptCount: unknown): string {
+  const attempt = Number.isInteger(attemptCount) && Number(attemptCount) > 0 ? Number(attemptCount) : 1;
+  const minutes = BACKOFF_MINUTES[Math.min(attempt - 1, BACKOFF_MINUTES.length - 1)];
+  return new Date(Date.now() + minutes * 60_000).toISOString();
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return response(405, "METHOD_NOT_ALLOWED");
@@ -42,11 +48,8 @@ Deno.serve(async (req: Request) => {
   if (!suppliedToken || !safeEqual(suppliedToken, configuredToken)) return response(401, "UNAUTHORIZED");
 
   let body: Json;
-  try {
-    body = asJson(await req.json());
-  } catch {
-    return response(400, "INVALID_JSON");
-  }
+  try { body = asJson(await req.json()); }
+  catch { return response(400, "INVALID_JSON"); }
   const runId = body.run_id, automationId = body.automation_id, organizationId = body.organization_id;
   if (![runId, automationId, organizationId].every(isUuid)) return response(400, "INVALID_IDENTIFIERS");
 
@@ -144,7 +147,7 @@ Deno.serve(async (req: Request) => {
       p_success: false,
       p_output: {},
       p_error: reason,
-      p_retry_at: null
+      p_retry_at: retryAt(run.attempt_count)
     });
     if (finish.error) throw finish.error;
     return response(503, reason);
