@@ -1,0 +1,16 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const source = readFileSync(new URL("../supabase/functions/automation-executor/index.ts", import.meta.url), "utf8");
+const migration = readFileSync(new URL("../supabase/migrations/20261121_bco_automation_claims.sql", import.meta.url), "utf8");
+assert.match(source, /\.eq\("id", runId\)\.eq\("automation_id", automationId\)\.eq\("organization_id", organizationId\)/);
+assert.match(source, /\.eq\("id", automationId\)\.eq\("organization_id", organizationId\)/);
+assert.match(source, /\.eq\("organization_id", organizationId\)\.eq\("slug", slug\)/);
+assert.match(source, /allowedActions\(agent\.allowed_actions\)/);
+assert.match(source, /ai_approvals/);
+assert.match(source, /PROVIDER_SECRET_MISSING/);
+assert.match(source, /EXTERNAL_ACTIONS_DISABLED_IN_INITIAL_RELEASE/);
+assert.match(source, /record_bco_executor_audit/);
+assert.match(source, /finish_bco_automation_run/);
+assert.doesNotMatch(source, /fetch\(.*AI_PROVIDER_URL/s);
+assert.match(migration, /finish_bco_automation_run/i);
+console.log("AUTOMATION EXECUTOR FAIL-CLOSED STATIC TEST OK");
