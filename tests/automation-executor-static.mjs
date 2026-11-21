@@ -11,6 +11,8 @@ assert.match(source, /PROVIDER_SECRET_MISSING/);
 assert.match(source, /EXTERNAL_ACTIONS_DISABLED_IN_INITIAL_RELEASE/);
 assert.match(source, /p_automation_id: automationId/);
 assert.match(source, /p_organization_id: organizationId/);
+assert.match(source, /p_status: "failed"/);
+assert.match(source, /BACKOFF_MINUTES = \[5, 15, 60\]/);
 assert.match(source, /record_bco_executor_audit/);
 assert.match(source, /finish_bco_automation_run/);
 assert.doesNotMatch(source, /fetch\(.*AI_PROVIDER_URL/s);
