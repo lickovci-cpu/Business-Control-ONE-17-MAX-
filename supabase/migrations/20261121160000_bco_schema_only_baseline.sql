@@ -545,9 +545,7 @@ ALTER SEQUENCE public.audit_log_id_seq OWNED BY public.audit_log.id;
 
 ALTER SEQUENCE public.booking_throttle_id_seq OWNED BY public.booking_throttle.id;
 
-ALTER TABLE public.ai_agent_events ADD CONSTRAINT ai_agent_events_agent_id_fkey FOREIGN KEY (agent_id) REFERENCES ai_agents(id) ON DELETE SET NULL;
 
-ALTER TABLE public.ai_agent_events ADD CONSTRAINT ai_agent_events_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.ai_agent_events ADD CONSTRAINT ai_agent_events_pkey PRIMARY KEY (id);
 
@@ -555,53 +553,40 @@ ALTER TABLE public.ai_agent_events ADD CONSTRAINT ai_agent_events_severity_check
 
 ALTER TABLE public.ai_agents ADD CONSTRAINT ai_agents_autonomy_level_check CHECK (autonomy_level = ANY (ARRAY['draft'::text, 'approval'::text, 'supervised'::text, 'autonomous'::text]));
 
-ALTER TABLE public.ai_agents ADD CONSTRAINT ai_agents_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.ai_agents ADD CONSTRAINT ai_agents_organization_id_slug_key UNIQUE (organization_id, slug);
 
 ALTER TABLE public.ai_agents ADD CONSTRAINT ai_agents_pkey PRIMARY KEY (id);
 
-ALTER TABLE public.ai_approvals ADD CONSTRAINT ai_approvals_agent_id_fkey FOREIGN KEY (agent_id) REFERENCES ai_agents(id) ON DELETE CASCADE;
 
-ALTER TABLE public.ai_approvals ADD CONSTRAINT ai_approvals_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.ai_approvals ADD CONSTRAINT ai_approvals_pkey PRIMARY KEY (id);
 
 ALTER TABLE public.ai_approvals ADD CONSTRAINT ai_approvals_status_check CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text, 'expired'::text, 'executed'::text]));
 
-ALTER TABLE public.ai_runs ADD CONSTRAINT ai_runs_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.ai_runs ADD CONSTRAINT ai_runs_pkey PRIMARY KEY (id);
 
 ALTER TABLE public.ai_runs ADD CONSTRAINT ai_runs_status_check CHECK (status = ANY (ARRAY['queued'::text, 'running'::text, 'completed'::text, 'failed'::text, 'cancelled'::text]));
 
-ALTER TABLE public.ai_runs ADD CONSTRAINT ai_runs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
-ALTER TABLE public.app_snapshots ADD CONSTRAINT app_snapshots_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.app_snapshots ADD CONSTRAINT app_snapshots_organization_id_user_id_app_key_key UNIQUE (organization_id, user_id, app_key);
 
 ALTER TABLE public.app_snapshots ADD CONSTRAINT app_snapshots_pkey PRIMARY KEY (id);
 
-ALTER TABLE public.app_snapshots ADD CONSTRAINT app_snapshots_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
-ALTER TABLE public.audit_log ADD CONSTRAINT audit_log_actor_user_id_fkey FOREIGN KEY (actor_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
-ALTER TABLE public.audit_log ADD CONSTRAINT audit_log_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.audit_log ADD CONSTRAINT audit_log_pkey PRIMARY KEY (id);
 
-ALTER TABLE public.automation_runs ADD CONSTRAINT automation_runs_automation_id_fkey FOREIGN KEY (automation_id) REFERENCES automations(id) ON DELETE CASCADE;
 
-ALTER TABLE public.automation_runs ADD CONSTRAINT automation_runs_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.automation_runs ADD CONSTRAINT automation_runs_pkey PRIMARY KEY (id);
 
 ALTER TABLE public.automation_runs ADD CONSTRAINT automation_runs_status_check CHECK (status = ANY (ARRAY['running'::text, 'completed'::text, 'failed'::text, 'cancelled'::text]));
 
-ALTER TABLE public.automations ADD CONSTRAINT automations_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
-ALTER TABLE public.automations ADD CONSTRAINT automations_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.automations ADD CONSTRAINT automations_pkey PRIMARY KEY (id);
 
@@ -609,27 +594,21 @@ ALTER TABLE public.bco_integrations ADD CONSTRAINT bco_integrations_pkey PRIMARY
 
 ALTER TABLE public.bco_websites ADD CONSTRAINT bco_websites_pkey PRIMARY KEY (id);
 
-ALTER TABLE public.booking_throttle ADD CONSTRAINT booking_throttle_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.booking_throttle ADD CONSTRAINT booking_throttle_pkey PRIMARY KEY (id);
 
-ALTER TABLE public.contacts ADD CONSTRAINT contacts_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.contacts ADD CONSTRAINT contacts_pkey PRIMARY KEY (id);
 
 ALTER TABLE public.content_items ADD CONSTRAINT content_items_content_type_check CHECK (content_type = ANY (ARRAY['post'::text, 'reel'::text, 'story'::text, 'article'::text, 'newsletter'::text, 'ad'::text, 'other'::text]));
 
-ALTER TABLE public.content_items ADD CONSTRAINT content_items_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
-ALTER TABLE public.content_items ADD CONSTRAINT content_items_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.content_items ADD CONSTRAINT content_items_pkey PRIMARY KEY (id);
 
 ALTER TABLE public.content_items ADD CONSTRAINT content_items_status_check CHECK (status = ANY (ARRAY['idea'::text, 'draft'::text, 'scheduled'::text, 'published'::text, 'archived'::text]));
 
-ALTER TABLE public.conversations ADD CONSTRAINT conversations_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL;
 
-ALTER TABLE public.conversations ADD CONSTRAINT conversations_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.conversations ADD CONSTRAINT conversations_organization_id_phone_key UNIQUE (organization_id, phone);
 
@@ -639,25 +618,19 @@ ALTER TABLE public.conversations ADD CONSTRAINT conversations_status_check CHECK
 
 ALTER TABLE public.financial_entries ADD CONSTRAINT financial_entries_amount_check CHECK (amount >= 0::numeric);
 
-ALTER TABLE public.financial_entries ADD CONSTRAINT financial_entries_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 ALTER TABLE public.financial_entries ADD CONSTRAINT financial_entries_entry_type_check CHECK (entry_type = ANY (ARRAY['income'::text, 'expense'::text]));
 
-ALTER TABLE public.financial_entries ADD CONSTRAINT financial_entries_job_id_fkey FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE SET NULL;
 
-ALTER TABLE public.financial_entries ADD CONSTRAINT financial_entries_opportunity_id_fkey FOREIGN KEY (opportunity_id) REFERENCES opportunities(id) ON DELETE SET NULL;
 
-ALTER TABLE public.financial_entries ADD CONSTRAINT financial_entries_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.financial_entries ADD CONSTRAINT financial_entries_pkey PRIMARY KEY (id);
 
 ALTER TABLE public.financial_entries ADD CONSTRAINT financial_entries_status_check CHECK (status = ANY (ARRAY['planned'::text, 'issued'::text, 'paid'::text, 'cancelled'::text]));
 
-ALTER TABLE public.integration_webhook_tokens ADD CONSTRAINT integration_webhook_tokens_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 ALTER TABLE public.integration_webhook_tokens ADD CONSTRAINT integration_webhook_tokens_kind_check CHECK (kind = ANY (ARRAY['bulkgate'::text, 'missed_call'::text]));
 
-ALTER TABLE public.integration_webhook_tokens ADD CONSTRAINT integration_webhook_tokens_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.integration_webhook_tokens ADD CONSTRAINT integration_webhook_tokens_organization_id_kind_key UNIQUE (organization_id, kind);
 
@@ -665,75 +638,55 @@ ALTER TABLE public.integration_webhook_tokens ADD CONSTRAINT integration_webhook
 
 ALTER TABLE public.integration_webhook_tokens ADD CONSTRAINT integration_webhook_tokens_token_hash_key UNIQUE (token_hash);
 
-ALTER TABLE public.job_assignments ADD CONSTRAINT job_assignments_job_id_fkey FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE;
 
-ALTER TABLE public.job_assignments ADD CONSTRAINT job_assignments_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.job_assignments ADD CONSTRAINT job_assignments_pkey PRIMARY KEY (job_id, user_id);
 
-ALTER TABLE public.job_assignments ADD CONSTRAINT job_assignments_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
-ALTER TABLE public.job_checklist_items ADD CONSTRAINT job_checklist_items_job_id_fkey FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE;
 
-ALTER TABLE public.job_checklist_items ADD CONSTRAINT job_checklist_items_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.job_checklist_items ADD CONSTRAINT job_checklist_items_pkey PRIMARY KEY (id);
 
-ALTER TABLE public.job_photos ADD CONSTRAINT job_photos_job_id_fkey FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE;
 
-ALTER TABLE public.job_photos ADD CONSTRAINT job_photos_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.job_photos ADD CONSTRAINT job_photos_phase_check CHECK (phase = ANY (ARRAY['before'::text, 'during'::text, 'after'::text]));
 
 ALTER TABLE public.job_photos ADD CONSTRAINT job_photos_pkey PRIMARY KEY (id);
 
-ALTER TABLE public.job_signatures ADD CONSTRAINT job_signatures_job_id_fkey FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE;
 
-ALTER TABLE public.job_signatures ADD CONSTRAINT job_signatures_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.job_signatures ADD CONSTRAINT job_signatures_pkey PRIMARY KEY (id);
 
-ALTER TABLE public.jobs ADD CONSTRAINT jobs_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL;
 
-ALTER TABLE public.jobs ADD CONSTRAINT jobs_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.jobs ADD CONSTRAINT jobs_pkey PRIMARY KEY (id);
 
 ALTER TABLE public.jobs ADD CONSTRAINT jobs_status_check CHECK (status = ANY (ARRAY['planned'::text, 'in_progress'::text, 'done'::text, 'cancelled'::text, 'paid'::text]));
 
-ALTER TABLE public.leads ADD CONSTRAINT leads_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL;
 
-ALTER TABLE public.leads ADD CONSTRAINT leads_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.leads ADD CONSTRAINT leads_pkey PRIMARY KEY (id);
 
 ALTER TABLE public.leads ADD CONSTRAINT leads_status_check CHECK (status = ANY (ARRAY['new'::text, 'contacted'::text, 'qualified'::text, 'follow_up'::text, 'offer'::text, 'approved'::text, 'job'::text, 'delivered'::text, 'invoiced'::text, 'paid'::text, 'closed'::text, 'won'::text, 'lost'::text]));
 
-ALTER TABLE public.media_assets ADD CONSTRAINT media_assets_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 ALTER TABLE public.media_assets ADD CONSTRAINT media_assets_kind_check CHECK (kind = ANY (ARRAY['photo'::text, 'video'::text, 'graphic'::text, 'mockup'::text, 'document'::text, 'file'::text]));
 
-ALTER TABLE public.media_assets ADD CONSTRAINT media_assets_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.media_assets ADD CONSTRAINT media_assets_pkey PRIMARY KEY (id);
 
 ALTER TABLE public.media_assets ADD CONSTRAINT media_assets_status_check CHECK (status = ANY (ARRAY['processing'::text, 'ready'::text, 'archived'::text, 'failed'::text]));
 
-ALTER TABLE public.memberships ADD CONSTRAINT memberships_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.memberships ADD CONSTRAINT memberships_pkey PRIMARY KEY (organization_id, user_id);
 
 ALTER TABLE public.memberships ADD CONSTRAINT memberships_role_check CHECK (role = ANY (ARRAY['owner'::text, 'admin'::text, 'manager'::text, 'worker'::text, 'viewer'::text]));
 
-ALTER TABLE public.memberships ADD CONSTRAINT memberships_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
-ALTER TABLE public.merch_creative_proposals ADD CONSTRAINT merch_creative_proposals_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.merch_creative_proposals ADD CONSTRAINT merch_creative_proposals_pkey PRIMARY KEY (id);
 
-ALTER TABLE public.merch_creative_proposals ADD CONSTRAINT merch_creative_proposals_product_id_fkey FOREIGN KEY (product_id) REFERENCES merch_products(id) ON DELETE SET NULL;
 
-ALTER TABLE public.merch_creative_proposals ADD CONSTRAINT merch_creative_proposals_prospect_id_fkey FOREIGN KEY (prospect_id) REFERENCES merch_prospects(id) ON DELETE SET NULL;
 
 ALTER TABLE public.merch_creative_proposals ADD CONSTRAINT merch_creative_proposals_score_check CHECK (score >= 0 AND score <= 100);
 
@@ -741,23 +694,17 @@ ALTER TABLE public.merch_creative_proposals ADD CONSTRAINT merch_creative_propos
 
 ALTER TABLE public.merch_order_items ADD CONSTRAINT merch_order_items_line_total_check CHECK (line_total >= 0::numeric);
 
-ALTER TABLE public.merch_order_items ADD CONSTRAINT merch_order_items_order_id_fkey FOREIGN KEY (order_id) REFERENCES merch_orders(id) ON DELETE CASCADE;
 
-ALTER TABLE public.merch_order_items ADD CONSTRAINT merch_order_items_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.merch_order_items ADD CONSTRAINT merch_order_items_pkey PRIMARY KEY (id);
 
-ALTER TABLE public.merch_order_items ADD CONSTRAINT merch_order_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES merch_products(id) ON DELETE SET NULL;
 
 ALTER TABLE public.merch_order_items ADD CONSTRAINT merch_order_items_quantity_check CHECK (quantity > 0::numeric);
 
 ALTER TABLE public.merch_order_items ADD CONSTRAINT merch_order_items_unit_price_check CHECK (unit_price >= 0::numeric);
 
-ALTER TABLE public.merch_orders ADD CONSTRAINT merch_orders_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL;
 
-ALTER TABLE public.merch_orders ADD CONSTRAINT merch_orders_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL;
 
-ALTER TABLE public.merch_orders ADD CONSTRAINT merch_orders_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.merch_orders ADD CONSTRAINT merch_orders_organization_id_order_number_key UNIQUE (organization_id, order_number);
 
@@ -773,15 +720,12 @@ ALTER TABLE public.merch_orders ADD CONSTRAINT merch_orders_total_check CHECK (t
 
 ALTER TABLE public.merch_outreach_drafts ADD CONSTRAINT merch_outreach_drafts_channel_check CHECK (channel = ANY (ARRAY['email'::text, 'whatsapp'::text, 'instagram'::text, 'facebook'::text, 'other'::text]));
 
-ALTER TABLE public.merch_outreach_drafts ADD CONSTRAINT merch_outreach_drafts_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.merch_outreach_drafts ADD CONSTRAINT merch_outreach_drafts_pkey PRIMARY KEY (id);
 
-ALTER TABLE public.merch_outreach_drafts ADD CONSTRAINT merch_outreach_drafts_prospect_id_fkey FOREIGN KEY (prospect_id) REFERENCES merch_prospects(id) ON DELETE CASCADE;
 
 ALTER TABLE public.merch_outreach_drafts ADD CONSTRAINT merch_outreach_drafts_status_check CHECK (status = ANY (ARRAY['draft'::text, 'approved'::text, 'sent'::text, 'rejected'::text, 'cancelled'::text]));
 
-ALTER TABLE public.merch_products ADD CONSTRAINT merch_products_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.merch_products ADD CONSTRAINT merch_products_organization_id_sku_key UNIQUE (organization_id, sku);
 
@@ -791,35 +735,25 @@ ALTER TABLE public.merch_products ADD CONSTRAINT merch_products_price_check CHEC
 
 ALTER TABLE public.merch_prospects ADD CONSTRAINT merch_prospects_fit_score_check CHECK (fit_score >= 0 AND fit_score <= 100);
 
-ALTER TABLE public.merch_prospects ADD CONSTRAINT merch_prospects_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.merch_prospects ADD CONSTRAINT merch_prospects_pkey PRIMARY KEY (id);
 
 ALTER TABLE public.merch_prospects ADD CONSTRAINT merch_prospects_status_check CHECK (status = ANY (ARRAY['discovered'::text, 'qualified'::text, 'draft_ready'::text, 'approved'::text, 'contacted'::text, 'replied'::text, 'converted'::text, 'rejected'::text, 'suppressed'::text]));
 
-ALTER TABLE public.messages ADD CONSTRAINT messages_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.messages ADD CONSTRAINT messages_direction_check CHECK (direction = ANY (ARRAY['in'::text, 'out'::text]));
 
-ALTER TABLE public.messages ADD CONSTRAINT messages_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.messages ADD CONSTRAINT messages_pkey PRIMARY KEY (id);
 
-ALTER TABLE public.missed_calls ADD CONSTRAINT missed_calls_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL;
 
-ALTER TABLE public.missed_calls ADD CONSTRAINT missed_calls_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE SET NULL;
 
-ALTER TABLE public.missed_calls ADD CONSTRAINT missed_calls_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL;
 
-ALTER TABLE public.missed_calls ADD CONSTRAINT missed_calls_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.missed_calls ADD CONSTRAINT missed_calls_pkey PRIMARY KEY (id);
 
-ALTER TABLE public.opportunities ADD CONSTRAINT opportunities_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL;
 
-ALTER TABLE public.opportunities ADD CONSTRAINT opportunities_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
-ALTER TABLE public.opportunities ADD CONSTRAINT opportunities_owner_user_id_fkey FOREIGN KEY (owner_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 ALTER TABLE public.opportunities ADD CONSTRAINT opportunities_pkey PRIMARY KEY (id);
 
@@ -837,19 +771,13 @@ ALTER TABLE public.organizations ADD CONSTRAINT organizations_sms_daily_limit_ch
 
 ALTER TABLE public.organizations ADD CONSTRAINT organizations_sms_monthly_limit_check CHECK (sms_monthly_limit >= 1 AND sms_monthly_limit <= 100000);
 
-ALTER TABLE public.quote_items ADD CONSTRAINT quote_items_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.quote_items ADD CONSTRAINT quote_items_pkey PRIMARY KEY (id);
 
-ALTER TABLE public.quote_items ADD CONSTRAINT quote_items_quote_id_fkey FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE;
 
-ALTER TABLE public.quotes ADD CONSTRAINT quotes_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL;
 
-ALTER TABLE public.quotes ADD CONSTRAINT quotes_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
-ALTER TABLE public.quotes ADD CONSTRAINT quotes_opportunity_id_fkey FOREIGN KEY (opportunity_id) REFERENCES opportunities(id) ON DELETE SET NULL;
 
-ALTER TABLE public.quotes ADD CONSTRAINT quotes_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.quotes ADD CONSTRAINT quotes_organization_id_quote_number_key UNIQUE (organization_id, quote_number);
 
@@ -857,19 +785,15 @@ ALTER TABLE public.quotes ADD CONSTRAINT quotes_pkey PRIMARY KEY (id);
 
 ALTER TABLE public.quotes ADD CONSTRAINT quotes_status_check CHECK (status = ANY (ARRAY['draft'::text, 'sent'::text, 'accepted'::text, 'rejected'::text, 'expired'::text]));
 
-ALTER TABLE public.service_bookings ADD CONSTRAINT service_bookings_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.service_bookings ADD CONSTRAINT service_bookings_pkey PRIMARY KEY (id);
 
 ALTER TABLE public.service_bookings ADD CONSTRAINT service_bookings_status_check CHECK (status = ANY (ARRAY['new'::text, 'converted'::text, 'closed'::text, 'cancelled'::text]));
 
-ALTER TABLE public.service_catalog ADD CONSTRAINT service_catalog_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.service_catalog ADD CONSTRAINT service_catalog_pkey PRIMARY KEY (id);
 
-ALTER TABLE public.tasks ADD CONSTRAINT tasks_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES auth.users(id) ON DELETE SET NULL;
 
-ALTER TABLE public.tasks ADD CONSTRAINT tasks_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.tasks ADD CONSTRAINT tasks_pkey PRIMARY KEY (id);
 
@@ -877,11 +801,8 @@ ALTER TABLE public.tasks ADD CONSTRAINT tasks_priority_check CHECK (priority = A
 
 ALTER TABLE public.tasks ADD CONSTRAINT tasks_status_check CHECK (status = ANY (ARRAY['open'::text, 'in_progress'::text, 'blocked'::text, 'done'::text, 'cancelled'::text]));
 
-ALTER TABLE public.team_invites ADD CONSTRAINT team_invites_accepted_by_fkey FOREIGN KEY (accepted_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
-ALTER TABLE public.team_invites ADD CONSTRAINT team_invites_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE CASCADE;
 
-ALTER TABLE public.team_invites ADD CONSTRAINT team_invites_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.team_invites ADD CONSTRAINT team_invites_pkey PRIMARY KEY (id);
 
@@ -891,19 +812,98 @@ ALTER TABLE public.team_invites ADD CONSTRAINT team_invites_token_hash_key UNIQU
 
 ALTER TABLE public.time_entries ADD CONSTRAINT time_entries_check CHECK (ended_at IS NULL OR ended_at >= started_at);
 
-ALTER TABLE public.time_entries ADD CONSTRAINT time_entries_job_id_fkey FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE;
 
-ALTER TABLE public.time_entries ADD CONSTRAINT time_entries_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.time_entries ADD CONSTRAINT time_entries_pkey PRIMARY KEY (id);
 
-ALTER TABLE public.time_entries ADD CONSTRAINT time_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
 ALTER TABLE public.webhook_events ADD CONSTRAINT webhook_events_dedupe_key_key UNIQUE (dedupe_key);
 
-ALTER TABLE public.webhook_events ADD CONSTRAINT webhook_events_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE public.webhook_events ADD CONSTRAINT webhook_events_pkey PRIMARY KEY (id);
+ALTER TABLE public.ai_agent_events ADD CONSTRAINT ai_agent_events_agent_id_fkey FOREIGN KEY (agent_id) REFERENCES ai_agents(id) ON DELETE SET NULL;
+ALTER TABLE public.ai_agent_events ADD CONSTRAINT ai_agent_events_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.ai_agents ADD CONSTRAINT ai_agents_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.ai_approvals ADD CONSTRAINT ai_approvals_agent_id_fkey FOREIGN KEY (agent_id) REFERENCES ai_agents(id) ON DELETE CASCADE;
+ALTER TABLE public.ai_approvals ADD CONSTRAINT ai_approvals_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.ai_runs ADD CONSTRAINT ai_runs_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.ai_runs ADD CONSTRAINT ai_runs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.app_snapshots ADD CONSTRAINT app_snapshots_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.app_snapshots ADD CONSTRAINT app_snapshots_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public.audit_log ADD CONSTRAINT audit_log_actor_user_id_fkey FOREIGN KEY (actor_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.audit_log ADD CONSTRAINT audit_log_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.automation_runs ADD CONSTRAINT automation_runs_automation_id_fkey FOREIGN KEY (automation_id) REFERENCES automations(id) ON DELETE CASCADE;
+ALTER TABLE public.automation_runs ADD CONSTRAINT automation_runs_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.automations ADD CONSTRAINT automations_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.automations ADD CONSTRAINT automations_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.booking_throttle ADD CONSTRAINT booking_throttle_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.contacts ADD CONSTRAINT contacts_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.content_items ADD CONSTRAINT content_items_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.content_items ADD CONSTRAINT content_items_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.conversations ADD CONSTRAINT conversations_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL;
+ALTER TABLE public.conversations ADD CONSTRAINT conversations_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.financial_entries ADD CONSTRAINT financial_entries_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.financial_entries ADD CONSTRAINT financial_entries_job_id_fkey FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE SET NULL;
+ALTER TABLE public.financial_entries ADD CONSTRAINT financial_entries_opportunity_id_fkey FOREIGN KEY (opportunity_id) REFERENCES opportunities(id) ON DELETE SET NULL;
+ALTER TABLE public.financial_entries ADD CONSTRAINT financial_entries_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.integration_webhook_tokens ADD CONSTRAINT integration_webhook_tokens_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.integration_webhook_tokens ADD CONSTRAINT integration_webhook_tokens_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.job_assignments ADD CONSTRAINT job_assignments_job_id_fkey FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE;
+ALTER TABLE public.job_assignments ADD CONSTRAINT job_assignments_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.job_assignments ADD CONSTRAINT job_assignments_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public.job_checklist_items ADD CONSTRAINT job_checklist_items_job_id_fkey FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE;
+ALTER TABLE public.job_checklist_items ADD CONSTRAINT job_checklist_items_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.job_photos ADD CONSTRAINT job_photos_job_id_fkey FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE;
+ALTER TABLE public.job_photos ADD CONSTRAINT job_photos_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.job_signatures ADD CONSTRAINT job_signatures_job_id_fkey FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE;
+ALTER TABLE public.job_signatures ADD CONSTRAINT job_signatures_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.jobs ADD CONSTRAINT jobs_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL;
+ALTER TABLE public.jobs ADD CONSTRAINT jobs_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.leads ADD CONSTRAINT leads_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL;
+ALTER TABLE public.leads ADD CONSTRAINT leads_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.media_assets ADD CONSTRAINT media_assets_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.media_assets ADD CONSTRAINT media_assets_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.memberships ADD CONSTRAINT memberships_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.memberships ADD CONSTRAINT memberships_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public.merch_creative_proposals ADD CONSTRAINT merch_creative_proposals_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.merch_creative_proposals ADD CONSTRAINT merch_creative_proposals_product_id_fkey FOREIGN KEY (product_id) REFERENCES merch_products(id) ON DELETE SET NULL;
+ALTER TABLE public.merch_creative_proposals ADD CONSTRAINT merch_creative_proposals_prospect_id_fkey FOREIGN KEY (prospect_id) REFERENCES merch_prospects(id) ON DELETE SET NULL;
+ALTER TABLE public.merch_order_items ADD CONSTRAINT merch_order_items_order_id_fkey FOREIGN KEY (order_id) REFERENCES merch_orders(id) ON DELETE CASCADE;
+ALTER TABLE public.merch_order_items ADD CONSTRAINT merch_order_items_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.merch_order_items ADD CONSTRAINT merch_order_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES merch_products(id) ON DELETE SET NULL;
+ALTER TABLE public.merch_orders ADD CONSTRAINT merch_orders_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL;
+ALTER TABLE public.merch_orders ADD CONSTRAINT merch_orders_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL;
+ALTER TABLE public.merch_orders ADD CONSTRAINT merch_orders_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.merch_outreach_drafts ADD CONSTRAINT merch_outreach_drafts_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.merch_outreach_drafts ADD CONSTRAINT merch_outreach_drafts_prospect_id_fkey FOREIGN KEY (prospect_id) REFERENCES merch_prospects(id) ON DELETE CASCADE;
+ALTER TABLE public.merch_products ADD CONSTRAINT merch_products_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.merch_prospects ADD CONSTRAINT merch_prospects_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.messages ADD CONSTRAINT messages_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE;
+ALTER TABLE public.messages ADD CONSTRAINT messages_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.missed_calls ADD CONSTRAINT missed_calls_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL;
+ALTER TABLE public.missed_calls ADD CONSTRAINT missed_calls_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE SET NULL;
+ALTER TABLE public.missed_calls ADD CONSTRAINT missed_calls_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL;
+ALTER TABLE public.missed_calls ADD CONSTRAINT missed_calls_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.opportunities ADD CONSTRAINT opportunities_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL;
+ALTER TABLE public.opportunities ADD CONSTRAINT opportunities_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.opportunities ADD CONSTRAINT opportunities_owner_user_id_fkey FOREIGN KEY (owner_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.quote_items ADD CONSTRAINT quote_items_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.quote_items ADD CONSTRAINT quote_items_quote_id_fkey FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE;
+ALTER TABLE public.quotes ADD CONSTRAINT quotes_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL;
+ALTER TABLE public.quotes ADD CONSTRAINT quotes_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.quotes ADD CONSTRAINT quotes_opportunity_id_fkey FOREIGN KEY (opportunity_id) REFERENCES opportunities(id) ON DELETE SET NULL;
+ALTER TABLE public.quotes ADD CONSTRAINT quotes_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.service_bookings ADD CONSTRAINT service_bookings_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.service_catalog ADD CONSTRAINT service_catalog_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.tasks ADD CONSTRAINT tasks_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.tasks ADD CONSTRAINT tasks_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.team_invites ADD CONSTRAINT team_invites_accepted_by_fkey FOREIGN KEY (accepted_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.team_invites ADD CONSTRAINT team_invites_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public.team_invites ADD CONSTRAINT team_invites_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.time_entries ADD CONSTRAINT time_entries_job_id_fkey FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE;
+ALTER TABLE public.time_entries ADD CONSTRAINT time_entries_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE public.time_entries ADD CONSTRAINT time_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public.webhook_events ADD CONSTRAINT webhook_events_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 CREATE OR REPLACE FUNCTION private.can_access_job(org uuid, job uuid)
  RETURNS boolean
