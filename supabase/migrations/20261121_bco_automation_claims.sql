@@ -107,10 +107,10 @@ $function$;
 revoke all on function public.claim_bco_automation_runs(timestamptz, integer) from public, anon, authenticated;
 grant execute on function public.claim_bco_automation_runs(timestamptz, integer) to service_role;
 
-
 create or replace function public.finish_bco_automation_run(
   p_run_id uuid,
   p_automation_id uuid,
+  p_organization_id uuid,
   p_success boolean,
   p_output jsonb default null,
   p_error text default null,
@@ -128,16 +128,18 @@ begin
 
   update public.automation_runs
      set status = case when p_success then 'completed' else 'failed' end,
-         output = case when p_success then p_output else output end,
+         output = case when p_success then coalesce(p_output, '{}'::jsonb) else output end,
          error = case when p_success then null else left(coalesce(p_error, 'EXECUTION_FAILED'), 1000) end,
          completed_at = now(),
          lease_expires_at = null
    where id = p_run_id
      and automation_id = p_automation_id
-     and status = 'running';
+     and organization_id = p_organization_id
+     and status = 'running'
+     and lease_expires_at > now();
 
   if not found then
-    raise exception 'automation_run_not_found_or_not_running';
+    raise exception 'automation_run_not_found_wrong_tenant_not_running_or_lease_expired';
   end if;
 
   update public.automations
@@ -146,13 +148,97 @@ begin
          next_retry_at = case when p_success then null else p_retry_at end,
          attempt_count = case when p_success then 0 else attempt_count end,
          last_error = case when p_success then null else left(coalesce(p_error, 'EXECUTION_FAILED'), 1000) end
-   where id = p_automation_id;
+   where id = p_automation_id
+     and organization_id = p_organization_id;
 
   if not found then
-    raise exception 'automation_not_found';
+    raise exception 'automation_not_found_or_wrong_tenant';
   end if;
 end;
 $function$;
 
-revoke all on function public.finish_bco_automation_run(uuid, uuid, boolean, jsonb, text, timestamptz) from public, anon, authenticated;
-grant execute on function public.finish_bco_automation_run(uuid, uuid, boolean, jsonb, text, timestamptz) to service_role;
+revoke all on function public.finish_bco_automation_run(uuid, uuid, uuid, boolean, jsonb, text, timestamptz) from public, anon, authenticated;
+grant execute on function public.finish_bco_automation_run(uuid, uuid, uuid, boolean, jsonb, text, timestamptz) to service_role;
+
+-- Exactly one ai_runs row per organization + originating automation run.
+create unique index if not exists ai_runs_automation_run_uidx
+  on public.ai_runs (organization_id, (input->>'automation_run_id'))
+  where input ? 'automation_run_id';
+
+create or replace function public.record_bco_executor_audit(
+  p_organization_id uuid,
+  p_automation_id uuid,
+  p_agent_id uuid,
+  p_agent_slug text,
+  p_task text,
+  p_run_id uuid,
+  p_status text,
+  p_provider text default null,
+  p_model text default null,
+  p_error text default null,
+  p_event_type text default 'automation_run_blocked',
+  p_payload jsonb default '{}'::jsonb
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $function$
+declare
+  v_ai_run_id uuid;
+begin
+  if coalesce(auth.jwt() ->> 'role', '') <> 'service_role' then
+    raise exception 'service_role_required';
+  end if;
+  if not exists (
+    select 1 from public.automation_runs r
+     where r.id = p_run_id
+       and r.automation_id = p_automation_id
+       and r.organization_id = p_organization_id
+  ) then
+    raise exception 'automation_run_scope_mismatch';
+  end if;
+  if not exists (
+    select 1 from public.ai_agents a
+     where a.id = p_agent_id
+       and a.organization_id = p_organization_id
+       and a.slug = p_agent_slug
+  ) then
+    raise exception 'agent_scope_mismatch';
+  end if;
+
+  insert into public.ai_runs (
+    organization_id, agent, task, status, provider, model, input, output, error, started_at, completed_at
+  ) values (
+    p_organization_id, p_agent_slug, p_task, p_status, p_provider, p_model,
+    jsonb_build_object('automation_run_id', p_run_id, 'automation_id', p_automation_id),
+    '{}'::jsonb, left(p_error, 1000), now(), now()
+  )
+  on conflict (organization_id, (input->>'automation_run_id'))
+    where input ? 'automation_run_id'
+    do nothing
+  returning id into v_ai_run_id;
+
+  if v_ai_run_id is null then
+    select id into v_ai_run_id
+      from public.ai_runs
+     where organization_id = p_organization_id
+       and input->>'automation_run_id' = p_run_id::text
+     limit 1;
+  end if;
+
+  insert into public.ai_agent_events (
+    organization_id, agent_id, event_type, severity, entity_type, entity_id, payload
+  ) values (
+    p_organization_id, p_agent_id, p_event_type, 'warning',
+    'automation_run', p_run_id,
+    coalesce(p_payload, '{}'::jsonb) || jsonb_build_object(
+      'run_id', p_run_id, 'automation_id', p_automation_id, 'ai_run_id', v_ai_run_id
+    )
+  );
+  return v_ai_run_id;
+end;
+$function$;
+
+revoke all on function public.record_bco_executor_audit(uuid, uuid, uuid, text, text, uuid, text, text, text, text, text, jsonb) from public, anon, authenticated;
+grant execute on function public.record_bco_executor_audit(uuid, uuid, uuid, text, text, uuid, text, text, text, text, text, jsonb) to service_role;
