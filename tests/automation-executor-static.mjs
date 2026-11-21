@@ -9,6 +9,11 @@ assert.match(source, /\.eq\("id", automationId\)\.eq\("organization_id", organiz
 assert.match(source, /\.eq\("organization_id", organizationId\)\.eq\("slug", slug\)/);
 assert.match(source, /allowedActions\(foundAgent\.allowed_actions\)/);
 assert.match(source, /ai_approvals/);
+assert.match(source, /buildCeoInternalPlan/);
+assert.match(source, /deterministic_internal_planner/);
+assert.match(source, /side_effects: "read_only"/);
+assert.match(source, /automation_run_completed/);
+assert.match(source, /p_success: true/);
 assert.match(source, /PROVIDER_SECRET_MISSING/);
 assert.match(source, /PROVIDER_ADAPTER_NOT_IMPLEMENTED/);
 assert.match(source, /EXTERNAL_ACTIONS_DISABLED_IN_INITIAL_RELEASE/);
