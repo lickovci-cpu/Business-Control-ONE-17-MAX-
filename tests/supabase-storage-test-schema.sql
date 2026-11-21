@@ -38,8 +38,15 @@ alter table public.job_assignments enable row level security;
 alter table public.webhook_events enable row level security;
 revoke all on public.organizations, public.memberships, public.jobs,
   public.job_assignments, public.webhook_events from anon, authenticated;
+grant select on public.memberships to authenticated;
 grant all on public.organizations, public.memberships, public.jobs,
   public.job_assignments, public.webhook_events to service_role;
+
+-- Match production: a user can read their own membership rows, and no other
+-- user's membership rows. Organization owners/admins can be expanded separately.
+create policy "memberships select own" on public.memberships
+for select to authenticated
+using (user_id = (select auth.uid()));
 
 create or replace function private.is_org_member(org uuid)
 returns boolean language sql stable security definer
