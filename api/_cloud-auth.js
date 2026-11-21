@@ -1,4 +1,5 @@
 import {auth,env,supabaseBaseUrl,supabasePublishableKey,supabaseBearerToken} from './_lib.js';
+import {verifyOrganizationIdentity} from './_cloud-identity-core.js';
 
 const PROJECT_ORGS=Object.freeze({
   jihoceske:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',
@@ -8,40 +9,35 @@ const PROJECT_ORGS=Object.freeze({
   boost:'d2751286-da99-42c0-b8ac-6a2da8ecdabf'
 });
 
-function clean(v,max=240){return String(v??'').trim().slice(0,max);}
-
-export async function cloudMember(req,project){
-  const token=supabaseBearerToken(req);
-  const organizationId=PROJECT_ORGS[String(project||'').toLowerCase()];
-  if(!token||!organizationId)return false;
-  const key=supabasePublishableKey();
-  const base=supabaseBaseUrl();
-  if(!key||!base)return false;
-  try{
-    const userRes=await fetch(base+'/auth/v1/user',{
-      headers:{apikey:key,Authorization:'Bearer '+token},
-      signal:AbortSignal.timeout(7000)
-    });
-    if(!userRes.ok)return false;
-    const user=await userRes.json().catch(()=>null);
-    const userId=clean(user?.id,120);
-    if(!userId)return false;
-    const q=new URL(base+'/rest/v1/memberships');
-    q.searchParams.set('select','id');
-    q.searchParams.set('organization_id','eq.'+organizationId);
-    q.searchParams.set('user_id','eq.'+userId);
-    q.searchParams.set('limit','1');
-    const memberRes=await fetch(q,{
-      headers:{apikey:key,Authorization:'Bearer '+token},
-      signal:AbortSignal.timeout(7000)
-    });
-    if(!memberRes.ok)return false;
-    const rows=await memberRes.json().catch(()=>[]);
-    return Array.isArray(rows)&&rows.length>0;
-  }catch{return false;}
+export async function cloudIdentityForOrganization(req,organizationId){
+  return verifyOrganizationIdentity({
+    authorization:req.headers?.authorization,
+    organizationId,
+    supabaseUrl:supabaseBaseUrl(),
+    publishableKey:supabasePublishableKey()
+  });
 }
 
+export async function cloudIdentityForProject(req,project){
+  const organizationId=PROJECT_ORGS[String(project||'').toLowerCase()];
+  if(!organizationId)return {ok:false,status:400,error:'PROJECT_ORGANIZATION_NOT_CONFIGURED'};
+  return cloudIdentityForOrganization(req,organizationId);
+}
+
+export async function cloudMember(req,project){
+  const identity=await cloudIdentityForProject(req,project);
+  return identity.ok;
+}
+
+export async function cloudAdmin(req,project){
+  const identity=await cloudIdentityForProject(req,project);
+  return identity.ok&&['owner','admin'].includes(String(identity.role||'').toLowerCase());
+}
+
+// A supplied Supabase JWT always wins and must belong to the selected org.
+// Shared bc_session is disabled by default and can only be restored temporarily
+// with an explicit server-side migration flag.
 export async function authOrCloud(req,project){
-  if(auth(req))return true;
-  return cloudMember(req,project);
+  if(supabaseBearerToken(req))return cloudMember(req,project);
+  return env('BCO_ALLOW_LEGACY_SHARED_SESSION','false')==='true'&&auth(req);
 }

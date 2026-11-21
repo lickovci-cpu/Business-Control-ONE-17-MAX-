@@ -1,7 +1,7 @@
 import {readdir,readFile} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
-const roots=['api','public','scripts','tests'];
+const roots=['api','public','scripts','tests','workers'];
 let js=[];
 async function collectJs(dir){
   for(const entry of await readdir(dir,{withFileTypes:true})){
@@ -17,14 +17,14 @@ const html=await readFile('public/index.html','utf8'),ids=[...html.matchAll(/\bi
 if(dupes.length)throw new Error('Duplicate IDs: '+[...new Set(dupes)].join(', '));
 if(/style\s*=/.test(html))throw new Error('Inline style attribute would conflict with CSP.');
 const sw=await readFile('public/sw.js','utf8');
-if(!sw.includes("bco17-max-v6")||!sw.includes("/commercial-live.js")||!sw.includes("url.pathname.startsWith('/api/')")||!sw.includes('notificationclick'))throw new Error('Service worker strategy missing.');
+if(!sw.includes("bco17-max-v7")||!sw.includes("/commercial-live.js")||!sw.includes("url.pathname.startsWith('/api/')")||!sw.includes('notificationclick'))throw new Error('Service worker strategy missing.');
 const app=await readFile('public/app.js','utf8');
 if(app.includes('$$$('))throw new Error('Broken selector helper: $$$ found in public/app.js.');
 if(/(?<!\$)\$\((['"])\.[^'"]+\1\)\.forEach/.test(app))throw new Error('Broken collection iteration: singleton $() used with forEach.');
 for(const marker of ['MEDIA_THUMB_CACHE','IntersectionObserver','ensureMediaFile','clearThumbCache','generateReel','renderMetaConnection','generateCampaign','leadFollowKit','autoSelectReelPhotos','truthGuard','renderSales','pipelineStats','quoteSave','dealCoachRun','renderJobs','JOB_TEMPLATES','renderCashWatch','buildReelPreview','renderControlRoom','controlRoomData','maybeDueNotification','requestPersistentStorage','runContentWorker','renderWorker','lastContentWorker'])if(!app.includes(marker))throw new Error('V15 marker missing: '+marker);
 const literalIds=[...app.matchAll(/\$\('#([A-Za-z0-9_-]+)'\)/g)].map(m=>m[1]);
 // Some UI controls are intentionally created dynamically by the runtime (e.g. More navigation).
-const dynamicIds=new Set(['navMore']);
+const dynamicIds=new Set(['navMore','navSubnav']);
 const missing=[...new Set(literalIds.filter(id=>!ids.includes(id)&&!dynamicIds.has(id)))];
 if(missing.length)throw new Error('JS references missing HTML ids: '+missing.join(', '));
 const vercel=JSON.parse(await readFile('vercel.json','utf8'));const csp=vercel.headers?.flatMap(x=>x.headers||[]).find(x=>x.key==='Content-Security-Policy')?.value||'';
@@ -35,11 +35,23 @@ const commercialSource=await readFile('api/commercial.js','utf8');
 const crmBridge=await readFile('public/crm-live.js','utf8');
 const commercialBridge=await readFile('public/commercial-live.js','utf8');
 for(const marker of ['supabaseRequestCredentials','supabaseBearerToken','supabasePublishableKey'])if(!lib.includes(marker))throw new Error('Supabase JWT fallback missing: '+marker);
-for(const marker of ['supabaseRequestCredentials(req)','CRM_DB_NOT_CONFIGURED_OR_CLOUD_LOGIN_REQUIRED'])if(!leadsSource.includes(marker))throw new Error('CRM live fallback missing: '+marker);
-for(const marker of ['supabaseRequestCredentials(req)','COMMERCIAL_DB_NOT_CONFIGURED_OR_CLOUD_LOGIN_REQUIRED'])if(!commercialSource.includes(marker))throw new Error('Commercial live fallback missing: '+marker);
+for(const marker of ['supabaseBearerToken(req)','supabasePublishableKey()','CRM_SUPABASE_USER_JWT_REQUIRED'])if(!leadsSource.includes(marker))throw new Error('CRM verified-user JWT path missing: '+marker);
+for(const marker of ['supabaseBearerToken(req)','supabasePublishableKey()','COMMERCIAL_SUPABASE_USER_JWT_REQUIRED'])if(!commercialSource.includes(marker))throw new Error('Commercial verified-user JWT path missing: '+marker);
 for(const marker of ['bc81-sb-session','LOKÁLNÍ CRM','__BCO_LIVE_CRM'])if(!crmBridge.includes(marker))throw new Error('CRM bridge fallback missing: '+marker);
 for(const marker of ['bc81-sb-session','LOKÁLNÍ REŽIM','clearLive'])if(!commercialBridge.includes(marker))throw new Error('Commercial bridge fallback missing: '+marker);
 if(!app.includes('if(window.__BCO_LIVE_CRM)return'))throw new Error('Local CRM guard missing.');
+for(const marker of ['snapshotDestinationConfigured','privateStorageEnabled','legacyPublicUploadEnabled','HttpOnly/BFF','geminiFreeTierEnabled'])if(!app.includes(marker))throw new Error('Health UI status accuracy marker missing: '+marker);
+if(app.includes('Supabase snapshots ✓'))throw new Error('Health UI must not claim backups are active without a configured destination.');
+const healthSource=await readFile('api/health.js','utf8');
+for(const marker of ['projectKey(req.query?.project','cloudAdmin(req,project)','snapshotDestinationConfigured','geminiFreeTierEnabled','metaProjects:{[project]:allMetaStatus[project]||{}}'])if(!healthSource.includes(marker))throw new Error('Project-scoped health API marker missing: '+marker);
+const aiSource=await readFile('api/ai.js','utf8');
+if(!aiSource.includes("env('AI_ALLOW_GEMINI_FREE_TIER','false')"))throw new Error('Gemini free-tier opt-in guard missing.');
+const revenueSource=await readFile('api/merch-revenue.js','utf8');
+for(const marker of ['supabaseBearerToken(req)','supabasePublishableKey()','mode:\'service\''])if(!revenueSource.includes(marker))throw new Error('Merch revenue RLS routing marker missing: '+marker);
+const outlookStatusSource=await readFile('api/integrations/outlook/status.js','utf8');
+for(const marker of ["cloudAdmin(req,'merch')",'organizationId!==NRSM_ORG'])if(!outlookStatusSource.includes(marker))throw new Error('Outlook status organization guard missing: '+marker);
+const studioSource=await readFile('api/merch-studio.js','utf8');
+if(studioSource.includes('j2=await')||!studioSource.includes('let j=await fetchJsonWithRetry'))throw new Error('Replicate async polling variable fix missing.');
 
 const comms=await readFile('api/_comms.js','utf8');if(!comms.includes('regional'))throw new Error('RCS endpoint mode missing.');
 console.log(`CHECK OK — ${js.length} JS files, ${ids.length} unique UI ids, commercial/PWA checks enabled.`);

@@ -1,4 +1,5 @@
-import {auth,noauth,projectKey,env,normalizeSecret,sendError,body} from './_lib.js';
+import {noauth,projectKey,env,normalizeSecret,sendError,body} from './_lib.js';
+import {cloudAdmin} from './_cloud-auth.js';
 import {getAgent,listAgents,recordAgentEvent,agentFallbackEnabled} from './_agent-registry.js';
 
 function currentOrigin(req){
@@ -10,6 +11,7 @@ function currentOrigin(req){
 async function runAi(req,payload){
   const url=`${currentOrigin(req)}/api/ai`;
   const headers={'content-type':'application/json'};
+  if(req.headers?.authorization)headers.authorization=req.headers.authorization;
   const password=normalizeSecret(env('APP_PASSWORD'));
   if(password)headers['x-app-key']=password;
   const r=await fetch(url,{method:'POST',headers,body:JSON.stringify(payload),signal:AbortSignal.timeout(70000)});
@@ -34,9 +36,9 @@ function publicAgent(a){
 }
 
 export default async function handler(req,res){
-  if(!auth(req))return noauth(res);
+  const project=projectKey(req.method==='GET'?req.query?.project||'jihoceske':req.body?.project||'jihoceske');
+  if(!(await cloudAdmin(req,project)))return noauth(res);
   try{
-    const project=projectKey(req.method==='GET'?req.query?.project||'jihoceske':req.body?.project||'jihoceske');
     if(req.method==='GET'){
       const agents=await listAgents(project);
       return res.json({

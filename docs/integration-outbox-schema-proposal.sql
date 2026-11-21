@@ -35,8 +35,10 @@ create index integration_outbox_lease_idx
   where status = 'processing';
 
 alter table public.integration_outbox enable row level security;
-revoke all on public.integration_outbox from anon, authenticated;
-grant select, insert, update, delete on public.integration_outbox to service_role;
+revoke all on public.integration_outbox from public, anon, authenticated, service_role;
+-- The consumer mutates rows only through lease-token guarded SECURITY DEFINER RPCs.
+-- Service role gets read-only access for diagnostics; no direct DELETE/UPDATE grant.
+grant select on public.integration_outbox to service_role;
 
 -- Atomic multi-consumer claim. SKIP LOCKED prevents workers claiming the same row.
 -- Attempts count claims, not failures. Expired final attempts are moved to dead.
@@ -65,7 +67,9 @@ begin
     select o.id
       from public.integration_outbox o
      where (
-       (o.status in ('pending','retry') and o.available_at <= pg_catalog.clock_timestamp())
+       (o.status in ('pending','retry')
+        and o.available_at <= pg_catalog.clock_timestamp()
+        and o.attempts < o.max_attempts)
        or
        (o.status = 'processing'
         and o.locked_at < pg_catalog.clock_timestamp() - interval '10 minutes'
@@ -112,7 +116,7 @@ $$;
 
 -- Retry uses capped exponential backoff plus small jitter; final failure is dead.
 create or replace function public.fail_integration_outbox(
-  p_id uuid, p_lock_token uuid, p_error text
+  p_id uuid, p_lock_token uuid, p_error text, p_retryable boolean default true
 ) returns text
 language plpgsql
 security definer
@@ -131,7 +135,7 @@ begin
 
   if not found then return null; end if;
 
-  if v_attempts >= v_max then
+  if v_attempts >= v_max or not coalesce(p_retryable, false) then
     v_status := 'dead';
   else
     v_status := 'retry';
@@ -156,10 +160,10 @@ $$;
 
 revoke all on function public.claim_integration_outbox(integer) from public, anon, authenticated;
 revoke all on function public.complete_integration_outbox(uuid, uuid) from public, anon, authenticated;
-revoke all on function public.fail_integration_outbox(uuid, uuid, text) from public, anon, authenticated;
+revoke all on function public.fail_integration_outbox(uuid, uuid, text, boolean) from public, anon, authenticated;
 grant execute on function public.claim_integration_outbox(integer) to service_role;
 grant execute on function public.complete_integration_outbox(uuid, uuid) to service_role;
-grant execute on function public.fail_integration_outbox(uuid, uuid, text) to service_role;
+grant execute on function public.fail_integration_outbox(uuid, uuid, text, boolean) to service_role;
 
 -- Consumer contract:
 -- 1) external side effects receive idempotency key "<org_uuid>:<dedupe_key>".

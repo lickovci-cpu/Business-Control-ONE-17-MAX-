@@ -22,6 +22,8 @@ test("claim is atomic and concurrency-safe", () => {
 test("completion and retry require the current lease token", () => {
   assert.match(sql, /complete_integration_outbox[\s\S]*lock_token\s*=\s*p_lock_token/i);
   assert.match(sql, /fail_integration_outbox[\s\S]*lock_token\s*=\s*p_lock_token/i);
+  assert.match(sql, /p_retryable\s+boolean\s+default\s+true/i);
+  assert.match(sql, /not\s+coalesce\(p_retryable,\s*false\)/i);
   assert.match(sql, /least\(3600/i);
   assert.match(sql, /revoke all on function/i);
 });

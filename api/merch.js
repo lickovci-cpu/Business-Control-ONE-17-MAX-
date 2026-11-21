@@ -1,7 +1,8 @@
-import {body,auth,noauth,sendError,projectKey} from './_lib.js';
+import {body,noauth,sendError,projectKey,supabaseServiceKey} from './_lib.js';
+import {cloudAdmin} from './_cloud-auth.js';
 
 const SB_URL=process.env.SUPABASE_URL||'https://vjzzvopwecmwuccdidzq.supabase.co';
-const SB_KEY=process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.SUPABASE_SERVICE_KEY||'';
+const SB_KEY=supabaseServiceKey();
 const ORG='d2751286-da99-42c0-b8ac-6a2da8ecdabf';
 const PROJECT='merch';
 
@@ -10,7 +11,7 @@ async function sb(path,opt={}){requireDb();const r=await fetch(`${SB_URL}/rest/v
 function clean(v,max=500){return String(v??'').trim().slice(0,max);}
 function okProject(v){return projectKey(v||PROJECT)===PROJECT;}
 
-export default async function handler(req,res){if(!auth(req))return noauth(res);try{if(!okProject(req.query?.project))return res.status(400).json({error:'INVALID_PROJECT'});const action=String(req.query?.action||'dashboard');
+export default async function handler(req,res){if(!(await cloudAdmin(req,'merch')))return noauth(res);try{if(!okProject(req.query?.project))return res.status(400).json({error:'INVALID_PROJECT'});const action=String(req.query?.action||'dashboard');
  if(action==='dashboard'){const [products,orders,leads,messages]=await Promise.all([sb(`merch_products?organization_id=eq.${ORG}&select=id,sku,name,collection,active,price,currency,variants,metadata&order=created_at.desc`),sb(`merch_orders?organization_id=eq.${ORG}&select=id,order_number,status,source,currency,subtotal,shipping,total,contact_id,lead_id,customer_note,shipping_data,created_at,updated_at&order=created_at.desc&limit=100`),sb(`leads?organization_id=eq.${ORG}&select=id,status,source,estimated_value,contact_id,created_at,updated_at&order=created_at.desc&limit=100`),sb(`messages?organization_id=eq.${ORG}&direction=eq.in&select=id,conversation_id,phone,body,channel,created_at,status&order=created_at.desc&limit=100`)]);return res.json({ok:true,project:PROJECT,products,orders,leads,messages});}
  if(action==='products')return res.json({ok:true,products:await sb(`merch_products?organization_id=eq.${ORG}&select=*&order=created_at.desc`)});
  if(action==='orders')return res.json({ok:true,orders:await sb(`merch_orders?organization_id=eq.${ORG}&select=*&order=created_at.desc&limit=200`)});

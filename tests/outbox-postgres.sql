@@ -76,6 +76,17 @@ BEGIN
   SELECT id, lock_token INTO claimed_id, token_1
   FROM public.claim_integration_outbox(1);
   IF claimed_id IS NULL THEN RAISE EXCEPTION 'SECOND_ORG_CLAIM_FAILED'; END IF;
+  result_status := public.fail_integration_outbox(claimed_id, token_1, 'permanent sink rejection', false);
+  IF result_status <> 'dead' THEN
+    RAISE EXCEPTION 'NON_RETRYABLE_FAILURE_NOT_DEAD: %', result_status;
+  END IF;
+
+  PERFORM * FROM public.enqueue_integration_event(
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','stripe','invoice.failed','evt_deadletter','{"amount":100}'::jsonb
+  );
+  SELECT id, lock_token INTO claimed_id, token_2
+  FROM public.claim_integration_outbox(1);
+  IF claimed_id IS NULL THEN RAISE EXCEPTION 'FINAL_LEASE_CLAIM_FAILED'; END IF;
   UPDATE public.integration_outbox
   SET attempts = max_attempts, locked_at = clock_timestamp() - interval '11 minutes'
   WHERE id=claimed_id;

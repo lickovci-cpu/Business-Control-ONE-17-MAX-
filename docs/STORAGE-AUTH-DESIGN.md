@@ -1,42 +1,45 @@
-# BCO identity + private Storage: verified design
+# BCO identity + private Storage
 
-Status: DESIGN VERIFIED AGAINST CURRENT APP + READ-ONLY SUPABASE METADATA.
-No production code, bucket, RLS policy, or database object was changed.
+Status: PARTIAL IMPLEMENTATION IN ISOLATED BRANCH; UNIT TESTED. NOT DEPLOYED.
 
-## Existing identity is already present
-- `public/app.js` already signs users in through Supabase Auth and stores `access_token` / `refresh_token` in its existing cloud session.
-- `cloudIdentity()` calls `/auth/v1/user`, then reads `public.memberships` with the user's Bearer token and resolves the selected organization.
-- The browser's API helper forwards the current Supabase access token as Authorization: Bearer.
+No production code, bucket, RLS policy, database object, domain, or DNS was changed.
+
+## Existing identity
+- The mobile app already signs in through Supabase Auth in `public/app.js`.
+- `cloudIdentity()` verifies the user with `GET /auth/v1/user`, then reads `public.memberships` using that user's Bearer token and resolves the selected organization.
+- The API helper forwards the current Supabase access token as `Authorization: Bearer`.
+- `sbSession` currently persists both access and refresh tokens in browser `localStorage`. This is a remaining XSS/session-theft risk; a future HttpOnly refresh-cookie/BFF migration should be evaluated before broad public access.
 - `bc_session` is a separate password-panel session. Its signed payload contains only expiry + nonce; it is NOT a user identity and MUST NOT authorize organization-scoped Storage.
-- Current server `auth(req)` validates only `bc_session` or server-to-server `x-app-key`. Do not silently treat either as Supabase identity.
+- Legacy `auth(req)` validates only `bc_session` or server-to-server `x-app-key`; the new Storage route does not call it.
 
 ## Verified current Supabase state (read-only)
 - `memberships` has `organization_id`, `user_id`, `role`; its RLS SELECT policy limits rows to the user's own memberships or owner/admin access.
 - `private.is_org_member(uuid)` checks `memberships.user_id = auth.uid()`.
 - `private.org_role(uuid)` resolves the current user's role for an organization.
 - `private.can_access_job(org, job)` grants owner/admin/manager access and limits worker access to assigned jobs.
-- `storage.buckets`: `bco-media` is private; `job-media` is private.
-- Existing `storage.objects` policies already scope `bco-media` to first folder = organization UUID and `private.is_org_member(org)`.
+- `bco-media` and `job-media` are private buckets.
+- Existing `bco-media` object policies scope the first path folder to organization UUID and `private.is_org_member(org)`.
 - Existing `job-media` policies require org UUID + job UUID folders and `private.can_access_job(org, job)`.
-- `job-media` has 15 MiB limit and JPEG/PNG/WebP/PDF MIME allowlist. `bco-media` currently has no bucket-level size/MIME restriction.
+- `job-media` has a 15 MiB limit and JPEG/PNG/WebP/PDF MIME allowlist.
+- `bco-media` currently has no bucket-level size/MIME restriction. The route-level 4 MiB check is not sufficient by itself because a client holding a valid JWT can call Storage directly.
 
-## Required upload authorization flow
-1. Require a valid Supabase Auth access token. Verify it server-side using Supabase Auth `GET /auth/v1/user` (do not decode JWT and trust unverified claims).
-2. Derive immutable `user.id` from the Auth response. Never accept a user ID as authority from request JSON.
-3. Resolve the requested organization by querying `memberships` with the same user's JWT (RLS on); do not use `bc_session` or a client-supplied org ID alone.
-4. For `bco-media`, object path must be `<verified-org-uuid>/<server-generated-object-id>.<validated-extension>`.
-5. For `job-media`, path must be `<verified-org-uuid>/<verified-job-uuid>/<server-generated-object-id>.<extension>`; the existing RLS policy must verify assignment/role.
-6. Prefer forwarding the user's JWT to Storage so existing RLS remains the final authorization boundary. Do not use service-role Storage calls as an authorization shortcut.
-7. Enforce 4 MiB upload limit and allowlist (JPEG/PNG/WebP/GIF, MP4/WebM/QuickTime, PDF) before forwarding. The current `bco-media` bucket has no server-enforced cap; do not enable uploads until a bucket-level cap/MIME allowlist is reviewed and applied in an approved migration, or until the Worker strictly streams and enforces the same cap.
-8. Generate object names server-side; reject path traversal, arbitrary bucket names, upsert/overwrite by default, and caller-supplied public URLs.
-9. For downloads, use authenticated Storage requests or short-lived signed URLs only after membership verification. Keep buckets private.
+## Implemented in the isolated branch
+- `api/_cloud-identity-core.js`: runtime-neutral Supabase JWT + organization membership verifier shared by Vercel and Cloudflare.
+- `api/_cloud-auth.js`: `cloudIdentityForOrganization()` wraps the shared verifier and never falls back to `bc_session`.
+- `api/cloud-storage.js`: dedicated Vercel/Node upload/download adapter.
+- `workers/bco-private-storage.js`: Cloudflare Workers Fetch API adapter using the same identity verifier and identical upload/download rules. It does not use `bc_session` or service-role credentials for Storage access.
+- Upload: allowlisted buckets only; organization/job IDs validated; object names generated server-side; user JWT forwarded to Storage; no upsert; 4 MiB cap; MIME allowlist plus basic file-signature validation.
+- Download: organization-scoped path validation; signed URL requested with the user's JWT; expiry fixed at 120 seconds; buckets remain private.
+- `BCO_PRIVATE_STORAGE_ENABLED` defaults to disabled. The route returns 503 until explicitly enabled by server configuration.
+- `tests/cloud-storage-api.mjs` and `tests/cloudflare-private-storage.test.mjs` cover missing/forged JWT, non-member organization, user-JWT forwarding, job-media RLS denial, size/MIME/signature checks, path traversal, cross-org paths, no-upsert, and 120-second signed downloads.
+- `tests/cloud-storage-local-api.mjs` is wired into `tests/supabase-storage-auth.sh`; GitHub CI will exercise both adapters against real JWTs from an isolated local Supabase stack, including assigned/unassigned job access and a real signed download.
 
-## Implementation decision
-- Reuse Supabase Auth already in the app; do not create another login system or table.
-- Use the current `sbSession.access_token` only as a bearer token, with refresh via existing `sbRefresh()`.
-- Add a dedicated Cloudflare Worker upload endpoint that validates Auth user, membership, size and MIME, then calls Storage with the user's JWT. Never place service-role/secret keys in browser code.
-- Keep `bc_session` for the legacy app panel only until a separate migration removes it.
-- Cross-org tests must prove user A cannot upload/read/delete in org B; worker cannot access unassigned job in `job-media`.
+## Cloudflare / go-live boundary
+- The Cloudflare Worker adapter now exists in the isolated branch, but it is NOT yet wired into the static preview Worker.
+- The Cloudflare preview Worker continues to return 503 for API routes (`backend=not-connected`). This is intentional; no production Supabase key is connected to preview.
+- Local Docker/Supabase CLI are not installed on the connected Windows laptop, so the full local Auth + RLS integration run is deferred to the existing GitHub Actions job.
+- Before enabling uploads, review and apply `docs/bco-media-bucket-hardening-proposal.sql` through a separately approved migration so direct Storage calls cannot bypass bucket size/MIME limits.
+- Do not expose service-role keys to the browser.
 
 ## Go-live gate
-BLOCKED until: bucket-level restrictions for `bco-media` are approved; upload endpoint has integration tests for missing/expired/forged JWT, non-member org, worker job assignment, size/MIME/path traversal, overwrite, and private download; and a rollback is rehearsed. No schema or policy change is authorized by this design document.
+BLOCKED until: bucket-level `bco-media` restrictions are approved and tested; Worker adapter is wired into a dedicated preview API path; expired/forged JWT and cross-org/job-assignment tests pass against isolated Supabase; browser refresh-token persistence is reviewed; and rollback is rehearsed. No schema or policy change is authorized by this document.

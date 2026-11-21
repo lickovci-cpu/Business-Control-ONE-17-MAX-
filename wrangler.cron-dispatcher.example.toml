@@ -1,0 +1,15 @@
+# EXAMPLE ONLY — not used by the static preview Worker and not deployed.
+name = "bco-cron-dispatcher"
+main = "workers/bco-cron-dispatcher.js"
+compatibility_date = "2026-11-21"
+
+# Required only after an approved cutover:
+# [triggers]
+# crons = ["*/5 * * * *"]
+
+# Configure as Worker secrets/vars only after the cutover is approved:
+# BCO_CRON_ORIGIN = "https://<trusted-api-origin>"
+# CRON_SECRET = stored as a secret, never in this file
+
+# Do not remove the four original Vercel cron schedules until the Cloudflare
+# dispatcher is live, verified, and rollback to Vercel has been rehearsed.

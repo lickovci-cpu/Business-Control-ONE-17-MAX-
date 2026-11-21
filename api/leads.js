@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {auth,noauth,body,projectKey,sendError,supabaseBaseUrl,supabaseRequestCredentials} from './_lib.js';
+import {noauth,body,projectKey,sendError,supabaseBaseUrl,supabasePublishableKey,supabaseBearerToken} from './_lib.js';
 import {authOrCloud} from './_cloud-auth.js';
 import {createTask,getTask,blockTask,consumeApproval,startAttempt,completeTask,failAttempt} from './_control.js';
 
@@ -13,10 +13,10 @@ const ORGS={
 const STATUSES=new Set(['new','qualified','contacted','follow_up','offer','approved','job','delivered','invoiced','paid','closed']);
 const TRANSITIONS={new:new Set(['contacted','qualified']),qualified:new Set(['contacted','follow_up','offer']),contacted:new Set(['qualified','follow_up','offer']),follow_up:new Set(['contacted','qualified','offer']),offer:new Set(['approved']),approved:new Set(['job']),job:new Set(['delivered']),delivered:new Set(['invoiced']),invoiced:new Set(['paid']),paid:new Set(['closed']),closed:new Set()};
 const MUTATING=new Set(['create','update','status']);
-function requireDb(req){if(!supabaseRequestCredentials(req)){const e=new Error('CRM_DB_NOT_CONFIGURED_OR_CLOUD_LOGIN_REQUIRED');e.status=503;throw e;}}
+function requireDb(req){if(!supabaseBearerToken(req)||!supabasePublishableKey()){const e=new Error('CRM_SUPABASE_USER_JWT_REQUIRED');e.status=401;throw e;}}
 function headerValue(name,value){const s=String(value??'');for(let i=0;i<s.length;i++)if(s.charCodeAt(i)>255){const e=new Error(`${name}_INVALID_BYTE_STRING`);e.status=503;throw e;}return s;}
 function org(project){const id=ORGS[project];if(!id){const e=new Error('CRM_PROJECT_ORG_NOT_CONFIGURED');e.status=503;throw e;}return id;}
-async function sb(req,path,opt={}){requireDb(req);const c=supabaseRequestCredentials(req);const key=headerValue('SUPABASE_KEY',c.apikey),authorization=headerValue('SUPABASE_AUTHORIZATION',c.authorization);const r=await fetch(`${SB_URL}/rest/v1/${path}`,{...opt,headers:{apikey:key,Authorization:authorization,'content-type':'application/json',...(opt.headers||{})},signal:AbortSignal.timeout(15000)});const text=await r.text();let data={};try{data=text?JSON.parse(text):{}}catch{data={raw:text}}if(!r.ok){const e=new Error(data.message||data.error||`SUPABASE_HTTP_${r.status}`);e.status=502;throw e;}return data;}
+async function sb(req,path,opt={}){requireDb(req);const key=headerValue('SUPABASE_KEY',supabasePublishableKey()),authorization=headerValue('SUPABASE_AUTHORIZATION','Bearer '+supabaseBearerToken(req));const r=await fetch(`${SB_URL}/rest/v1/${path}`,{...opt,headers:{apikey:key,Authorization:authorization,'content-type':'application/json',...(opt.headers||{})},signal:AbortSignal.timeout(15000)});const text=await r.text();let data={};try{data=text?JSON.parse(text):{}}catch{data={raw:text}}if(!r.ok){const e=new Error(data.message||data.error||`SUPABASE_HTTP_${r.status}`);e.status=502;throw e;}return data;}
 function taskAction(a){return `crm:lead-${a}`;}
 function stable(v){if(Array.isArray(v))return '['+v.map(stable).join(',')+']';if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}';return JSON.stringify(v);}
 function fingerprint(v){return createHash('sha256').update(stable(v)).digest('hex');}

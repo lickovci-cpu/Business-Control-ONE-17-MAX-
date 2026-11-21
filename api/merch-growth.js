@@ -1,4 +1,5 @@
-import {auth,noauth,body,sendError,env,fetchJsonWithRetry,kvGet,supabaseBaseUrl,supabaseServiceKey} from './_lib.js';
+import {noauth,body,sendError,env,fetchJsonWithRetry,kvGet,supabaseBaseUrl,supabaseServiceKey} from './_lib.js';
+import {cloudAdmin} from './_cloud-auth.js';
 
 const ORG='d2751286-da99-42c0-b8ac-6a2da8ecdabf';
 const SB_URL=supabaseBaseUrl();
@@ -12,7 +13,7 @@ function sb(){const key=supabaseServiceKey();if(!key)throw Object.assign(new Err
 async function query(path,params={},method='GET',payload){const {key}=sb();const u=new URL(`${SB_URL}/rest/v1/${path}`);for(const[k,v]of Object.entries(params))u.searchParams.set(k,String(v));const opt={method,headers:{apikey:key,Authorization:`Bearer ${key}`,'content-type':'application/json',Prefer:'return=representation'},...(payload===undefined?{}:{body:JSON.stringify(payload)})};return fetchJsonWithRetry(u,opt,2)}
 
 export default async function handler(req,res){
- if(!auth(req))return noauth(res);
+ if(!(await cloudAdmin(req,'merch')))return noauth(res);
  try{
   const action=clean(req.query.action||'dashboard',80);
   if(req.method==='GET'){

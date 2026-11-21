@@ -1,20 +1,26 @@
-import {auth,noauth,env,kvGet,kvSet,fetchJsonWithRetry,supabaseBaseUrl,supabaseServiceKey,supabaseRequestCredentials} from './_lib.js';
+import {noauth,env,kvGet,kvSet,fetchJsonWithRetry,supabaseBaseUrl,supabaseServiceKey,supabasePublishableKey,supabaseBearerToken} from './_lib.js';
 import {cloudMember} from './_cloud-auth.js';
 
 const ORG='d2751286-da99-42c0-b8ac-6a2da8ecdabf';
 const SB_URL=supabaseBaseUrl();
 const PLAN_KEY='business-control:merch:revenue-plan-v2';
 
-function authorized(req){
+async function authorized(req){
   const secret=env('CRON_SECRET');
-  return auth(req) || (!!secret && req.headers.authorization==='Bearer '+secret);
+  if(secret&&req.headers?.authorization==='Bearer '+secret)return true;
+  return cloudMember(req,'merch');
 }
 function clean(v,max=1200){return String(v??'').trim().slice(0,max)}
 async function query(req,path,params={}){
   const service=supabaseServiceKey();
-  const creds=supabaseRequestCredentials(req);
-  if(service&&!creds)throw Object.assign(new Error('SUPABASE_SERVICE_ROLE_KEY_NOT_CONFIGURED'),{status:503});
-  if(!creds)throw Object.assign(new Error('SUPABASE_LOGIN_REQUIRED'),{status:401});
+  const cronSecret=env('CRON_SECRET');
+  const isCron=!!cronSecret&&req.headers?.authorization==='Bearer '+cronSecret;
+  const token=supabaseBearerToken(req);
+  const publishable=supabasePublishableKey();
+  const creds=isCron&&service
+    ?{apikey:service,authorization:'Bearer '+service,mode:'service'}
+    :(token&&publishable?{apikey:publishable,authorization:'Bearer '+token,mode:'user'}:null);
+  if(!creds)throw Object.assign(new Error('SUPABASE_USER_JWT_REQUIRED'),{status:401});
   const u=new URL(SB_URL+'/rest/v1/'+path);
   Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,String(v)));
   return fetchJsonWithRetry(u,{headers:{apikey:creds.apikey,Authorization:creds.authorization}},1);
@@ -81,6 +87,7 @@ function fallback(s){
   return {version:1,generatedAt:new Date().toISOString(),mode:'rule-based',snapshot:s,priority:'cash_within_7_days',today:today.slice(0,5),thisWeek:['B2B artist/crew/event merch','nabídka do 24 h od poptávky','výroba až po schválení zakázky'],kill:['další redesign bez prokazatelného dopadu na konverzi','placená reklama před ověřením nabídky a marže'],needsUser:['produkční secrets a sociální účty musí být připojené uživatelem','outbound marketingové zprávy zůstávají ve schválení'],selfCritique:'Hlavní riziko je nedostatek skutečných obchodních příležitostí, ne nedostatek funkcí.'};
 }
 async function plan(s){
+  if(env('BCO_ALLOW_PAID_MERCH_APIS','false')!=='true')return fallback(s);
   const key=env('GEMINI_API_KEY');
   if(!key)return fallback(s);
   const prompt='Jsi revenue operator NŘŠM Merch Studio. Zpracuj pouze tato skutečná data a rozhodni, co má nejvyšší potenciál přinést hotovost do 7 dnů. Ignoruj vanity metrics. Upřednostni B2B custom merch, pokud data neukazují lepší cestu. Nenavrhuj další design, analytiku ani placenou reklamu bez přímé vazby na tržbu. Vrať pouze JSON s poli priority,today,thisWeek,kill,needsUser,selfCritique,experiments. Data: '+JSON.stringify(s);

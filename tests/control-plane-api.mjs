@@ -4,6 +4,9 @@ process.env.APP_PASSWORD='test-password';
 process.env.APP_CONFIRM_SECRET='confirm-test';
 process.env.APP_SESSION_SECRET='session-test';
 process.env.NODE_ENV='test';
+// This isolated legacy-control test explicitly opts into the migration-only shared-key path.
+// Production remains fail-closed because BCO_ALLOW_LEGACY_SHARED_SESSION defaults to false.
+process.env.BCO_ALLOW_LEGACY_SHARED_SESSION='true';
 process.env.KV_REST_API_URL='https://fake-kv';
 process.env.KV_REST_API_TOKEN='test';
 process.env.META_PAGE_TOKEN='test-meta-token';
@@ -54,13 +57,13 @@ assert.equal(directComms.value.error,'CONFIRMATION_REQUIRED');
 
 const directMeta=response();
 await meta.default({...reqBase,query:{action:'publish',project:'jihoceske'},body:{project:'jihoceske',message:'x'}},directMeta);
-assert.equal(directMeta.statusCode,400);
-assert.equal(directMeta.value.error,'CONFIRMATION_REQUIRED');
+assert.equal(directMeta.statusCode,401);
+assert.equal(directMeta.value.error,'AUTH_REQUIRED');
 
 const directSchedule=response();
 await meta.default({...reqBase,query:{action:'schedule',project:'jihoceske'},body:{project:'jihoceske',message:'x',when:new Date(Date.now()+3600000).toISOString()}},directSchedule);
-assert.equal(directSchedule.statusCode,400);
-assert.equal(directSchedule.value.error,'CONFIRMATION_REQUIRED');
+assert.equal(directSchedule.statusCode,401);
+assert.equal(directSchedule.value.error,'AUTH_REQUIRED');
 
 const directPhoto=response();
 const photoManifest=Buffer.from(JSON.stringify([{mime:'image/jpeg',size:1,sha256:'00'}])).toString('base64url');

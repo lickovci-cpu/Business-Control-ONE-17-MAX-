@@ -96,6 +96,18 @@ fi
 test "$FORGED_STATUS" != "000"
 echo "PASS: forged JWT rejected by local Supabase Auth ($FORGED_STATUS)"
 
+echo 'stage: exercise the actual BCO private Storage API with local Auth JWTs'
+SUPABASE_URL="$API_URL" \
+SUPABASE_PUBLISHABLE_KEY="$PUBLISHABLE_KEY" \
+BCO_PRIVATE_STORAGE_ENABLED=true \
+BCO_TEST_USER_A_JWT="$TOKEN_A" \
+BCO_TEST_USER_B_JWT="$TOKEN_B" \
+BCO_TEST_ORG_A="$ORG_A" \
+BCO_TEST_ORG_B="$ORG_B" \
+BCO_TEST_JOB_A="$JOB_A" \
+BCO_TEST_JOB_UNASSIGNED="$JOB_UNASSIGNED" \
+node "$WORKSPACE/tests/cloud-storage-local-api.mjs"
+
 upload() {
   local bucket="$1" path="$2" token="$3" mime="$4" data="$5"
   curl --max-time 20 -sS -o /tmp/bco-storage-response.json -w '%{http_code}' \
