@@ -73,12 +73,17 @@ declare
   clean text := nullif(lower(regexp_replace(coalesce(new_slug,''),'[^a-zA-Z0-9-]+','-','g')),'');
 begin
   if uid is null then raise exception 'authentication_required'; end if;
-  select count(*)::integer, min(organization_id)
-    into org_count, org
+  select count(*)::integer
+    into org_count
     from public.memberships
    where user_id=uid and role in ('owner','admin');
   if org_count=0 then raise exception 'organization_not_found'; end if;
   if org_count>1 then raise exception 'organization_selection_required'; end if;
+  select organization_id into org
+    from public.memberships
+   where user_id=uid and role in ('owner','admin')
+   order by created_at asc
+   limit 1;
   if clean is null or length(clean)<3 or length(clean)>80 then raise exception 'invalid_slug'; end if;
   update public.organizations set slug=clean where id=org returning * into result;
   if result.id is null then raise exception 'organization_not_found'; end if;
