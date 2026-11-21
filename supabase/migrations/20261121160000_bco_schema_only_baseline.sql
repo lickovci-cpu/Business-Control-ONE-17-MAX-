@@ -18,9 +18,7 @@ AS $function$
 $function$;
 
 
-CREATE SEQUENCE IF NOT EXISTS public.audit_log_id_seq AS bigint INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1 NO CYCLE;
 
-CREATE SEQUENCE IF NOT EXISTS public.booking_throttle_id_seq AS bigint INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1 NO CYCLE;
 
 CREATE TABLE public.ai_agent_events (id uuid DEFAULT gen_random_uuid() NOT NULL,
   organization_id uuid NOT NULL,
@@ -541,9 +539,7 @@ CREATE TABLE public.webhook_events (id uuid DEFAULT gen_random_uuid() NOT NULL,
   payload jsonb DEFAULT '{}'::jsonb NOT NULL,
   created_at timestamp with time zone DEFAULT now() NOT NULL);
 
-ALTER SEQUENCE public.audit_log_id_seq OWNED BY public.audit_log.id;
 
-ALTER SEQUENCE public.booking_throttle_id_seq OWNED BY public.booking_throttle.id;
 
 
 
@@ -2175,6 +2171,8 @@ CREATE POLICY team_invites_select ON public.team_invites AS permissive FOR SELEC
 
 CREATE POLICY time_entries_select ON public.time_entries AS permissive FOR SELECT TO authenticated USING (private.can_access_job(organization_id, job_id));
 
+REVOKE ALL ON SCHEMA public, private FROM PUBLIC, anon, authenticated, service_role;
+
 GRANT CREATE, USAGE ON SCHEMA private TO postgres;
 
 GRANT CREATE, USAGE ON SCHEMA public TO pg_database_owner;
@@ -2188,6 +2186,8 @@ GRANT USAGE ON SCHEMA public TO authenticated;
 GRANT USAGE ON SCHEMA public TO postgres;
 
 GRANT USAGE ON SCHEMA public TO service_role;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC, anon, authenticated, service_role;
 
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE public.ai_agent_events TO postgres;
 
@@ -2441,6 +2441,8 @@ GRANT SELECT ON TABLE public.lead_followup_queue TO authenticated;
 
 GRANT SELECT ON TABLE public.memberships TO authenticated;
 
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC, anon, authenticated, service_role;
+
 GRANT SELECT, UPDATE, USAGE ON SEQUENCE public.audit_log_id_seq TO anon;
 
 GRANT SELECT, UPDATE, USAGE ON SEQUENCE public.audit_log_id_seq TO authenticated;
@@ -2456,6 +2458,8 @@ GRANT SELECT, UPDATE, USAGE ON SEQUENCE public.booking_throttle_id_seq TO authen
 GRANT SELECT, UPDATE, USAGE ON SEQUENCE public.booking_throttle_id_seq TO postgres;
 
 GRANT SELECT, UPDATE, USAGE ON SEQUENCE public.booking_throttle_id_seq TO service_role;
+
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public, private FROM PUBLIC, anon, authenticated, service_role;
 
 REVOKE EXECUTE ON FUNCTION private.can_access_job(org uuid, job uuid) FROM PUBLIC;
 
