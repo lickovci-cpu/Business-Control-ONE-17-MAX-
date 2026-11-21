@@ -106,3 +106,53 @@ $function$;
 
 revoke all on function public.claim_bco_automation_runs(timestamptz, integer) from public, anon, authenticated;
 grant execute on function public.claim_bco_automation_runs(timestamptz, integer) to service_role;
+
+
+create or replace function public.finish_bco_automation_run(
+  p_run_id uuid,
+  p_automation_id uuid,
+  p_success boolean,
+  p_output jsonb default null,
+  p_error text default null,
+  p_retry_at timestamptz default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $function$
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    raise exception 'service_role_required';
+  end if;
+
+  update public.automation_runs
+     set status = case when p_success then 'completed' else 'failed' end,
+         output = case when p_success then p_output else output end,
+         error = case when p_success then null else left(coalesce(p_error, 'EXECUTION_FAILED'), 1000) end,
+         completed_at = now(),
+         lease_expires_at = null
+   where id = p_run_id
+     and automation_id = p_automation_id
+     and status = 'running';
+
+  if not found then
+    raise exception 'automation_run_not_found_or_not_running';
+  end if;
+
+  update public.automations
+     set last_run_at = case when p_success then now() else last_run_at end,
+         lease_expires_at = null,
+         next_retry_at = case when p_success then null else p_retry_at end,
+         attempt_count = case when p_success then 0 else attempt_count end,
+         last_error = case when p_success then null else left(coalesce(p_error, 'EXECUTION_FAILED'), 1000) end
+   where id = p_automation_id;
+
+  if not found then
+    raise exception 'automation_not_found';
+  end if;
+end;
+$function$;
+
+revoke all on function public.finish_bco_automation_run(uuid, uuid, boolean, jsonb, text, timestamptz) from public, anon, authenticated;
+grant execute on function public.finish_bco_automation_run(uuid, uuid, boolean, jsonb, text, timestamptz) to service_role;
