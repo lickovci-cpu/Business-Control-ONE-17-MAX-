@@ -46,3 +46,23 @@ test("webhook dedupe and outbox enqueue are one database transaction", () => {
   assert.match(sql, /insert into public\.integration_outbox[\s\S]*return query select v_event_id, false/i);
   assert.match(sql, /grant execute on function public\.enqueue_integration_event[\s\S]*to service_role/i);
 });
+
+test("ingress idempotency key is namespaced by immutable org and provider", () => {
+  assert.match(sql, /v_scoped_dedupe_key\s*:=\s*p_organization_id::text\s*\|\|\s*':'\s*\|\|\s*p_provider\s*\|\|\s*':'\s*\|\|\s*p_dedupe_key/i);
+  assert.match(sql, /IDEMPOTENCY_KEY_COLLISION/);
+  assert.match(sql, /length\(dedupe_key\) between 1 and 512/i);
+});
+
+test("isolated PostgreSQL integration and concurrency tests are wired into CI", async () => {
+  const workflow = await readFile(new URL("../.github/workflows/cloudflare-preview.yml", import.meta.url), "utf8");
+  const bootstrap = await readFile(new URL("./postgres-bootstrap.sql", import.meta.url), "utf8");
+  const concurrency = await readFile(new URL("./outbox-concurrency.sh", import.meta.url), "utf8");
+  const storage = await readFile(new URL("./storage-rls-postgres.sh", import.meta.url), "utf8");
+  assert.match(workflow, /postgres:17-alpine/);
+  assert.match(workflow, /outbox-postgres\.sql/);
+  assert.match(workflow, /outbox-concurrency\.sh/);
+  assert.match(workflow, /storage-rls-postgres\.sh/);
+  assert.match(bootstrap, /CREATE ROLE authenticated/);
+  assert.match(concurrency, /claim_integration_outbox/);
+  assert.match(storage, /cross-organization bco-media upload allowed/);
+});
