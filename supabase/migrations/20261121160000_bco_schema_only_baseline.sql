@@ -905,6 +905,13 @@ ALTER TABLE public.time_entries ADD CONSTRAINT time_entries_organization_id_fkey
 ALTER TABLE public.time_entries ADD CONSTRAINT time_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE public.webhook_events ADD CONSTRAINT webhook_events_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
+CREATE OR REPLACE FUNCTION private.org_role(org uuid)
+ RETURNS text
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$ select m.role from public.memberships m where m.organization_id=org and m.user_id=(select auth.uid()) limit 1 $function$;
+
 CREATE OR REPLACE FUNCTION private.can_access_job(org uuid, job uuid)
  RETURNS boolean
  LANGUAGE sql
@@ -935,12 +942,7 @@ CREATE OR REPLACE FUNCTION private.is_org_member(org uuid)
 AS $function$ select exists(select 1 from public.memberships m where m.organization_id=org and m.user_id=(select auth.uid())) $function$;
 
 
-CREATE OR REPLACE FUNCTION private.org_role(org uuid)
- RETURNS text
- LANGUAGE sql
- STABLE SECURITY DEFINER
- SET search_path TO 'public', 'pg_temp'
-AS $function$ select m.role from public.memberships m where m.organization_id=org and m.user_id=(select auth.uid()) limit 1 $function$;
+
 
 
 CREATE OR REPLACE FUNCTION public.audit_business_change()
