@@ -35,10 +35,19 @@ for path in sorted(ROOT.rglob('*')):
             print('COPY_OK',path.relative_to(ROOT),'utf8; no replacement chars; no C1 controls; no common mojibake')
 
 html=(ROOT/'index.html').read_text(encoding='utf-8-sig')
-required=('P\u0159ihl\u00e1sit','P\u0159\u00edstupov\u00e9 heslo','Odemknout Business OS','Vy\u0159e\u0161it zad\u00e1n\u00ed')
+required=(
+    'P'+chr(345)+'ihl'+chr(225)+'sit',
+    'P'+chr(345)+chr(237)+'stupov'+chr(233)+' heslo',
+    'Odemknout Business OS',
+    'Vy'+chr(345)+'e'+chr(353)+'it zad'+chr(225)+'n'+chr(237),
+    'P'+chr(345)+'ihl'+chr(225)+'sit se ke cloudu',
+    'Z'+chr(225)+'lo'+chr(382)+'n'+chr(237)+' body',
+    'Ulo'+chr(382)+'it z'+chr(225)+'lo'+chr(382)+'n'+chr(237)+' bod',
+    'Naj'+chr(237)+'t 10 fotek pomoc'+chr(237)+' AI'
+)
 for label in required:
     if label not in html:
-        raise SystemExit('MISSING_OR_BROKEN_UI_TEXT '+label)
+        raise SystemExit('MISSING_OR_BROKEN_UI_TEXT '+ascii(label))
 if 'name="viewport"' not in html:
     raise SystemExit('MOBILE_VIEWPORT_MISSING')
 print('PASS: critical Czech login and mobile shell labels are present')
