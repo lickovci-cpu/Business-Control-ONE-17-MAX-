@@ -28,7 +28,7 @@ async function rpc(name, args) {
 const randomId = () => crypto.randomUUID();
 const automationId = randomId();
 const slot1 = new Date(Date.now() - 60_000).toISOString();
-const slot2 = new Date(Date.now() - 30_000).toISOString();
+const slot2 = new Date(Date.parse(slot1) + 120_000).toISOString();
 let createdRunIds = [];
 try {
   const [automation] = await api("automations?select=id", {
