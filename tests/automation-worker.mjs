@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import { runTick } from "../workers/bco-automation/src/index.js";
+import { backoffMinutes, runTick } from "../workers/bco-automation/src/index.js";
+assert.equal(backoffMinutes(1), 5);
+assert.equal(backoffMinutes(2), 15);
+assert.equal(backoffMinutes(3), 60);
+assert.equal(backoffMinutes(4), 60);
 const realFetch = global.fetch;
 let calls = [];
 let executorFails = false;
