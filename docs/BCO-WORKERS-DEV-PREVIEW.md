@@ -24,3 +24,14 @@ When `CLOUDFLARE_API_TOKEN` is configured in GitHub Actions, the normal Wrangler
 The previous Cloudflare Worker script was absent before this preview deployment. Rollback is therefore to disable the preview Worker subdomain or delete only the `bco-cloudflare-preview` Worker script. Do not change the account-level workers.dev subdomain, custom domains, DNS, or production workers.
 
 No production database, custom domain, DNS record, Vercel project, or production worker was changed.
+
+## Scheduled jobs
+
+The original `vercel.json` still contains all four schedules:
+
+- `/api/merch-cron` — `0 */6 * * *`
+- `/api/cron` — `*/5 * * * *`
+- `/api/automation-tick` — `*/5 * * * *`
+- `/api/outbound-cron` — `*/5 * * * *`
+
+The preview intentionally has no Cron Trigger and does not execute business jobs. Production scheduling remains on the existing configuration until a separate scheduler migration is backed by idempotency tests, a rollback plan, and explicit approval.
