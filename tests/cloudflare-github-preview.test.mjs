@@ -74,3 +74,14 @@ test("preview worker has no server-side credentials or arbitrary proxy target", 
   assert.match(source,/raw\.githubusercontent\.com\/lickovci-cpu\/Business-Control-ONE-17-MAX-/);
   assert.doesNotMatch(source,/request\.url\s*\)/);
 });
+
+test("upstream failure is converted into a bounded preview 502", async () => {
+  globalThis.fetch=async () => { throw new Error("network unavailable"); };
+  try {
+    const response=await worker.fetch(new Request("https://preview.example/index.html"));
+    const body=await response.json();
+    assert.equal(response.status,502);
+    assert.equal(body.error,"PREVIEW_ASSET_SOURCE_UNAVAILABLE");
+    assert.match(body.detail,/network unavailable/);
+  } finally { globalThis.fetch=originalFetch; }
+});
