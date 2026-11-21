@@ -1,5 +1,5 @@
 const SOURCE = "https://raw.githubusercontent.com/lickovci-cpu/Business-Control-ONE-17-MAX-/infra/cloudflare-workers-preview-2026-11-21/public";
-const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://nrsm-streetwear.vercel.app https://mazliprint-final.vercel.app; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; manifest-src 'self'; worker-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'";
+const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://nrsm-streetwear.vercel.app https://mazliprint-final.vercel.app; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; manifest-src 'self'; worker-src 'none'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'";
 const ALLOWED = new Set([
   "/_headers",
   "/app.js",
