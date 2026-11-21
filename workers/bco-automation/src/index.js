@@ -9,7 +9,7 @@ function required(env, key) {
   if (!value) throw new Error("MISSING_" + key);
   return value;
 }
-function backoffMinutes(attempt) {
+export function backoffMinutes(attempt) {
   return BACKOFF_MINUTES[Math.min(Math.max(Number(attempt || 1) - 1, 0), BACKOFF_MINUTES.length - 1)];
 }
 async function supabaseRequest(env, path, options) {
