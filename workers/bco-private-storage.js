@@ -57,7 +57,9 @@ async function readBody(request){
 }
 async function storageError(response){
   const body=await response.json().catch(()=>({}));
-  return {status:response.status>=400&&response.status<500?response.status:502,error:'STORAGE_REQUEST_FAILED',detail:String(body.message||body.error||body.msg||'Storage rejected the request').slice(0,160)};
+  const message=String(body.message||body.error||body.msg||'Storage rejected the request').slice(0,160);
+  const denied=String(body.statusCode||'')==='403'||/row-level security|rls denied|unauthorized|not authorized/i.test(message);
+  return {status:denied?403:(response.status>=400&&response.status<500?response.status:502),error:'STORAGE_REQUEST_FAILED',detail:message};
 }
 
 export async function handlePrivateStorage(request,env,fetcher=fetch){

@@ -60,7 +60,9 @@ async function readLimitedBody(req){
 async function storageError(response){
   const body=await response.json().catch(()=>({}));
   const message=String(body.message||body.error||body.msg||'').slice(0,160);
-  return {status:response.status>=400&&response.status<500?response.status:502,error:'STORAGE_REQUEST_FAILED',detail:message||'Storage rejected the request'};
+  const denied=String(body.statusCode||'')==='403'||/row-level security|rls denied|unauthorized|not authorized/i.test(message);
+  const status=denied?403:(response.status>=400&&response.status<500?response.status:502);
+  return {status,error:'STORAGE_REQUEST_FAILED',detail:message||'Storage rejected the request'};
 }
 
 export default async function handler(req,res){

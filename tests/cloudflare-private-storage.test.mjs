@@ -66,7 +66,7 @@ test('Worker adapter returns a 120-second signed URL and validates organization 
 });
 
 test('Worker adapter leaves job assignment enforcement to the existing Storage RLS policy',async()=>{
-  const {fetcher,calls}=mockFetch({storageStatus:403});
+  const {fetcher,calls}=mockFetch({storageStatus:400});
   const response=await handlePrivateStorage(webRequest('POST',`https://bco.example.test/api/cloud-storage?organization_id=${ORG}&bucket=job-media&job_id=${JOB}`,{mime:'application/pdf',body:Buffer.from('%PDF-1.7\n%%EOF')}),env,fetcher);
   assert.equal(response.status,403);
   assert.ok(calls.some(x=>x.url.includes(`/${ORG}/${JOB}/`)));

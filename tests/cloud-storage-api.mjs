@@ -82,7 +82,7 @@ test('member upload uses user JWT, server-generated path and forbids overwrite',
 });
 
 test('job-media path requires job id and Storage RLS remains the final assignment check',async()=>{
-  const denied=mockFetch({storageStatus:403});let res=response();
+  const denied=mockFetch({storageStatus:400});let res=response();
   await handler(request('POST',`/api/cloud-storage?organization_id=${ORG}&bucket=job-media&job_id=${JOB}`,{authorization:'Bearer '+TOKEN}),res);
   assert.equal(res.statusCode,403);assert.equal(res.body.error,'STORAGE_REQUEST_FAILED');
   const calls=denied.filter(x=>x.url.includes('/storage/v1/object/'));
