@@ -6,7 +6,7 @@
 create table public.integration_outbox (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete restrict,
-  dedupe_key text not null check (length(dedupe_key) between 1 and 240),
+  dedupe_key text not null check (length(dedupe_key) between 1 and 512),
   event_type text not null check (length(event_type) between 1 and 80),
   payload jsonb not null,
   status text not null default 'pending'
@@ -171,6 +171,9 @@ grant execute on function public.fail_integration_outbox(uuid, uuid, text) to se
 
 -- Atomic ingress: the dedupe row and durable work item commit together.
 -- webhook_events.dedupe_key is globally UNIQUE in the current database.
+-- Dedupe keys are namespaced by immutable organization + provider so two
+-- tenants may legitimately receive the same provider event identifier.
+-- The source event and outbox row are inserted in this one transaction.
 create or replace function public.enqueue_integration_event(
   p_organization_id uuid,
   p_provider text,
@@ -182,7 +185,9 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
-declare v_event_id uuid;
+declare
+  v_event_id uuid;
+  v_scoped_dedupe_key text;
 begin
   if p_organization_id is null
      or length(coalesce(p_provider, '')) not between 1 and 120
@@ -192,10 +197,12 @@ begin
     raise exception 'INVALID_INTEGRATION_EVENT';
   end if;
 
+  v_scoped_dedupe_key := p_organization_id::text || ':' || p_provider || ':' || p_dedupe_key;
+
   insert into public.webhook_events (
     organization_id, provider, event_type, dedupe_key, payload
   ) values (
-    p_organization_id, p_provider, p_event_type, p_dedupe_key, p_payload
+    p_organization_id, p_provider, p_event_type, v_scoped_dedupe_key, p_payload
   )
   on conflict (dedupe_key) do nothing
   returning id into v_event_id;
@@ -203,7 +210,12 @@ begin
   if v_event_id is null then
     select w.id into v_event_id
       from public.webhook_events w
-     where w.dedupe_key = p_dedupe_key;
+     where w.dedupe_key = v_scoped_dedupe_key
+       and w.organization_id = p_organization_id
+       and w.provider = p_provider;
+    if v_event_id is null then
+      raise exception 'IDEMPOTENCY_KEY_COLLISION';
+    end if;
     return query select v_event_id, true;
     return;
   end if;
@@ -211,7 +223,7 @@ begin
   insert into public.integration_outbox (
     organization_id, dedupe_key, event_type, payload
   ) values (
-    p_organization_id, p_dedupe_key, p_event_type, p_payload
+    p_organization_id, v_scoped_dedupe_key, p_event_type, p_payload
   );
 
   return query select v_event_id, false;
