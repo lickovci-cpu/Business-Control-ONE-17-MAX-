@@ -72,7 +72,7 @@ test("HEAD is supported without returning an asset body", async () => {
 test("preview worker has no server-side credentials or arbitrary proxy target", () => {
   assert.doesNotMatch(source,/sb_secret_|service_role|BLOB_READ_WRITE_TOKEN|SUPABASE_SECRET_KEY/i);
   assert.match(source,/raw\.githubusercontent\.com\/lickovci-cpu\/Business-Control-ONE-17-MAX-/);
-  assert.doesNotMatch(source,/request\.url\s*\)/);
+  assert.doesNotMatch(source,/fetch\(request\.url/);\n  assert.match(source,/SOURCE\+path/);
 });
 
 test("upstream failure is converted into a bounded preview 502", async () => {
