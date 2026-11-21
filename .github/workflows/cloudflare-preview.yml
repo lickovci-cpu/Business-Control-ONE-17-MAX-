@@ -82,3 +82,22 @@ jobs:
       - name: Report missing deployment credential
         if: ${{ env.CLOUDFLARE_API_TOKEN == '' }}
         run: echo "Tests passed; deployment skipped until CLOUDFLARE_API_TOKEN is configured."
+
+  supabase-storage-auth:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout isolated preview branch
+        uses: actions/checkout@v4
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: 3.2.0
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Test real local Supabase Auth JWT and Storage RLS
+        env:
+          SUPABASE_TELEMETRY_DISABLED: "1"
+          CI: "true"
+        run: bash tests/supabase-storage-auth.sh
