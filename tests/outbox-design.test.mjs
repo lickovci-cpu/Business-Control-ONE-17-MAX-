@@ -66,3 +66,15 @@ test("isolated PostgreSQL integration and concurrency tests are wired into CI", 
   assert.match(concurrency, /claim_integration_outbox/);
   assert.match(storage, /cross-organization bco-media upload allowed/);
 });
+
+test("all four original scheduled jobs remain unchanged and are not activated in preview", async () => {
+  const vercel = JSON.parse(await readFile(new URL("../vercel.json", import.meta.url), "utf8"));
+  const wrangler = await readFile(new URL("../wrangler.toml", import.meta.url), "utf8");
+  assert.deepEqual(vercel.crons, [
+    { path: "/api/merch-cron", schedule: "0 */6 * * *" },
+    { path: "/api/cron", schedule: "*/5 * * * *" },
+    { path: "/api/automation-tick", schedule: "*/5 * * * *" },
+    { path: "/api/outbound-cron", schedule: "*/5 * * * *" }
+  ]);
+  assert.doesNotMatch(wrangler, /\bcrons\s*=/i);
+});
