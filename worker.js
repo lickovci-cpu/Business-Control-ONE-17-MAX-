@@ -1,10 +1,17 @@
-﻿/*
+/*
  * BCO isolated preview Worker. All mutating/business API routes remain closed.
- * The real API adapter is intentionally not wired until auth parity and tests pass.
+ * External network APIs and service workers are blocked by the preview CSP.
  */
+const PREVIEW_CSP = "connect-src 'self'; form-action 'self'; worker-src 'none'";
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
-  headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'x-robots-tag': 'noindex, nofollow, noarchive' },
+  headers: {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff',
+    'x-robots-tag': 'noindex, nofollow, noarchive',
+    'content-security-policy': PREVIEW_CSP,
+  },
 });
 export default {
   async fetch(request, env) {
@@ -18,6 +25,7 @@ export default {
     headers.set('x-content-type-options', 'nosniff');
     headers.set('referrer-policy', 'strict-origin-when-cross-origin');
     headers.set('cache-control', 'no-store');
+    headers.set('content-security-policy', PREVIEW_CSP);
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   },
 };
