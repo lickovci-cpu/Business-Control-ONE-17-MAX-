@@ -28,7 +28,7 @@ The live project contains:
 
 Existing RLS policies on these three tables scope access through `private.org_role(organization_id)`; approval and content writes are restricted to owner/admin/manager roles. Do not weaken these policies.
 
-There is no dedicated social-integration table and no approval payload-hash column. Keep the hash and delivery metadata inside existing JSONB fields initially. If a database-level uniqueness guarantee is required, add only a narrowly scoped migration after tests; do not create another table.
+There is no dedicated social-integration table and no approval payload-hash column. Keep the hash and delivery metadata inside existing JSONB fields initially. The live CHECK constraints are: `ai_approvals.status IN (pending, approved, rejected, expired, executed)` and `content_items.status IN (idea, draft, scheduled, published, archived)`. If a database-level uniqueness guarantee is required, add only a narrowly scoped migration after tests; do not create another table.
 
 ### Existing BCO control plane
 
@@ -98,7 +98,7 @@ For `action_type = social:publish`, store an immutable approval snapshot:
 
 The `entity_type` should identify the existing content item and `entity_id` should equal its UUID. The `organization_id` must match the content item's organization. `agent_id` must be the existing NŘŠM Content Agent ID.
 
-Do not assume new values are accepted by any status CHECK constraint. Inspect the live constraints before changing status values. Keep `content_items.status = draft` until the existing application status contract is verified; use metadata for new social workflow state in the first iteration.
+Live CHECK constraints were inspected: `ai_approvals.status` allows only `pending`, `approved`, `rejected`, `expired`, and `executed`; `content_items.status` allows only `idea`, `draft`, `scheduled`, `published`, and `archived`. Do not add ad-hoc values such as `pending_approval`, `approved`, `failed`, or `unknown` to `content_items.status`. Keep the content row at `draft` until a verified delivery, and store the social-specific workflow state in `metadata.social`. Use the existing allowed `ai_approvals.status` values for the approval lifecycle.
 
 ## 4. Canonical payload hash
 
