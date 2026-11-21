@@ -85,6 +85,7 @@ jobs:
 
   supabase-storage-auth:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout isolated preview branch
         uses: actions/checkout@v4
