@@ -19,7 +19,7 @@ Status: PREPARATION ONLY. The migration `20261121_bco_automation_claims.sql` has
 6. Test a running row with an expired lease. It must be settled as failed and have its lease cleared; a later eligible slot must be claimable.
 7. Test a non-expired lease. A second claimant must skip it.
 8. Test idempotency by repeating the same slot. It must not create a second run.
-9. Test retry delays with deterministic attempts: 5 minutes, 15 minutes, then 60 minutes (capped). Confirm `next_retry_at` prevents early re-claim.
+9. Test retry delays with deterministic attempts: 5 minutes, 15 minutes, then 60 minutes (capped). Confirm `next_retry_at` prevents early re-claim and that a due retry bypasses the normal interval gate.
 10. Test `finish_bco_automation_run` for success, failure, wrong run ID, wrong automation ID, and non-running rows.
 11. Run the repository CI test suite and Supabase advisors against staging. Inspect logs for SQL errors and verify no external calls were made.
 
