@@ -18,9 +18,13 @@ mkdir -p supabase/migrations
 cp "$WORKSPACE/tests/supabase-storage-test-schema.sql" supabase/migrations/20261121000100_bco_storage_test.sql
 cp "$WORKSPACE/docs/integration-outbox-schema-proposal.sql" supabase/migrations/20261121000200_bco_outbox.sql
 
-supabase start -x studio,mail,analytics,realtime,functions,pooler
-supabase db reset --local
-supabase status --env --output-format text > "$ENV_FILE"
+if ! supabase start -x studio,mail,analytics,realtime,functions,pooler > "$TEST_ROOT/supabase-start.log" 2>&1; then
+  echo "Local Supabase stack failed to start"
+  grep -Ei 'error|failed|fatal' "$TEST_ROOT/supabase-start.log" | tail -n 20 || true
+  exit 1
+fi
+supabase db reset
+supabase status -o env > "$ENV_FILE"
 set -a
 source "$ENV_FILE"
 set +a
