@@ -8,7 +8,7 @@ type RunContext = {
   organizationId: string;
   attemptCount: number;
 };
-type AgentContext = { id: string; slug: string; allowedActions: Set<string> };
+type AgentContext = { id: string; slug: string; allowedActions: Set<string>; config: Json };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EXTERNAL_ACTIONS = new Set(["send_email", "publish", "schedule", "spend", "external_write", "production_deploy"]);
@@ -166,7 +166,8 @@ Deno.serve(async (req: Request) => {
         agent = {
           id: String(foundAgent.id),
           slug: String(foundAgent.slug),
-          allowedActions: allowedActions(foundAgent.allowed_actions)
+          allowedActions: allowedActions(foundAgent.allowed_actions),
+          config: asJson(foundAgent.config)
         };
         if (foundAgent.active !== true) return await finalizeFailure(db, run, "AGENT_NOT_ACTIVE", agent);
       }
@@ -178,12 +179,7 @@ Deno.serve(async (req: Request) => {
     const action = stringValue(actionConfig.action);
     if (!slug || !action) return await finalizeFailure(db, run, "AUTOMATION_ACTION_NOT_CONFIGURED", agent);
 
-    const agentResult = await db.from("ai_agents")
-      .select("id,organization_id,slug,active,allowed_actions,config")
-      .eq("organization_id", organizationId).eq("slug", slug).maybeSingle();
-    if (agentResult.error) throw agentResult.error;
-    const agentRow = agentResult.data as Json | null;
-    const agentConfig = asJson(agentRow?.config);
+    const agentConfig = agent.config;
     const concreteActions: string[] =
       action === "autonomous_tick" && slug === "ceo" && agentConfig.mode === "autonomous-planner"
         ? ["prioritize", "recommend"]
