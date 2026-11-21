@@ -62,30 +62,32 @@ export async function runTick(env, scheduledAt) {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || body.ok === false) throw new Error("EXECUTOR_HTTP_" + response.status + ":" + String(body.error || "execution_failed").slice(0, 250));
-      await supabaseRequest(env, "automation_runs?id=eq." + encodeURIComponent(item.run_id), {
-        method: "PATCH",
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ status: "completed", output: body, completed_at: now, lease_expires_at: null })
-      });
-      await supabaseRequest(env, "automations?id=eq." + encodeURIComponent(item.automation_id), {
-        method: "PATCH",
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ last_run_at: now, lease_expires_at: null, next_retry_at: null, attempt_count: 0, last_error: null })
+      await supabaseRequest(env, "rpc/finish_bco_automation_run", {
+        method: "POST",
+        body: JSON.stringify({
+          p_run_id: item.run_id,
+          p_automation_id: item.automation_id,
+          p_success: true,
+          p_output: body,
+          p_error: null,
+          p_retry_at: null
+        })
       });
       results.push({ run_id: item.run_id, status: "completed" });
     } catch (error) {
       const attempt = Number(item.attempt_count || 1);
       const retryAt = new Date(Date.now() + backoffMinutes(attempt) * 60000).toISOString();
       const message = String(error && error.message || "EXECUTION_FAILED").slice(0, 1000);
-      await supabaseRequest(env, "automation_runs?id=eq." + encodeURIComponent(item.run_id), {
-        method: "PATCH",
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ status: "failed", error: message, completed_at: now, lease_expires_at: null })
-      });
-      await supabaseRequest(env, "automations?id=eq." + encodeURIComponent(item.automation_id), {
-        method: "PATCH",
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ lease_expires_at: null, next_retry_at: retryAt, last_error: message })
+      await supabaseRequest(env, "rpc/finish_bco_automation_run", {
+        method: "POST",
+        body: JSON.stringify({
+          p_run_id: item.run_id,
+          p_automation_id: item.automation_id,
+          p_success: false,
+          p_output: null,
+          p_error: message,
+          p_retry_at: retryAt
+        })
       });
       results.push({ run_id: item.run_id, status: "failed", retry_at: retryAt });
     }
