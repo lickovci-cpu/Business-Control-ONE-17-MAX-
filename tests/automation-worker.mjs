@@ -17,6 +17,12 @@ global.fetch = async (url, options = {}) => {
 };
 try {
   await assert.rejects(() => runTick({ SUPABASE_URL: "https://db.example", SUPABASE_SERVICE_ROLE_KEY: "test" }, new Date("2026-11-21T10:00:00Z")), /MISSING_AUTOMATION_EXECUTOR_URL/);
+  await assert.rejects(() => runTick({
+    SUPABASE_URL: "https://db.example",
+    SUPABASE_SERVICE_ROLE_KEY: "test",
+    AUTOMATION_EXECUTOR_URL: "http://executor.example/run",
+    AUTOMATION_EXECUTOR_TOKEN: "test"
+  }, new Date("2026-11-21T10:00:00Z")), /EXECUTOR_URL_MUST_BE_HTTPS/);
   const result = await runTick({
     SUPABASE_URL: "https://db.example",
     SUPABASE_SERVICE_ROLE_KEY: "test",

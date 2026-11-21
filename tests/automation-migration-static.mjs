@@ -1,0 +1,14 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const migration = readFileSync(new URL("../supabase/migrations/20261121_bco_automation_claims.sql", import.meta.url), "utf8");
+const worker = readFileSync(new URL("../workers/bco-automation/src/index.js", import.meta.url), "utf8");
+const wrangler = readFileSync(new URL("../workers/bco-automation/wrangler.jsonc", import.meta.url), "utf8");
+assert.match(migration, /create unique index if not exists automation_runs_idempotency_key_uidx/i);
+assert.match(migration, /for update skip locked/i);
+assert.match(migration, /auth\.role\(\)/i);
+assert.match(migration, /finish_bco_automation_run/i);
+assert.match(worker, /body\.ok !== true/);
+assert.match(worker, /AUTOMATION_EXECUTOR_TOKEN/);
+assert.doesNotMatch(wrangler, /SUPABASE_SERVICE_ROLE_KEY|AUTOMATION_EXECUTOR_TOKEN/);
+assert.doesNotMatch(migration, /drop table|truncate table/i);
+console.log("AUTOMATION MIGRATION STATIC SAFETY OK");

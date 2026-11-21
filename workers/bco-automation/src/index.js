@@ -60,7 +60,7 @@ export async function runTick(env, scheduledAt) {
         })
       });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok || body.ok === false) throw new Error("EXECUTOR_HTTP_" + response.status + ":" + String(body.error || "execution_failed").slice(0, 250));
+      if (!response.ok || body.ok !== true) throw new Error("EXECUTOR_HTTP_" + response.status + ":" + String(body.error || "execution_failed").slice(0, 250));
       await supabaseRequest(env, "rpc/finish_bco_automation_run", {
         method: "POST",
         body: JSON.stringify({

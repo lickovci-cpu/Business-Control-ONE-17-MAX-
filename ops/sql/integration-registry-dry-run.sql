@@ -24,8 +24,8 @@ select
     'status', status,
     'credential_ref_configured', credential_ref is not null,
     'config_keys', coalesce(
-      (select jsonb_agg(k order by k)
-       from jsonb_object_keys(coalesce(config, '{}'::jsonb)) as k),
+      (select jsonb_agg(key order by key)
+       from jsonb_object_keys(coalesce(config, '{}'::jsonb)) as keys(key)),
       '[]'::jsonb
     ),
     'last_checked_at', last_checked_at,
