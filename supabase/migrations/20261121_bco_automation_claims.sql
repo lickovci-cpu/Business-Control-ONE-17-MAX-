@@ -96,7 +96,7 @@ begin
            c.attempt_count
       from claimed c
     on conflict (idempotency_key) where idempotency_key is not null do nothing
-    returning id, automation_runs.automation_id, automation_runs.organization_id, automation_runs.attempt_count
+    returning id, automation_id, organization_id, attempt_count
   )
   select i.id, i.automation_id, i.organization_id, c.action_config, c.trigger_config, i.attempt_count
     from inserted i
