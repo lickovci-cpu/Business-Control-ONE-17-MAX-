@@ -17,7 +17,7 @@
 
 ## Migration recovery
 
-All 72 repository branches were enumerated. The GitHub migration-path history contains 11 commits. The production Supabase migration ledger contains 56 applied records, while 49 historical migration files are absent from the tracked repository history. They were not fabricated. A catalog-derived schema-only baseline was committed at supabase/migrations/20261121160000_bco_schema_only_baseline.sql.
+All 72 repository branches were enumerated. The GitHub migration-path history contains 11 commits. The production Supabase migration ledger contains 56 applied records, while 49 historical migration files are absent from the tracked repository history. They were not fabricated. A catalog-derived schema-only baseline was committed at supabase/migrations/20261121142726_bco_schema_only_baseline.sql.
 
 The baseline was compared with production by catalog signatures. Before the scheduler migration, the following matched exactly:
 
