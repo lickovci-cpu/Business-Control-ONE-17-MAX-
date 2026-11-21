@@ -106,7 +106,7 @@ async function fallbackFinish(env, item, reason) {
   return "finished_failed";
 }
 export async function runTick(env, scheduledAt) {
-  const base = assertStagingTarget(env);
+  assertStagingTarget(env);
   const executor = executorUrl(env);
   const token = required(env, "AUTOMATION_EXECUTOR_TOKEN");
 
