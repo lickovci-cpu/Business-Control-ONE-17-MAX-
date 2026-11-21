@@ -2591,6 +2591,8 @@ REVOKE EXECUTE ON FUNCTION public.update_org_member_role(org_id uuid, member_use
 
 REVOKE EXECUTE ON FUNCTION public.update_org_sms_limits(org_id uuid, new_daily_limit integer, new_monthly_limit integer) FROM PUBLIC;
 
+GRANT MAINTAIN ON TABLE public.lead_followup_queue TO service_role;
+
 GRANT EXECUTE ON FUNCTION private.can_access_job(org uuid, job uuid) TO authenticated;
 
 GRANT EXECUTE ON FUNCTION private.can_access_job(org uuid, job uuid) TO postgres;
