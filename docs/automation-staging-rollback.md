@@ -6,7 +6,7 @@ Status: APPLIED AND VERIFIED IN BCO-STAGING ONLY. Production project vjzzvopwecm
 
 The isolated Apppka project was built from a schema-only catalog export of production. No production application rows, auth users, storage objects, credentials or secrets were copied. After baseline and privilege alignment, the following production/staging catalog signatures matched exactly: 42 tables, 477 columns, 180 constraints (83 foreign keys), 146 indexes, 133 RLS policies, 30 functions, 20 triggers, one view, two sequences, table grants, schema grants and function grants. All 42 staging tables were verified at zero rows after test cleanup.
 
-The production project reports 56 applied migration records, while the GitHub migration-path history contains 11 commits and the tracked historical migration set does not contain 49 of those applied migration files. The missing historical files were not fabricated. A schema-only baseline was generated from the live catalog and stored at supabase/migrations/20261121160000_bco_schema_only_baseline.sql. PostgreSQL versions differ (production 17.6, staging 17.12); the app schema was compared by catalog signatures rather than assuming binary-identical server versions.
+The production project reports 56 applied migration records, while the GitHub migration-path history contains 11 commits and the tracked historical migration set does not contain 49 of those applied migration files. The missing historical files were not fabricated. A schema-only baseline was generated from the live catalog and stored at supabase/migrations/20261121142726_bco_schema_only_baseline.sql. PostgreSQL versions differ (production 17.6, staging 17.12); the app schema was compared by catalog signatures rather than assuming binary-identical server versions.
 
 The scheduler migration and its staging-only correction are applied in staging. Synthetic test rows were removed and verified absent. The rollback rehearsal below was executed with ROLLBACK; the nine added scheduler columns, three RPC functions and three scheduler indexes remained present afterward.
 
@@ -34,7 +34,7 @@ Supabase staging advisors show the same inherited warnings as production: three 
 
 ## Apply in staging
 
-1. Apply `20261121_bco_automation_claims.sql` only to the isolated staging database.
+1. Apply `20261121143116_bco_automation_claims.sql` only to the isolated staging database.
 2. Confirm the new scheduler columns exist and have the intended types/defaults.
 3. Confirm the partial unique index on `automation_runs.idempotency_key` exists.
 4. Confirm both RPCs are `SECURITY DEFINER` with fixed `search_path`, reject callers whose JWT role is not `service_role`, revoke execute from `PUBLIC`, `anon`, and `authenticated`, and grant execute only to `service_role`.
