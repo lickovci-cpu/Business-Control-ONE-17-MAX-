@@ -55,19 +55,16 @@ Deno.serve(async (req: Request) => {
   if (!supabaseUrl || !serviceKey) return response(503, "BACKEND_NOT_CONFIGURED");
   const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
-  let trustedRun: Json | null = null;
-  let automation: Json | null = null;
-  let agent: Json | null = null;
   try {
     const runResult = await db.from("automation_runs")
       .select("id,automation_id,organization_id,status,lease_expires_at,attempt_count")
       .eq("id", runId).eq("automation_id", automationId).eq("organization_id", organizationId)
       .maybeSingle();
     if (runResult.error) throw runResult.error;
-    trustedRun = runResult.data as Json | null;
-    if (!trustedRun || trustedRun.status !== "running" ||
-        typeof trustedRun.lease_expires_at !== "string" ||
-        Date.parse(trustedRun.lease_expires_at) <= Date.now()) {
+    const run = runResult.data as Json | null;
+    if (!run || run.status !== "running" ||
+        typeof run.lease_expires_at !== "string" ||
+        Date.parse(run.lease_expires_at) <= Date.now()) {
       return response(409, "RUN_NOT_ACTIVE_OR_LEASE_EXPIRED");
     }
 
@@ -75,7 +72,7 @@ Deno.serve(async (req: Request) => {
       .select("id,organization_id,active,action_config,trigger_config")
       .eq("id", automationId).eq("organization_id", organizationId).maybeSingle();
     if (automationResult.error) throw automationResult.error;
-    automation = automationResult.data as Json | null;
+    const automation = automationResult.data as Json | null;
     if (!automation || automation.active !== true) return response(403, "AUTOMATION_NOT_ACTIVE");
 
     const actionConfig = asJson(automation.action_config);
@@ -87,7 +84,7 @@ Deno.serve(async (req: Request) => {
       .select("id,organization_id,slug,active,autonomy_level,allowed_actions,config")
       .eq("organization_id", organizationId).eq("slug", slug).maybeSingle();
     if (agentResult.error) throw agentResult.error;
-    agent = agentResult.data as Json | null;
+    const agent = agentResult.data as Json | null;
     if (!agent || agent.active !== true) return response(403, "AGENT_NOT_ACTIVE");
 
     const allowlist = allowedActions(agent.allowed_actions);
@@ -123,8 +120,10 @@ Deno.serve(async (req: Request) => {
 
     const missing = REQUIRED_PROVIDER_ENV.filter((key) => !stringValue(Deno.env.get(key)));
     const providerReady = missing.length === 0;
+    const reason = providerReady ? "PROVIDER_ADAPTER_NOT_IMPLEMENTED" : "PROVIDER_SECRET_MISSING";
     const audit = await db.rpc("record_bco_executor_audit", {
       p_organization_id: organizationId,
+      p_automation_id: automationId,
       p_agent_id: agent.id,
       p_agent_slug: slug,
       p_task: action,
@@ -132,9 +131,9 @@ Deno.serve(async (req: Request) => {
       p_status: "blocked",
       p_provider: providerReady ? Deno.env.get("AI_PROVIDER") : null,
       p_model: providerReady ? Deno.env.get("AI_PROVIDER_MODEL") : null,
-      p_error: providerReady ? "PROVIDER_ADAPTER_NOT_IMPLEMENTED" : "PROVIDER_SECRET_MISSING",
+      p_error: reason,
       p_event_type: "automation_run_blocked",
-      p_payload: { run_id: runId, automation_id: automationId, reason: providerReady ? "PROVIDER_ADAPTER_NOT_IMPLEMENTED" : "PROVIDER_SECRET_MISSING" }
+      p_payload: { run_id: runId, automation_id: automationId, reason }
     });
     if (audit.error) throw audit.error;
 
@@ -144,13 +143,12 @@ Deno.serve(async (req: Request) => {
       p_organization_id: organizationId,
       p_success: false,
       p_output: {},
-      p_error: providerReady ? "PROVIDER_ADAPTER_NOT_IMPLEMENTED" : "PROVIDER_SECRET_MISSING",
+      p_error: reason,
       p_retry_at: null
     });
     if (finish.error) throw finish.error;
-    return response(503, providerReady ? "PROVIDER_ADAPTER_NOT_IMPLEMENTED" : "PROVIDER_SECRET_MISSING");
+    return response(503, reason);
   } catch (error) {
-    // Do not return database/provider details to the caller and never log secrets.
     console.error("automation-executor", { code: error instanceof Error ? error.message : "INTERNAL_ERROR" });
     return response(500, "EXECUTOR_INTERNAL_ERROR");
   }
