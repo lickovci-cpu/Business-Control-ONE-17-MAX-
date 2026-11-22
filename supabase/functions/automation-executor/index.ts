@@ -374,6 +374,11 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    if (action === "autonomous_tick" && slug === "ceo" && agent.config.mode === "autonomous-planner") {
+      const plan = await buildCeoInternalPlan(db, organizationId);
+      return await finalizeSuccess(db, run, agent, plan);
+    }
+
     const missing = REQUIRED_PROVIDER_ENV.filter((key) => !stringValue(Deno.env.get(key)));
     const providerReady = missing.length === 0;
     provider = providerReady ? stringValue(Deno.env.get("AI_PROVIDER")) : null;
