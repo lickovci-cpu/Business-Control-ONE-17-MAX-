@@ -3,6 +3,7 @@ const MAX_BATCH = 20;
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://pflfbphulvutccvvhrot.supabase.co; media-src 'self' blob: https:; manifest-src 'self'; worker-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'";
 const SECURITY = {
   "X-Content-Type-Options": "nosniff",
+  "X-Robots-Tag": "noindex, nofollow, noarchive",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "X-Frame-Options": "DENY",
   "Cache-Control": "no-store",
@@ -20,7 +21,7 @@ function stagingOrigin(env) {
   const ref = required(env, "SUPABASE_PROJECT_REF");
   const productionRef = required(env, "BCO_PRODUCTION_PROJECT_REF");
   const url = new URL(required(env, "SUPABASE_URL"));
-  if (ref === productionRef || url.protocol !== "https:" || url.hostname !== ref + ".supabase.co" || url.username || url.password) {
+  if (ref === productionRef || url.protocol !== "https:" || url.hostname !== ref + ".supabase.co" || url.port !== "" || url.username || url.password) {
     throw new Error("STAGING_PROJECT_REF_MISMATCH");
   }
   return url.origin;
@@ -80,6 +81,7 @@ async function revenueRoute(request, env, url) {
   }
   let body;
   if (request.method === "POST") {
+    if (!(request.headers.get("content-type") || "").toLowerCase().includes("application/json")) return json({ ok: false, error: "JSON_REQUIRED" }, 415);
     const raw = await request.clone().text();
     if (raw.length > 16384) return json({ ok: false, error: "REQUEST_TOO_LARGE" }, 413);
     try { JSON.parse(raw || "{}"); } catch { return json({ ok: false, error: "INVALID_JSON" }, 400); }
