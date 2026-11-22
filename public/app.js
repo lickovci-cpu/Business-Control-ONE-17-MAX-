@@ -398,8 +398,7 @@ async function bcoRevenueRequest(path,options={},useSession=true,retry=true){
   return data;
 }
 async function bcoRevenueEdge(action,method='GET',payload={}){
-  const suffix=method==='GET'?'':'';
-  return bcoRevenueRequest('/functions/v1/bco-command-center?action='+encodeURIComponent(action)+suffix,{
+    return bcoRevenueRequest('/functions/v1/bco-command-center?action='+encodeURIComponent(action)+suffix,{
     method, ...(method==='GET'?{}:{body:JSON.stringify({...payload,...(bcoRevenueOrganization?{organization_id:bcoRevenueOrganization}:{})})})
   },true);
 }
