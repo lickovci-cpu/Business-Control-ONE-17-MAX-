@@ -2,7 +2,7 @@
 
 Read-only inventory baseline: branch `bco/control-plane-v1`, commit `910f0b0865d8c905398a395e504bb562814b404a`.
 
-## Existing Vercel API route inventory
+## Existing 12 Vercel API route inventory
 
 | Route | Existing dependencies / behavior | Cloudflare status |
 |---|---|---|
