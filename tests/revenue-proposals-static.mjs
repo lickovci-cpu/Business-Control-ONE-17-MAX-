@@ -8,7 +8,8 @@ const migration = readFileSync(new URL("../supabase/migrations/20261122021357_bc
 
 assert.match(app, /BCO_REVENUE_STAGE_URL='https:\/\/pflfbphulvutccvvhrot\.supabase\.co'/);
 assert.match(app, /BCO_REVENUE_SESSION_KEY='bco-revenue-staging-session-v1'/);
-assert.match(app, /functions\/v1\/bco-command-center\?action=/);
+assert.match(app, /fetch\('\/api\/revenue\?'/);
+assert.match(app, /Authorization='Bearer '\+bcoRevenueSession\.access_token/);
 assert.match(app, /proposalSignIn/);
 assert.match(app, /proposalSignUp/);
 assert.match(app, /approve_proposal/);
