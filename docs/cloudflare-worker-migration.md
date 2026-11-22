@@ -43,3 +43,22 @@ AI provider orchestration, Meta publishing/OAuth, outbound communications, Verce
 ## Deployment / rollback
 
 This commit only prepares source and tests. It does not deploy the Worker or alter the active Cron. Keep the prior Worker version and existing Cron schedule as the rollback target. Deploy only after CI passes and the Cloudflare upload preview confirms that the existing scheduled handler and bindings are retained.
+
+## Active Cloudflare rollback evidence (read-only, 2026-11-22)
+
+- The active script is `bco-cloudflare-preview`, and its live module contains both `fetch` and `scheduled` handlers.
+- The active source corresponds to the BCO automation module `workers/bco-automation/src/index.js`; the separate legacy `worker.js` in `infra/cloudflare-workers-preview-2026-11-21` is not the deployed automation module and must not replace it.
+- Current active deployment ID: `d88ff660-ccf3-4693-b239-c9193a94d11e`.
+- Current active version ID: `c7a5444a-2882-485e-b39c-f0deacff13af` (version 11, 100% traffic).
+- Current Worker Cron: `*/5 * * * *`.
+- Existing secret binding names confirmed without reading values: `AUTOMATION_EXECUTOR_TOKEN`, `SUPABASE_SERVICE_ROLE_KEY`.
+- Existing staging plain-text bindings confirmed: `AUTOMATION_EXECUTOR_URL`, `SUPABASE_PROJECT_REF`, `SUPABASE_URL`, `BCO_PRODUCTION_PROJECT_REF`.
+- The publishable staging key is a public client key, not a service-role secret.
+
+Rollback procedure after a future deployment:
+1. Read current deployment and version IDs first.
+2. Create a new deployment routing 100% traffic to the preserved version `c7a5444a-2882-485e-b39c-f0deacff13af` using Cloudflare's Worker Deployments API.
+3. Do not delete previous versions or modify the Cron schedule.
+4. Verify `/api/health`, Cron schedule, and the automation tick after rollback.
+
+No Cloudflare upload or deployment was performed during this implementation phase.
