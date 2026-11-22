@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import worker from '../workers/bco-automation/src/index.js';
 
 const env={
@@ -25,6 +26,16 @@ globalThis.fetch=async (input,init={})=>{
   throw new Error('Unexpected upstream '+url);
 };
 try{
+  const wrangler=JSON.parse(await readFile(new URL('../workers/bco-automation/wrangler.jsonc',import.meta.url),'utf8'));
+  const workerSource=await readFile(new URL('../workers/bco-automation/src/index.js',import.meta.url),'utf8');
+  const sw=await readFile(new URL('../public/sw.js',import.meta.url),'utf8');
+  assert.deepEqual(wrangler.triggers.crons,['*/5 * * * *']);
+  assert.equal(wrangler.assets.directory,'../../public');
+  assert.equal(wrangler.assets.binding,'ASSETS');
+  assert.ok(workerSource.includes('async scheduled(event, env, ctx)'));
+  assert.ok(!workerSource.includes('raw.githubusercontent.com'));
+  assert.ok(sw.includes("url.pathname.startsWith('/api/')"));
+  assert.ok(sw.includes("caches.match('/')"));
   const health=await worker.fetch(new Request('https://bco-preview.example/api/health'),env);
   assert.equal(health.status,200);
   const healthJson=await health.json();
