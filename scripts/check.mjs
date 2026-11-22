@@ -27,4 +27,5 @@ if(!appSource.includes('pflfbphulvutccvvhrot.supabase.co')||!appSource.includes(
 if(headers.includes('vjzzvopwecmwuccdidzq')||!headers.includes('pflfbphulvutccvvhrot.supabase.co'))throw new Error('Static asset CSP is not staging-only.');
 if(workerConfig.triggers?.crons?.join(',')!=='*/5 * * * *')throw new Error('Existing Worker Cron schedule changed.');
 if(workerConfig.assets?.directory!=='../../public'||workerConfig.assets?.binding!=='ASSETS')throw new Error('Workers Static Assets binding missing.');
+if(workerConfig.secrets?.required?.join(',')!=='AUTOMATION_EXECUTOR_TOKEN,SUPABASE_SERVICE_ROLE_KEY')throw new Error('Required existing Worker secrets are not declared.');
 console.log(`CHECK OK — ${js.length} JS files, ${ids.length} unique UI ids, staging-only frontend, Cloudflare assets, Cron and PWA checks enabled.`);
