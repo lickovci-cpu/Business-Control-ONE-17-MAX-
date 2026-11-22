@@ -64,7 +64,7 @@ jobs:
           const crons = (schedules.result?.schedules || []).map(x => x.cron).sort();
           if (!deployment?.id || !version) throw new Error('Cannot identify active rollback version.');
           if (crons.length !== 1 || crons[0] !== '*/5 * * * *') throw new Error('Active Cron is not exactly */5 * * * *. Stop before deploy.');
-          fs.writeFileSync('/tmp/bco-schedules-restore.json', JSON.stringify({schedules:schedules.result.schedules}));
+          fs.writeFileSync('/tmp/bco-schedules-restore.json', JSON.stringify(schedules.result.schedules));
           fs.appendFileSync(process.env.GITHUB_OUTPUT, `previous_version=${version}\nprevious_deployment=${deployment.id}\n`);
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Pre-deploy rollback snapshot\n- Deployment: ${deployment.id}\n- Version: ${version}\n- Cron: ${crons.join(', ')}\n`);
           NODE
