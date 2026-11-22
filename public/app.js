@@ -2,7 +2,7 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=v=>new Intl.NumberFormat('cs-CZ',{style:'currency',currency:'CZK',maximumFractionDigits:0}).format(Number(v)||0);
 const APP_VERSION='17-max';
-const tabs=[['today','Dnes'],['control','Řídicí místnost'],['worker','Content Worker'],['content','Obsah'],['reels','Reels'],['media','Fotky'],['comms','Komunikace'],['inbox','Inbox'],['crm','CRM'],['sales','Prodej'],['jobs','Zakázky'],['analytics','Analytika'],['shop','E-shopy'],['settings','Nastavení'],['autopilot','Autopilot']];
+const tabs=[['today','Dnes'],['control','Řídicí místnost'],['worker','Content Worker'],['content','Obsah'],['reels','Reels'],['media','Fotky'],['comms','Komunikace'],['inbox','Inbox'],['proposals','Návrhy'],['crm','CRM'],['sales','Prodej'],['jobs','Zakázky'],['analytics','Analytika'],['shop','E-shopy'],['settings','Nastavení'],['autopilot','Autopilot']];
 const projects={
   jihoceske:{name:'STŘECHY / FVE',label:'TECHNICAL FIELD UNIT',theme:'fve',signature:'FIELD / SOLAR',context:'FVE subdodávky a servis: montáž konstrukcí a panelů, DC kabeláž/stringy/konektory/Tigo, dílčí montážní práce, demontáž a zpětná montáž, úpravy stávajících FVE, mytí panelů, ochranné sítě proti ptactvu a carporty. Primárně Jižní Čechy, větší zakázky po ČR. Bez vymyšlených certifikací, počtů realizací, cen nebo referencí. Elektro zapojení a revize pouze jako spolupráce s elektrikářem a revizním technikem, nikdy jako vlastní oprávnění. Bezpečně lze uvádět praktickou zkušenost z montáží, malé střechy a instalace přibližně 145 a 195 panelů.'},
   merch:{name:'NŘŠM',label:'UNDERGROUND COMMAND CENTER',theme:'nrsm',signature:'NŘŠM // 174 UNIT',context:'Originální streetwear inspirovaný DnB, neurofunkem, technem, psytrance, rave a graffiti kulturou. Výrazně a underground, ne genericky AI. Produkty, dropy a čísla se zobrazují jen z uložených dat.'},
@@ -66,7 +66,7 @@ async function sessionCheck(){
 async function loginPanel(password){const r=await fetch('/api/session',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({password})}),j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===429){const sec=Number(j.retryAfterSeconds||r.headers.get('retry-after')||180);throw new Error(`Příliš mnoho pokusů. Zkus to za ${Math.max(1,Math.ceil(sec/60))} min.`);}if(r.status===401&&Number.isFinite(Number(j.remainingAttempts)))throw new Error(`Neplatné heslo · zbývá ${j.remainingAttempts} pokusů.`);throw new Error(j.error||'Přihlášení selhalo.');}hideAuth();setTimeout(()=>health(),0);return true;}
 async function logoutPanel(){await fetch('/api/session',{method:'DELETE',credentials:'same-origin'});showAuth();}
 function initTabs(){const t=$('#tabs');t.innerHTML='';tabs.forEach(([id,n])=>{const b=document.createElement('button');b.textContent=n;b.dataset.tab=id;b.onclick=()=>activateTab(id);t.appendChild(b)});activateTab('today');}
-function activateTab(id){if(id==='control')renderControlRoom();if(id==='autopilot')renderAutopilot();$$('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));$$('.section').forEach(x=>x.classList.toggle('active',x.id===id));if(id==='media')renderMedia();if(id==='content'||id==='inbox'||id==='reels')loadMetaStatus();if(id==='reels'){renderReelPlan();loadRecentReels();renderReelComposer();}if(id==='sales')renderSales();if(id==='jobs')renderJobs();if(id==='analytics')loadAnalytics();if(id==='comms'){loadCommStatus();loadOutbox();}if(id==='settings'){renderSettings();health();renderPwaState();}}
+function activateTab(id){if(id==='proposals')renderRevenueProposals();if(id==='control')renderControlRoom();if(id==='autopilot')renderAutopilot();$$('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));$$('.section').forEach(x=>x.classList.toggle('active',x.id===id));if(id==='media')renderMedia();if(id==='content'||id==='inbox'||id==='reels')loadMetaStatus();if(id==='reels'){renderReelPlan();loadRecentReels();renderReelComposer();}if(id==='sales')renderSales();if(id==='jobs')renderJobs();if(id==='analytics')loadAnalytics();if(id==='comms'){loadCommStatus();loadOutbox();}if(id==='settings'){renderSettings();health();renderPwaState();}}
 function applyWorkspace(){const w=projects[state.project];document.body.dataset.workspace=w.theme||state.project;$('#workspaceName').textContent=w.name;$('#workspaceLabel').textContent=w.label||'WORKSPACE';$('#workspaceSignature').textContent=w.signature||w.name;$('#cmd').placeholder=`Např. vyber dnešní priority pro ${w.name}, připrav follow-up a návrh obsahu.`;document.title=`${w.name} · Business Control ONE`;}
 function initProjects(){const s=$('#project');s.innerHTML='';Object.entries(projects).forEach(([k,v])=>s.add(new Option(v.name,k)));s.value=state.project;s.onchange=()=>switchProject(s.value);const a=$('#aiProvider'),b=$('#aiProviderSettings');a.value=b.value=state.aiProvider;a.onchange=()=>setAiProvider(a.value);b.onchange=()=>setAiProvider(b.value);applyWorkspace();renderProjects();}
 function setAiProvider(v){state.aiProvider=v;$('#aiProvider').value=v;$('#aiProviderSettings').value=v;persist();}
@@ -375,4 +375,120 @@ function wire(){  $('#metaCheckNow')?.addEventListener('click',()=>metaDiagnosti
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;});
 }
 async function init(){if(!recoveryPoints().length)saveRecoveryPoint('Start 17 MAX');initTabs();initProjects();wire();loadDraft();renderAll();renderWorker();if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).then(r=>r.update().catch(()=>{})).catch(()=>{});const ok=await sessionCheck();if(ok)await health();if(sbSession)setTimeout(()=>cloudIdentity(),80);renderCloudState();renderPwaState();setTimeout(()=>maybeDueNotification(),1200);setAutosaveState('Auto-save aktivní','ok');}
+/* Isolated staging Revenue Engine UI. Never reuse the production Supabase session. */
+const BCO_REVENUE_STAGE_URL='https://pflfbphulvutccvvhrot.supabase.co';
+const BCO_REVENUE_STAGE_KEY='sb_publishable_-hf4S_b-TUTmPQE0EnZHBA_xg5N3WHG';
+const BCO_REVENUE_SESSION_KEY='bco-revenue-staging-session-v1';
+let bcoRevenueSession=null;
+let bcoRevenueOrganization=null;
+function loadBcoRevenueSession(){try{return JSON.parse(localStorage.getItem(BCO_REVENUE_SESSION_KEY)||'null');}catch{return null;}}
+function saveBcoRevenueSession(value){bcoRevenueSession=value;if(value)localStorage.setItem(BCO_REVENUE_SESSION_KEY,JSON.stringify(value));else localStorage.removeItem(BCO_REVENUE_SESSION_KEY);}
+async function bcoRevenueRequest(path,options={},useSession=true,retry=true){
+  const headers={apikey:BCO_REVENUE_STAGE_KEY,'content-type':'application/json',...(options.headers||{})};
+  if(useSession&&bcoRevenueSession?.access_token)headers.Authorization='Bearer '+bcoRevenueSession.access_token;
+  const response=await fetch(BCO_REVENUE_STAGE_URL+path,{...options,headers});
+  if(response.status===401&&retry&&useSession&&bcoRevenueSession?.refresh_token){
+    try{
+      const fresh=await bcoRevenueRequest('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:bcoRevenueSession.refresh_token})},false,false);
+      if(fresh?.access_token){saveBcoRevenueSession(fresh);return bcoRevenueRequest(path,options,true,false);}
+    }catch{saveBcoRevenueSession(null);}
+  }
+  const raw=await response.text();let data={};try{data=raw?JSON.parse(raw):{};}catch{data={message:raw};}
+  if(!response.ok)throw new Error(data.msg||data.message||data.error_description||data.error||('HTTP '+response.status));
+  return data;
+}
+async function bcoRevenueEdge(action,method='GET',payload={}){
+  const suffix=method==='GET'?'':'';
+  return bcoRevenueRequest('/functions/v1/bco-command-center?action='+encodeURIComponent(action)+suffix,{
+    method, ...(method==='GET'?{}:{body:JSON.stringify({...payload,...(bcoRevenueOrganization?{organization_id:bcoRevenueOrganization}:{})})})
+  },true);
+}
+function bcoProposalEscape(value){return esc(String(value??''));}
+function renderRevenueProposals(){
+  const stateEl=$('#proposalState');if(!stateEl)return;
+  bcoRevenueSession=bcoRevenueSession||loadBcoRevenueSession();
+  const logged=Boolean(bcoRevenueSession?.access_token);
+  $('#proposalAuthCard')?.classList.toggle('hidden',logged);
+  $('#proposalWorkspaceCard')?.classList.add('hidden');
+  $('#proposalBoardCard')?.classList.toggle('hidden',!logged);
+  stateEl.textContent=logged?'Staging: přihlášeno':'Staging: odhlášeno';
+  if(!logged){$('#proposalSummary').textContent='';$('#proposalList').innerHTML='';return;}
+  loadRevenueProposalRows();
+}
+async function loadRevenueProposalRows(){
+  const summary=$('#proposalSummary'),list=$('#proposalList');
+  if(!summary||!list)return;
+  summary.textContent='Načítám bezpečně oddělené stagingové návrhy…';
+  try{
+    const data=await bcoRevenueEdge('proposals');
+    bcoRevenueOrganization=data.organization_id;
+    const rows=Array.isArray(data.proposals)?data.proposals:[];
+    const pending=rows.filter(x=>x.status==='proposed').length;
+    summary.textContent='Návrhů celkem: '+rows.length+' · čeká na rozhodnutí: '+pending+' · organizace: '+data.organization_id;
+    if(!rows.length){list.innerHTML='<div class="item">Zatím nejsou žádné návrhy. Plánovač je doplní při nejbližším běhu Cron.</div>';return;}
+    const projectNames={'nrsm':'NŘŠM','mazliprint':'MazliPrint','local-proof-factory':'Local Proof Factory'};
+    list.innerHTML=rows.map(row=>{
+      const canAct=row.status==='proposed';
+      return '<article class="proposal-card">'+
+        '<div class="priority-row"><strong>'+bcoProposalEscape(projectNames[row.project_id]||row.project_id)+'</strong>'+
+        '<span class="pill '+(row.priority==='A'?'warn':'subtle')+'">Priorita '+bcoProposalEscape(row.priority)+' · skóre '+bcoProposalEscape(row.score)+'</span></div>'+
+        '<h3>'+bcoProposalEscape(row.title)+'</h3><p>'+bcoProposalEscape(row.rationale)+'</p>'+
+        '<div class="proposal-meta">Zdroj: '+bcoProposalEscape(row.source_type)+' · Stav: '+bcoProposalEscape(row.status)+' · Termín: '+bcoProposalEscape(row.due_at?new Date(row.due_at).toLocaleString('cs-CZ'):'neurčen')+'</div>'+
+        '<div class="proposal-notes">'+bcoProposalEscape(row.task_notes)+'</div>'+
+        (canAct?'<div class="action-row"><button class="btn primary small" data-proposal-action="approve" data-proposal-id="'+bcoProposalEscape(row.id)+'">Schválit a vytvořit úkol</button><button class="btn danger small" data-proposal-action="reject" data-proposal-id="'+bcoProposalEscape(row.id)+'">Odmítnout</button></div>':'')+
+        (row.approved_task_id?'<div class="proposal-meta">Úkol: '+bcoProposalEscape(row.approved_task_id)+'</div>':'')+
+      '</article>';
+    }).join('');
+    list.querySelectorAll('[data-proposal-action]').forEach(button=>button.addEventListener('click',async()=>{
+      const action=button.dataset.proposalAction,proposalId=button.dataset.proposalId;
+      if(action==='approve'&&!confirm('Schválit tento návrh a vytvořit jeden interní úkol?'))return;
+      if(action==='reject'&&!confirm('Odmítnout tento návrh?'))return;
+      button.disabled=true;
+      try{
+        await bcoRevenueEdge(action==='approve'?'approve_proposal':'reject_proposal','POST',{proposal_id:proposalId});
+        toast(action==='approve'?'Návrh schválen, úkol vytvořen.':'Návrh odmítnut.','ok');
+        await loadRevenueProposalRows();
+      }catch(error){toast(error.message||'Akce selhala.','bad');button.disabled=false;}
+    }));
+  }catch(error){
+    summary.textContent='Staging: '+(error.message||'Nelze načíst návrhy.');
+    if(String(error.message||'').includes('ORGANIZATION_ACCESS_DENIED')){
+      $('#proposalBoardCard')?.classList.add('hidden');
+      $('#proposalWorkspaceCard')?.classList.remove('hidden');
+    }
+  }
+}
+function wireRevenueProposalActions(){
+  $('#proposalSignIn')?.addEventListener('click',async()=>{
+    const email=$('#proposalEmail').value.trim(),password=$('#proposalPassword').value;
+    if(!email||!password)return toast('Vyplň e-mail a heslo.','bad');
+    try{
+      const session=await bcoRevenueRequest('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password})},false,false);
+      saveBcoRevenueSession(session);bcoRevenueOrganization=null;toast('Staging účet přihlášen.','ok');renderRevenueProposals();
+    }catch(error){$('#proposalAuthMessage').textContent=error.message||'Přihlášení selhalo.';}
+  });
+  $('#proposalSignUp')?.addEventListener('click',async()=>{
+    const email=$('#proposalEmail').value.trim(),password=$('#proposalPassword').value;
+    if(!email||password.length<8)return toast('Vyplň e-mail a heslo alespoň 8 znaků.','bad');
+    try{
+      const session=await bcoRevenueRequest('/auth/v1/signup',{method:'POST',body:JSON.stringify({email,password})},false,false);
+      if(session.access_token){saveBcoRevenueSession(session);toast('Staging účet vytvořen.','ok');renderRevenueProposals();}
+      else $('#proposalAuthMessage').textContent='Registrace přijata. Zkontroluj potvrzovací e-mail a potom se přihlas.';
+    }catch(error){$('#proposalAuthMessage').textContent=error.message||'Registrace selhala.';}
+  });
+  $('#proposalCreateWorkspace')?.addEventListener('click',async()=>{
+    const name=$('#proposalWorkspaceName').value.trim();
+    if(name.length<2)return toast('Název pracovního prostoru je příliš krátký.','bad');
+    try{
+      const result=await bcoRevenueEdge('create_workspace','POST',{name});
+      bcoRevenueOrganization=result.organization_id;toast('Stagingový pracovní prostor vytvořen.','ok');
+      await loadRevenueProposalRows();
+      $('#proposalWorkspaceCard')?.classList.add('hidden');$('#proposalBoardCard')?.classList.remove('hidden');
+    }catch(error){toast(error.message||'Pracovní prostor se nepodařilo vytvořit.','bad');}
+  });
+  $('#proposalRefresh')?.addEventListener('click',loadRevenueProposalRows);
+  $('#proposalLogout')?.addEventListener('click',()=>{saveBcoRevenueSession(null);bcoRevenueOrganization=null;renderRevenueProposals();});
+}
+wireRevenueProposalActions();
+
 init();
