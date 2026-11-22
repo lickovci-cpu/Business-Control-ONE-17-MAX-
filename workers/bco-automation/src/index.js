@@ -1,37 +1,106 @@
 const BACKOFF_MINUTES = [5, 15, 60];
 const MAX_BATCH = 20;
-const SOURCE = "https://raw.githubusercontent.com/lickovci-cpu/Business-Control-ONE-17-MAX-/infra/cloudflare-workers-preview-2026-11-21/public";
-const SOURCE_VERSION = "f16a138ffde8e16469682ff76c3823901dd60709";
-const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; manifest-src 'self'; worker-src 'none'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'";
-const ALLOWED = new Set([
-  "/_headers", "/app.js", "/assets/distribution/fve-feed-01.svg", "/assets/distribution/fve-feed-02.svg",
-  "/assets/distribution/nrsm-feed-01.svg", "/assets/distribution/nrsm-feed-02.svg", "/boot.js",
-  "/commercial-live.js", "/crm-live.js", "/fve.html", "/icon.svg", "/index.html", "/manifest.webmanifest",
-  "/mazliprint.html", "/nrsm.html", "/projects.html", "/robots.txt", "/sitemap.xml", "/studio",
-  "/studio-entry", "/studio-status.js", "/studio.css", "/studio.html", "/studio.js", "/styles.css", "/sw.js"
-]);
-const REWRITES = { "/projects": "/projects.html", "/fve": "/fve.html", "/nrsm": "/nrsm.html", "/mazliprint": "/mazliprint.html" };
-const TYPES = {
-  ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
-  ".svg": "image/svg+xml", ".json": "application/json; charset=utf-8", ".webmanifest": "application/manifest+json",
-  ".txt": "text/plain; charset=utf-8", ".xml": "application/xml; charset=utf-8"
-};
+const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://pflfbphulvutccvvhrot.supabase.co; media-src 'self' blob: https:; manifest-src 'self'; worker-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'";
 const SECURITY = {
-  "X-Content-Type-Options": "nosniff", "X-Robots-Tag": "noindex, nofollow, noarchive",
-  "Referrer-Policy": "strict-origin-when-cross-origin", "X-Frame-Options": "DENY",
-  "Content-Security-Policy": CSP, "Cache-Control": "no-store", "X-Preview-Source": "isolated-github-branch"
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "X-Frame-Options": "DENY",
+  "Cache-Control": "no-store",
+  "Content-Security-Policy": CSP
 };
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { ...SECURITY, "Content-Type": "application/json; charset=utf-8" } });
-}
-function mime(path) {
-  const ext = path.includes(".") ? path.slice(path.lastIndexOf(".")) : "";
-  return TYPES[ext] || "text/html; charset=utf-8";
 }
 function required(env, key) {
   const value = env[key];
   if (!value) throw new Error("MISSING_" + key);
   return value;
+}
+function stagingOrigin(env) {
+  const ref = required(env, "SUPABASE_PROJECT_REF");
+  const productionRef = required(env, "BCO_PRODUCTION_PROJECT_REF");
+  const url = new URL(required(env, "SUPABASE_URL"));
+  if (ref === productionRef || url.protocol !== "https:" || url.hostname !== ref + ".supabase.co" || url.username || url.password) {
+    throw new Error("STAGING_PROJECT_REF_MISMATCH");
+  }
+  return url.origin;
+}
+function bearer(request) {
+  const value = request.headers.get("Authorization") || "";
+  if (!/^Bearer [A-Za-z0-9._~-]{20,8192}$/.test(value)) return "";
+  return value.slice(7);
+}
+async function authUser(env, token) {
+  const base = stagingOrigin(env);
+  const key = required(env, "SUPABASE_PUBLISHABLE_KEY");
+  const response = await fetch(base + "/auth/v1/user", {
+    headers: { apikey: key, authorization: "Bearer " + token },
+    signal: AbortSignal.timeout(10000)
+  });
+  if (!response.ok) return null;
+  const user = await response.json().catch(() => null);
+  return user && typeof user.id === "string" ? user : null;
+}
+async function sessionRoute(request, env) {
+  if (request.method !== "GET") return json({ ok: false, error: "METHOD_NOT_ALLOWED" }, 405);
+  const token = bearer(request);
+  if (!token) return json({ authenticated: false, error: "AUTH_REQUIRED" }, 401);
+  try {
+    const user = await authUser(env, token);
+    if (!user) return json({ authenticated: false, error: "AUTH_INVALID" }, 401);
+    return json({ authenticated: true, user: { id: user.id } });
+  } catch (error) {
+    return json({ authenticated: false, error: String(error && error.message || "AUTH_UNAVAILABLE").slice(0, 100) }, 503);
+  }
+}
+const REVENUE_ACTIONS = new Map([
+  ["health", ["GET"]], ["proposals", ["GET"]], ["dashboard", ["GET"]],
+  ["search", ["GET"]], ["analyze", ["GET"]], ["summary", ["GET"]],
+  ["create_workspace", ["POST"]], ["approve_proposal", ["POST"]], ["reject_proposal", ["POST"]]
+]);
+async function revenueRoute(request, env, url) {
+  const action = url.searchParams.get("action") || "health";
+  const methods = REVENUE_ACTIONS.get(action);
+  if (!methods) return json({ ok: false, error: "UNKNOWN_ACTION" }, 400);
+  if (!methods.includes(request.method)) return json({ ok: false, error: "METHOD_NOT_ALLOWED" }, 405);
+  const token = bearer(request);
+  if (!token) return json({ ok: false, error: "AUTH_REQUIRED" }, 401);
+  let base;
+  try { base = stagingOrigin(env); } catch (error) {
+    return json({ ok: false, error: String(error && error.message || "STAGING_CONFIGURATION_INVALID") }, 503);
+  }
+  const key = required(env, "SUPABASE_PUBLISHABLE_KEY");
+  const query = new URLSearchParams({ action });
+  for (const name of ["organization_id", "q"]) {
+    const value = url.searchParams.get(name);
+    if (value) query.set(name, value.slice(0, 200));
+  }
+  let body;
+  if (request.method === "POST") {
+    const raw = await request.clone().text();
+    if (raw.length > 16384) return json({ ok: false, error: "REQUEST_TOO_LARGE" }, 413);
+    try { JSON.parse(raw || "{}"); } catch { return json({ ok: false, error: "INVALID_JSON" }, 400); }
+    body = raw || "{}";
+  }
+  try {
+    const upstream = await fetch(base + "/functions/v1/bco-command-center?" + query.toString(), {
+      method: request.method,
+      headers: {
+        apikey: key,
+        authorization: "Bearer " + token,
+        "content-type": "application/json",
+        "cache-control": "no-store"
+      },
+      body,
+      signal: AbortSignal.timeout(20000)
+    });
+    const payload = await upstream.text();
+    const headers = new Headers(SECURITY);
+    headers.set("Content-Type", upstream.headers.get("content-type") || "application/json; charset=utf-8");
+    return new Response(payload, { status: upstream.status, headers });
+  } catch {
+    return json({ ok: false, error: "STAGING_BACKEND_UNAVAILABLE" }, 502);
+  }
 }
 export function backoffMinutes(attempt) {
   return BACKOFF_MINUTES[Math.min(Math.max(Number(attempt || 1) - 1, 0), BACKOFF_MINUTES.length - 1)];
@@ -144,28 +213,44 @@ export async function runTick(env, scheduledAt) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/functions/v1/bco-command-center")) {
+      const origin = request.headers.get("Origin");
+      if (origin && origin !== url.origin) return json({ ok: false, error: "ORIGIN_NOT_ALLOWED" }, 403);
+      if (request.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: {
+          "Access-Control-Allow-Origin": url.origin,
+          "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+          "Access-Control-Allow-Headers": "authorization,content-type",
+          "Vary": "Origin",
+          "Cache-Control": "no-store"
+        }});
+      }
+    }
     if (url.pathname === "/api/health" && request.method === "GET") {
+      let staging = false;
+      try { stagingOrigin(env); staging = true; } catch {}
       return json({
-        ok: true, service: "bco-cloudflare-preview", preview: true, backend: "staging-only",
+        ok: true, version: "17-max", service: "bco-cloudflare-preview",
+        preview: true, backend: "staging-only", staging_configured: staging,
         scheduler_configured: Boolean(env.SUPABASE_URL && env.SUPABASE_PROJECT_REF &&
-          env.SUPABASE_SERVICE_ROLE_KEY && env.AUTOMATION_EXECUTOR_URL && env.AUTOMATION_EXECUTOR_TOKEN)
+          env.SUPABASE_SERVICE_ROLE_KEY && env.AUTOMATION_EXECUTOR_URL && env.AUTOMATION_EXECUTOR_TOKEN),
+        api: { session: true, revenue_proposals: true, legacy_integrations: false }
       });
     }
-    if (url.pathname.startsWith("/api/")) return json({ ok: false, error: "PREVIEW_BACKEND_NOT_CONNECTED", preview: true }, 503);
+    if (url.pathname === "/api/session") return sessionRoute(request, env);
+    if (url.pathname === "/api/revenue" || url.pathname === "/functions/v1/bco-command-center") {
+      return revenueRoute(request, env, url);
+    }
+    if (url.pathname.startsWith("/api/")) return json({ ok: false, error: "API_NOT_MIGRATED", preview: true }, 501);
     if (request.method !== "GET" && request.method !== "HEAD") return json({ ok: false, error: "METHOD_NOT_ALLOWED" }, 405);
-    let path;
-    try { path = decodeURIComponent(url.pathname); } catch { return json({ ok: false, error: "INVALID_PATH" }, 400); }
-    if (path === "/") path = "/index.html";
-    if (REWRITES[path]) path = REWRITES[path];
-    if (path.includes("\\") || path.includes("\0") || path.split("/").includes("..")) return json({ ok: false, error: "INVALID_PATH" }, 400);
-    if (!ALLOWED.has(path)) return json({ ok: false, error: "NOT_FOUND" }, 404);
-    let upstream;
-    try { upstream = await fetch(SOURCE + path + "?v=" + SOURCE_VERSION, { method: request.method, headers: { Accept: "*/*" } }); }
-    catch (error) { return json({ ok: false, error: "PREVIEW_ASSET_SOURCE_UNAVAILABLE", detail: String(error).slice(0, 180) }, 502); }
-    if (!upstream.ok) return json({ ok: false, error: "PREVIEW_ASSET_NOT_FOUND" }, 404);
-    const headers = new Headers(SECURITY);
-    headers.set("Content-Type", mime(path));
-    return new Response(request.method === "HEAD" ? null : upstream.body, { status: 200, headers });
+    const rewrites = { "/projects": "/projects.html", "/fve": "/fve.html", "/nrsm": "/nrsm.html", "/mazliprint": "/mazliprint.html" };
+    const rewritten = rewrites[url.pathname];
+    if (rewritten) {
+      url.pathname = rewritten;
+      return env.ASSETS.fetch(new Request(url.toString(), request));
+    }
+    if (!env.ASSETS) return json({ ok: false, error: "STATIC_ASSETS_NOT_BOUND" }, 503);
+    return env.ASSETS.fetch(request);
   },
   async scheduled(event, env, ctx) {
     ctx.waitUntil(runTick(env, new Date(event.scheduledTime))
