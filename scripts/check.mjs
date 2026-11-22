@@ -10,6 +10,9 @@ const html=await readFile('public/index.html','utf8'),ids=[...html.matchAll(/\bi
 if(dupes.length)throw new Error('Duplicate IDs: '+[...new Set(dupes)].join(', '));
 if(/style\s*=/.test(html))throw new Error('Inline style attribute would conflict with CSP.');
 const sw=await readFile('public/sw.js','utf8');
+const appSource=await readFile('public/app.js','utf8');
+const headers=await readFile('public/_headers','utf8');
+const workerConfig=JSON.parse(await readFile('workers/bco-automation/wrangler.jsonc','utf8'));
 if(!sw.includes("bc16-1-test-shell-v2")||!sw.includes("url.pathname.startsWith('/api/')")||!sw.includes('notificationclick'))throw new Error('Service worker strategy missing.');
 const app=await readFile('public/app.js','utf8');
 for(const marker of ['MEDIA_THUMB_CACHE','IntersectionObserver','ensureMediaFile','clearThumbCache','generateReel','renderMetaConnection','generateCampaign','leadFollowKit','autoSelectReelPhotos','truthGuard','renderSales','pipelineStats','quoteSave','dealCoachRun','renderJobs','JOB_TEMPLATES','renderCashWatch','buildReelPreview','renderControlRoom','controlRoomData','maybeDueNotification','requestPersistentStorage','runContentWorker','renderWorker','lastContentWorker'])if(!app.includes(marker))throw new Error('V15 marker missing: '+marker);
@@ -19,4 +22,9 @@ if(missing.length)throw new Error('JS references missing HTML ids: '+missing.joi
 const vercel=JSON.parse(await readFile('vercel.json','utf8'));const csp=vercel.headers?.flatMap(x=>x.headers||[]).find(x=>x.key==='Content-Security-Policy')?.value||'';
 if(!csp.includes("media-src 'self' blob: https:"))throw new Error('CSP media-src missing for local Reel preview.');
 const comms=await readFile('api/_comms.js','utf8');if(!comms.includes('regional'))throw new Error('RCS endpoint mode missing.');
-console.log(`CHECK OK — ${js.length} JS files, ${ids.length} unique UI ids, V11 Sales + Delivery + Reels Composer + PWA checks enabled.`);
+if(appSource.includes('vjzzvopwecmwuccdidzq')||appSource.includes('sb_publishable_XAa2FyYnSZE9_3iZrbhD3g_F3mn-wI5'))throw new Error('Production Supabase reference/key must not be present in staging frontend.');
+if(!appSource.includes('pflfbphulvutccvvhrot.supabase.co')||!appSource.includes("fetch('/api/revenue?'+query.toString())"))throw new Error('Staging Supabase / Worker proxy wiring missing.');
+if(headers.includes('vjzzvopwecmwuccdidzq')||!headers.includes('pflfbphulvutccvvhrot.supabase.co'))throw new Error('Static asset CSP is not staging-only.');
+if(workerConfig.triggers?.crons?.join(',')!=='*/5 * * * *')throw new Error('Existing Worker Cron schedule changed.');
+if(workerConfig.assets?.directory!=='../../public'||workerConfig.assets?.binding!=='ASSETS')throw new Error('Workers Static Assets binding missing.');
+console.log(`CHECK OK — ${js.length} JS files, ${ids.length} unique UI ids, staging-only frontend, Cloudflare assets, Cron and PWA checks enabled.`);
