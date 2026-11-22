@@ -1,4 +1,4 @@
-const CACHE='bc16-1-test-shell-v2';
+const CACHE='bc17-1-cloudflare-staging-v1';
 const SHELL=['/','/app.js','/styles.css','/manifest.webmanifest','/icon.svg'];
 
 self.addEventListener('install',event=>{
