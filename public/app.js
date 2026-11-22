@@ -484,15 +484,7 @@ function wireRevenueProposalActions(){
       saveBcoRevenueSession(session);bcoRevenueOrganization=null;toast('Staging účet přihlášen.','ok');renderRevenueProposals();
     }catch(error){$('#proposalAuthMessage').textContent=error.message||'Přihlášení selhalo.';}
   });
-  $('#proposalSignUp')?.addEventListener('click',async()=>{
-    const email=$('#proposalEmail').value.trim(),password=$('#proposalPassword').value;
-    if(!email||password.length<8)return toast('Vyplň e-mail a heslo alespoň 8 znaků.','bad');
-    try{
-      const session=await bcoRevenueRequest('/auth/v1/signup',{method:'POST',body:JSON.stringify({email,password})},false,false);
-      if(session.access_token){saveBcoRevenueSession(session);toast('Staging účet vytvořen.','ok');renderRevenueProposals();}
-      else $('#proposalAuthMessage').textContent='Registrace přijata. Zkontroluj potvrzovací e-mail a potom se přihlas.';
-    }catch(error){$('#proposalAuthMessage').textContent=error.message||'Registrace selhala.';}
-  });
+  $('#proposalSignUp')?.addEventListener('click',()=>toast('Registrace dalších účtů je vypnutá. Použij existující BCO staging účet.','warn'));
   $('#proposalCreateWorkspace')?.addEventListener('click',async()=>{
     const name=$('#proposalWorkspaceName').value.trim();
     if(name.length<2)return toast('Název pracovního prostoru je příliš krátký.','bad');
