@@ -1,0 +1,48 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "bco-cloudflare-preview",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-21",
+  "vars": {
+    "SUPABASE_URL": "https://pflfbphulvutccvvhrot.supabase.co",
+    "SUPABASE_PROJECT_REF": "pflfbphulvutccvvhrot",
+    "BCO_PRODUCTION_PROJECT_REF": "vjzzvopwecmwuccdidzq",
+    "AUTOMATION_EXECUTOR_URL": "https://pflfbphulvutccvvhrot.supabase.co/functions/v1/automation-executor",
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_-hf4S_b-TUTmPQE0EnZHBA_xg5N3WHG"
+  },
+  "triggers": {
+    "crons": [
+      "*/5 * * * *"
+    ]
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    }
+  },
+  "assets": {
+    "directory": "../../public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": [
+      "/api/*",
+      "/functions/v1/bco-command-center*",
+      "/projects",
+      "/fve",
+      "/nrsm",
+      "/mazliprint"
+    ]
+  },
+  "secrets": {
+    "required": [
+      "AUTOMATION_EXECUTOR_TOKEN",
+      "SUPABASE_SERVICE_ROLE_KEY"
+    ]
+  }
+}
