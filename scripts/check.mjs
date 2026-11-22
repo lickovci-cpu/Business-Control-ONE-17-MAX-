@@ -23,7 +23,7 @@ const vercel=JSON.parse(await readFile('vercel.json','utf8'));const csp=vercel.h
 if(!csp.includes("media-src 'self' blob: https:"))throw new Error('CSP media-src missing for local Reel preview.');
 const comms=await readFile('api/_comms.js','utf8');if(!comms.includes('regional'))throw new Error('RCS endpoint mode missing.');
 if(appSource.includes('vjzzvopwecmwuccdidzq')||appSource.includes('sb_publishable_XAa2FyYnSZE9_3iZrbhD3g_F3mn-wI5'))throw new Error('Production Supabase reference/key must not be present in staging frontend.');
-if(!appSource.includes('pflfbphulvutccvvhrot.supabase.co')||!appSource.includes("fetch('/api/revenue?'+query.toString())"))throw new Error('Staging Supabase / Worker proxy wiring missing.');
+if(!appSource.includes('pflfbphulvutccvvhrot.supabase.co')||!appSource.includes("fetch('/api/revenue?'+query.toString())")||!appSource.includes("$('#loginRegisterBtn').onclick"))throw new Error('Staging Supabase / Worker proxy wiring missing.');
 if(headers.includes('vjzzvopwecmwuccdidzq')||!headers.includes('pflfbphulvutccvvhrot.supabase.co'))throw new Error('Static asset CSP is not staging-only.');
 if(workerConfig.triggers?.crons?.join(',')!=='*/5 * * * *')throw new Error('Existing Worker Cron schedule changed.');
 if(workerConfig.assets?.directory!=='../../public'||workerConfig.assets?.binding!=='ASSETS')throw new Error('Workers Static Assets binding missing.');
