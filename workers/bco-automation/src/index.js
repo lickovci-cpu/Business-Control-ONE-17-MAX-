@@ -69,7 +69,10 @@ async function revenueRoute(request, env, url) {
   try { base = stagingOrigin(env); } catch (error) {
     return json({ ok: false, error: String(error && error.message || "STAGING_CONFIGURATION_INVALID") }, 503);
   }
-  const key = required(env, "SUPABASE_PUBLISHABLE_KEY");
+  let key;
+  try { key = required(env, "SUPABASE_PUBLISHABLE_KEY"); } catch (error) {
+    return json({ ok: false, error: String(error && error.message || "STAGING_KEY_NOT_CONFIGURED") }, 503);
+  }
   const query = new URLSearchParams({ action });
   for (const name of ["organization_id", "q"]) {
     const value = url.searchParams.get(name);
@@ -247,7 +250,7 @@ export default {
     const rewritten = rewrites[url.pathname];
     if (rewritten) {
       url.pathname = rewritten;
-      return env.ASSETS.fetch(new Request(url.toString(), request));
+      return env.ASSETS.fetch(new Request(url.toString(), { method: request.method, headers: request.headers }));
     }
     if (!env.ASSETS) return json({ ok: false, error: "STATIC_ASSETS_NOT_BOUND" }, 503);
     return env.ASSETS.fetch(request);
