@@ -181,3 +181,15 @@ body[data-workspace="merch"]{--bg:#0b1017;--surface:#121b26;--surface2:#172536;-
 .nav-label{align-self:center;padding:0 4px;color:var(--muted2);font:900 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em}
 .tabs button[data-tab="today"]{order:-2}.tabs button[data-tab="crm"],.tabs button[data-tab="sales"],.tabs button[data-tab="content"]{order:-1}
 @media(max-width:760px){.nav-label{display:none}.tabs{justify-content:flex-start}.tabs button{min-width:64px;justify-content:center}.tabs button[data-tab="today"]{order:0}.tabs button[data-tab="crm"]{order:1}.tabs button[data-tab="sales"]{order:2}.tabs button[data-tab="content"]{order:3}.tabs button[data-tab="settings"]{order:4}}
+
+
+/* BCO Revenue Engine proposal inbox */
+.proposal-list{display:grid;gap:10px;margin-top:12px}
+.proposal-card{border:1px solid var(--line2);border-radius:14px;background:var(--surface2);padding:13px;min-width:0}
+.proposal-card h3{margin:9px 0 6px;font-size:15px}
+.proposal-card p{margin:0;color:var(--muted);font-size:12px;line-height:1.55}
+.proposal-meta{margin-top:8px;color:var(--muted2);font-size:10px;overflow-wrap:anywhere}
+.proposal-notes{margin-top:8px;padding:9px 10px;border-left:2px solid var(--primary);background:rgba(20,30,45,.38);font-size:11px;line-height:1.5;white-space:pre-wrap}
+#proposals .action-row{margin-top:10px}
+#proposals .action-row .btn{min-width:150px}
+@media(max-width:760px){#proposals .action-row{grid-template-columns:1fr}.proposal-card{padding:11px}}
