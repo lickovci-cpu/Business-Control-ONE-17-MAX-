@@ -13,7 +13,7 @@ const sw=await readFile('public/sw.js','utf8');
 const appSource=await readFile('public/app.js','utf8');
 const headers=await readFile('public/_headers','utf8');
 const workerConfig=JSON.parse(await readFile('workers/bco-automation/wrangler.jsonc','utf8'));
-if(!sw.includes("bc16-1-test-shell-v2")||!sw.includes("url.pathname.startsWith('/api/')")||!sw.includes('notificationclick'))throw new Error('Service worker strategy missing.');
+if(!sw.includes("bc17-1-cloudflare-staging-v1")||!sw.includes("url.pathname.startsWith('/api/')")||!sw.includes('notificationclick'))throw new Error('Service worker strategy missing.');
 const app=await readFile('public/app.js','utf8');
 for(const marker of ['MEDIA_THUMB_CACHE','IntersectionObserver','ensureMediaFile','clearThumbCache','generateReel','renderMetaConnection','generateCampaign','leadFollowKit','autoSelectReelPhotos','truthGuard','renderSales','pipelineStats','quoteSave','dealCoachRun','renderJobs','JOB_TEMPLATES','renderCashWatch','buildReelPreview','renderControlRoom','controlRoomData','maybeDueNotification','requestPersistentStorage','runContentWorker','renderWorker','lastContentWorker'])if(!app.includes(marker))throw new Error('V15 marker missing: '+marker);
 const literalIds=[...app.matchAll(/\$\('#([A-Za-z0-9_-]+)'\)/g)].map(m=>m[1]);
