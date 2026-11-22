@@ -20,9 +20,11 @@
     <div class="auth-logo"><span class="brand-mark">BC</span><span>BUSINESS CONTROL ONE</span></div>
     <div class="eyebrow">SECURE ACCESS</div>
     <h1>Odemknout Business OS</h1>
-    <p class="muted">Heslo zůstává pouze na serveru. Po přihlášení vznikne zabezpečená HttpOnly session.</p>
-    <label class="field-label" for="loginPassword">Přístupové heslo</label>
-    <input id="loginPassword" type="password" autocomplete="current-password" placeholder="APP_PASSWORD">
+    <p class="muted">Přihlášení přes Supabase Auth v odděleném staging projektu. Produkční databáze se nepoužívá.</p>
+    <label class="field-label" for="loginEmail">Staging e-mail</label>
+    <input id="loginEmail" type="email" autocomplete="username" placeholder="E-mail staging účtu">
+    <label class="field-label" for="loginPassword">Heslo</label>
+    <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Heslo staging účtu">
     <button id="loginBtn" class="btn primary auth-submit">Přihlásit</button>
     <div id="loginMsg" class="status-line"></div>
   </div>
