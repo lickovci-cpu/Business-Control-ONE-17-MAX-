@@ -38,5 +38,11 @@
       "/nrsm",
       "/mazliprint"
     ]
+  },
+  "secrets": {
+    "required": [
+      "AUTOMATION_EXECUTOR_TOKEN",
+      "SUPABASE_SERVICE_ROLE_KEY"
+    ]
   }
 }
