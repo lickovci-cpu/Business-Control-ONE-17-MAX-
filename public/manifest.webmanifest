@@ -1,7 +1,7 @@
 {
-  "name": "Business Control ONE 15 MAX",
-  "short_name": "BC ONE 15",
-  "description": "AI Business OS pro prodej, zakázky, CRM, nabídky, Reels, média, komunikaci a cashflow.",
+  "name": "Business Control ONE 17 MAX",
+  "short_name": "BC ONE 17",
+  "description": "BCO 17 MAX – stagingový Business OS pro CRM, obchodní návrhy a provozní řízení.",
   "id": "/",
   "start_url": "/?source=pwa",
   "scope": "/",
