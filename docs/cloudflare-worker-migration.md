@@ -62,3 +62,6 @@ Rollback procedure after a future deployment:
 4. Verify `/api/health`, Cron schedule, and the automation tick after rollback.
 
 No Cloudflare upload or deployment was performed during this implementation phase.
+
+- Wrangler config explicitly declares the two existing secret names under `secrets.required`. This validates their presence during a real Wrangler deploy without storing or reading their values.
+- Cloudflare's Wrangler deployment documentation states that existing secrets are preserved by deployments; use Wrangler for deployment rather than a direct script-content replacement API call.
