@@ -84,4 +84,4 @@ end;
 $function$;
 
 revoke all on function public.record_bco_executor_audit(uuid, uuid, uuid, text, text, uuid, text, text, text, text, text, jsonb) from public, anon, authenticated;
-grant execute on function public.record_bco_executor_audit(uuid, uuid, uuid, text, text, text, text, text, text, text, text, jsonb) to service_role;
+grant execute on function public.record_bco_executor_audit(uuid, uuid, uuid, text, text, uuid, text, text, text, text, text, jsonb) to service_role;
