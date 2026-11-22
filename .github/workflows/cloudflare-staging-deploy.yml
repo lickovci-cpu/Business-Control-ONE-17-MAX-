@@ -1,0 +1,110 @@
+name: BCO Cloudflare Staging Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_deploy:
+        description: "Deploy the tested build to the existing bco-cloudflare-preview Worker"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bco-cloudflare-preview-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/bco/control-plane-v1' && inputs.confirm_deploy == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts
+
+      - name: Cloudflare Worker dry-run (no upload)
+        run: npx --yes wrangler@4.166.0 deploy --dry-run --config workers/bco-automation/wrangler.jsonc --outdir /tmp/bco-worker-dry-run
+
+      - name: Regression and security tests
+        run: |
+          npm run check
+          npm test
+
+      - name: Snapshot active deployment and Cron
+        id: snapshot
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: "7bcfaba8091e97f6a78e3a61426c9b8a"
+        run: |
+          set -euo pipefail
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Missing GitHub Actions secret CLOUDFLARE_API_TOKEN. No deployment was attempted."
+            exit 1
+          fi
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/bco-cloudflare-preview"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/deployments" -o /tmp/bco-deployments-before.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/schedules" -o /tmp/bco-schedules-before.json
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const deployments = JSON.parse(fs.readFileSync('/tmp/bco-deployments-before.json','utf8'));
+          const schedules = JSON.parse(fs.readFileSync('/tmp/bco-schedules-before.json','utf8'));
+          const deployment = deployments.result?.deployments?.[0];
+          const version = deployment?.versions?.[0]?.version_id;
+          const crons = (schedules.result?.schedules || []).map(x => x.cron).sort();
+          if (!deployment?.id || !version) throw new Error('Cannot identify active rollback version.');
+          if (crons.length !== 1 || crons[0] !== '*/5 * * * *') throw new Error('Active Cron is not exactly */5 * * * *. Stop before deploy.');
+          fs.writeFileSync('/tmp/bco-schedules-restore.json', JSON.stringify({schedules:schedules.result.schedules}));
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `previous_version=${version}\nprevious_deployment=${deployment.id}\n`);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Pre-deploy rollback snapshot\n- Deployment: ${deployment.id}\n- Version: ${version}\n- Cron: ${crons.join(', ')}\n`);
+          NODE
+
+      - name: Deploy existing staging Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: "7bcfaba8091e97f6a78e3a61426c9b8a"
+        run: npx --yes wrangler@4.166.0 deploy --config workers/bco-automation/wrangler.jsonc --message "BCO staging $GITHUB_SHA"
+
+      - name: Verify staging and rollback automatically on failure
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: "7bcfaba8091e97f6a78e3a61426c9b8a"
+          PREVIOUS_VERSION: ${{ steps.snapshot.outputs.previous_version }}
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/bco-cloudflare-preview"
+          rollback() {
+            echo "::error::Post-deploy verification failed. Routing 100% traffic back to $PREVIOUS_VERSION."
+            curl -fsS -X POST -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" \
+              --data "{\"strategy\":\"percentage\",\"versions\":[{\"version_id\":\"$PREVIOUS_VERSION\",\"percentage\":100}],\"annotations\":{\"workers/message\":\"Automatic rollback after failed BCO staging verification\"}}" \
+              "$api/deployments"
+            curl -fsS -X PUT -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" \
+              --data-binary @/tmp/bco-schedules-restore.json "$api/schedules"
+            exit 1
+          }
+          health="$(curl -fsS https://bco-cloudflare-preview.lickovci.workers.dev/api/health)" || rollback
+          printf '%s' "$health" | node --input-type=module -e "let s='';for await(const c of process.stdin)s+=c;const h=JSON.parse(s);if(h.ok!==true||h.staging_configured!==true||h.scheduler_configured!==true)process.exit(1)" || rollback
+          session_code="$(curl -sS -o /tmp/bco-session.json -w '%{http_code}' https://bco-cloudflare-preview.lickovci.workers.dev/api/session)" || rollback
+          [ "$session_code" = "401" ] || rollback
+          revenue_code="$(curl -sS -o /tmp/bco-revenue.json -w '%{http_code}' "https://bco-cloudflare-preview.lickovci.workers.dev/api/revenue?action=proposals")" || rollback
+          [ "$revenue_code" = "401" ] || rollback
+          curl -fsS https://bco-cloudflare-preview.lickovci.workers.dev/manifest.webmanifest -o /tmp/bco-manifest.json || rollback
+          node --input-type=module -e "const m=JSON.parse(await (await import('node:fs/promises')).readFile('/tmp/bco-manifest.json','utf8'));if(m.name!=='Business Control ONE 17 MAX')process.exit(1)" || rollback
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/schedules" -o /tmp/bco-schedules-after.json || rollback
+          node --input-type=module <<'NODE' || rollback
+          import fs from 'node:fs';
+          const before=JSON.parse(fs.readFileSync('/tmp/bco-schedules-before.json','utf8')).result.schedules.map(x=>x.cron).sort();
+          const after=JSON.parse(fs.readFileSync('/tmp/bco-schedules-after.json','utf8')).result.schedules.map(x=>x.cron).sort();
+          if(JSON.stringify(before)!==JSON.stringify(after))process.exit(1);
+          NODE
+          echo "BCO staging deploy verified: health, staging pin, auth guard, revenue auth guard, PWA manifest and unchanged Cron."
