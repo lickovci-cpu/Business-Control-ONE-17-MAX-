@@ -65,3 +65,17 @@ No Cloudflare upload or deployment was performed during this implementation phas
 
 - Wrangler config explicitly declares the two existing secret names under `secrets.required`. This validates their presence during a real Wrangler deploy without storing or reading their values.
 - Cloudflare's Wrangler deployment documentation states that existing secrets are preserved by deployments; use Wrangler for deployment rather than a direct script-content replacement API call.
+
+## Controlled staging deployment
+
+A manual GitHub Actions workflow is prepared at `.github/workflows/cloudflare-staging-deploy.yml`.
+
+- It can run only from `bco/control-plane-v1` and requires the explicit boolean `confirm_deploy=true`.
+- It reruns Wrangler dry-run, `npm run check`, and `npm test` before any upload.
+- It snapshots the active deployment/version and Cron before deployment.
+- It uses Wrangler (not direct Worker content replacement), which preserves existing Cloudflare secret bindings; required secret names are validated without reading their values.
+- After deployment it checks staging health, unauthenticated session/revenue rejection, PWA manifest version, and unchanged Cron.
+- If a post-deploy check fails, it routes traffic back to the captured previous version and restores the saved Cron schedule.
+- GitHub Actions must have a repository secret named `CLOUDFLARE_API_TOKEN` with Workers Scripts Read/Write permissions. The token is never written to the repository or printed.
+
+The workflow is manual only. No automatic deployment is triggered by pushes.
