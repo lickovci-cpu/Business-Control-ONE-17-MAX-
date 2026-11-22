@@ -78,6 +78,12 @@ try{
   const wrongOrigin=await worker.fetch(new Request('https://bco-preview.example/api/revenue?action=proposals',{headers:{Origin:'https://evil.example',Authorization:'Bearer valid-staging-user-token'}}),env);
   assert.equal(wrongOrigin.status,403);
 
+  const wrongPortEnv={...env,SUPABASE_URL:'https://pflfbphulvutccvvhrot.supabase.co:8443'};
+  const wrongPort=await worker.fetch(new Request('https://bco-preview.example/api/revenue?action=proposals',{headers:{Authorization:'Bearer valid-staging-user-token'}}),wrongPortEnv);
+  assert.equal(wrongPort.status,503);
+  const nonJson=await worker.fetch(new Request('https://bco-preview.example/api/revenue?action=approve_proposal',{method:'POST',headers:{Authorization:'Bearer valid-staging-user-token','content-type':'text/plain'},body:'{}'}),env);
+  assert.equal(nonJson.status,415);
+
   const prodEnv={...env,SUPABASE_URL:'https://vjzzvopwecmwuccdidzq.supabase.co'};
   const prodGuard=await worker.fetch(new Request('https://bco-preview.example/api/revenue?action=proposals',{headers:{Authorization:'Bearer valid-staging-user-token'}}),prodEnv);
   assert.equal(prodGuard.status,503);
