@@ -1,6 +1,12 @@
 name: BCO Cloudflare Staging Deploy
 
 on:
+  workflow_call:
+    inputs:
+      confirm_deploy:
+        description: "Deploy only after guarded CI and rollback checks"
+        required: true
+        type: boolean
   workflow_dispatch:
     inputs:
       confirm_deploy:
