@@ -194,6 +194,37 @@
       </div>
     </section>
 
+<section id="proposals" class="section">
+  <div class="section-title">
+    <div><div class="section-kicker">REVENUE ENGINE / STAGING</div><h1>Obchodní návrhy</h1><p class="muted">Samostatný stagingový účet. Toto přihlášení není propojeno s produkčním Supabase.</p></div>
+    <span id="proposalState" class="pill subtle">Staging: odhlášeno</span>
+  </div>
+  <div class="grid">
+    <div class="card full" id="proposalAuthCard">
+      <div class="card-head"><div><div class="section-kicker">STAGING AUTH</div><h2>Přihlášení do BCO Revenue Engine</h2></div></div>
+      <div class="row">
+        <input id="proposalEmail" type="email" autocomplete="email" placeholder="E-mail staging účtu">
+        <input id="proposalPassword" type="password" autocomplete="current-password" placeholder="Heslo, minimálně 8 znaků">
+      </div>
+      <div class="action-row">
+        <button class="btn primary" id="proposalSignIn">Přihlásit</button>
+        <button class="btn" id="proposalSignUp">Vytvořit staging účet</button>
+      </div>
+      <p id="proposalAuthMessage" class="muted">Registrace může vyžadovat potvrzení e-mailu. Zprávu případně odešle Supabase až po tvém kliknutí na registraci.</p>
+    </div>
+    <div class="card full hidden" id="proposalWorkspaceCard">
+      <div class="card-head"><div><div class="section-kicker">FIRST WORKSPACE</div><h2>Založit pracovní prostor</h2></div></div>
+      <p class="muted">Vytvoří se stagingová organizace, vlastnické členství a omezený CEO plánovač. Žádné externí zprávy ani publikování.</p>
+      <div class="row"><input id="proposalWorkspaceName" maxlength="100" placeholder="Název pracovního prostoru"><button class="btn primary" id="proposalCreateWorkspace">Vytvořit prostor</button></div>
+    </div>
+    <div class="card full hidden" id="proposalBoardCard">
+      <div class="card-head"><div><div class="section-kicker">INTERNAL TASK PROPOSALS</div><h2>Návrhy k rozhodnutí</h2></div><div class="head-actions"><button class="btn small" id="proposalRefresh">Obnovit</button><button class="btn small" id="proposalLogout">Odhlásit staging</button></div></div>
+      <div id="proposalSummary" class="muted">Načítám návrhy…</div>
+      <div id="proposalList" class="proposal-list"></div>
+    </div>
+  </div>
+</section>
+
     <section id="crm" class="section">
       <div class="section-title"><div><div class="section-kicker">SALES</div><h1>CRM pipeline</h1></div><button class="btn" id="crmAudit">AI priority</button></div>
       <div class="grid"><div class="card full">
