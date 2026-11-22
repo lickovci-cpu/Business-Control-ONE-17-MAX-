@@ -95,7 +95,58 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const action = url.searchParams.get("action") ?? "health";
     if (action === "health") return json(req, { ok: true, service: "bco-command-center" });
+    if (action === "create_workspace") {
+      if (req.method !== "POST") return json(req, { ok: false, error: "METHOD_NOT_ALLOWED" }, 405);
+      const body = await req.json().catch(() => ({})) as Json;
+      const name = typeof body.name === "string" ? body.name.trim() : "";
+      if (name.length < 2 || name.length > 100) return json(req, { ok: false, error: "WORKSPACE_NAME_INVALID" }, 400);
+      const { data, error } = await client.rpc("create_bco_revenue_workspace", { p_name: name });
+      if (error) throw error;
+      return json(req, { ok: true, organization_id: data });
+    }
+
+    if (action === "approve_proposal" || action === "reject_proposal") {
+      if (req.method !== "POST") return json(req, { ok: false, error: "METHOD_NOT_ALLOWED" }, 405);
+      const body = await req.json().catch(() => ({})) as Json;
+      const proposalId = String(body.proposal_id ?? "");
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(proposalId)) {
+        return json(req, { ok: false, error: "INVALID_PROPOSAL_ID" }, 400);
+      }
+      const orgId = await resolveOrganization(
+        client,
+        typeof body.organization_id === "string" ? body.organization_id : url.searchParams.get("organization_id")
+      );
+      const { data: proposal, error: proposalError } = await client
+        .from("internal_task_proposals")
+        .select("id")
+        .eq("id", proposalId)
+        .eq("organization_id", orgId)
+        .maybeSingle();
+      if (proposalError) throw proposalError;
+      if (!proposal) return json(req, { ok: false, error: "PROPOSAL_NOT_FOUND" }, 404);
+
+      const rpcName = action === "approve_proposal"
+        ? "approve_internal_task_proposal"
+        : "reject_internal_task_proposal";
+      const { data, error } = await client.rpc(rpcName, { p_proposal_id: proposalId });
+      if (error) throw error;
+      return json(req, action === "approve_proposal"
+        ? { ok: true, status: "approved", task_id: data }
+        : { ok: true, status: "rejected", rejected: data === true });
+    }
+
     const orgId = await resolveOrganization(client, url.searchParams.get("organization_id"));
+    if (action === "proposals") {
+      if (req.method !== "GET") return json(req, { ok: false, error: "METHOD_NOT_ALLOWED" }, 405);
+      const { data, error } = await client.from("internal_task_proposals")
+        .select("id,project_id,source_type,source_id,idempotency_key,title,rationale,score,priority,task_notes,due_at,status,approved_task_id,approved_by,approved_at,created_at,updated_at")
+        .eq("organization_id", orgId)
+        .order("score", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return json(req, { ok: true, organization_id: orgId, proposals: data ?? [] });
+    }
     if (action === "dashboard") return json(req, { ok: true, organization_id: orgId, metrics: await dashboard(client, orgId) });
     if (action === "search") {
       const term = url.searchParams.get("q") ?? "";
