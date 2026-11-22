@@ -29,6 +29,15 @@ try{
   const wrangler=JSON.parse(await readFile(new URL('../workers/bco-automation/wrangler.jsonc',import.meta.url),'utf8'));
   const workerSource=await readFile(new URL('../workers/bco-automation/src/index.js',import.meta.url),'utf8');
   const sw=await readFile(new URL('../public/sw.js',import.meta.url),'utf8');
+  const app=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
+  const html=await readFile(new URL('../public/index.html',import.meta.url),'utf8');
+  const manifest=JSON.parse(await readFile(new URL('../public/manifest.webmanifest',import.meta.url),'utf8'));
+  assert.ok(sw.includes("bc17-1-cloudflare-staging-v1"));
+  assert.ok(app.includes("https://pflfbphulvutccvvhrot.supabase.co"));
+  assert.ok(!app.includes("vjzzvopwecmwuccdidzq"));
+  assert.ok(!app.includes("sb_publishable_XAa2FyYnSZE9_3iZrbhD3g_F3mn-wI5"));
+  assert.ok(html.includes('id="loginEmail"'));
+  assert.equal(manifest.name,"Business Control ONE 17 MAX");
   assert.deepEqual(wrangler.triggers.crons,['*/5 * * * *']);
   assert.equal(wrangler.assets.directory,'../../public');
   assert.equal(wrangler.assets.binding,'ASSETS');
