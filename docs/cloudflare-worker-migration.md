@@ -81,3 +81,11 @@ A manual GitHub Actions workflow is prepared at `.github/workflows/cloudflare-st
 The workflow is manual only. No automatic deployment is triggered by pushes.
 
 **GitHub dispatch limitation and safe trigger:** GitHub only registers `workflow_dispatch` workflows present on the repository default branch, so this branch-local manual entry cannot be launched directly from the Actions UI without changing the default branch. To preserve the requested branch boundary, the deployment workflow is also reusable from `.github/workflows/control-plane-runtime.yml`. A push to `bco/control-plane-v1` whose commit message explicitly contains `[deploy-bco-staging]` invokes that reusable workflow with `confirm_deploy=true`. The reusable workflow reruns dry-run and all tests, snapshots the active deployment and Cron, requires the GitHub Actions secret `CLOUDFLARE_API_TOKEN`, deploys only the existing staging Worker, verifies the preview, and automatically rolls back if post-deploy checks fail. Ordinary pushes do not deploy.
+
+
+## Latest pre-deploy validation
+
+- Commit `8b501de6f5f18ac8d671b37e1e9aeb7325a9eee0` passed the GitHub `Control Plane Runtime` workflow on 2026-11-22.
+- Wrangler 4.166.0 dry-run completed and read all 7 static asset files.
+- `npm run check`, smoke, control-plane, control-plane-api, and full `npm test` all passed.
+- No deployment has yet been made from this validation commit.
