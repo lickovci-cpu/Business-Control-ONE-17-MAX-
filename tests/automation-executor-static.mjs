@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 
 const source = readFileSync(new URL("../supabase/functions/automation-executor/index.ts", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/20261121143116_bco_automation_claims.sql", import.meta.url), "utf8");
-const auditMigration = readFileSync(new URL("../supabase/migrations/20261122011100_bco_executor_audit_idempotency.sql", import.meta.url), "utf8");
+const auditMigration = readFileSync(new URL("../supabase/migrations/20261122011401_bco_executor_audit_idempotency.sql", import.meta.url), "utf8");
 const proposalMigration = readFileSync(new URL("../supabase/migrations/20261122012900_bco_internal_task_proposals.sql", import.meta.url), "utf8");
 const proposalGuardMigration = readFileSync(new URL("../supabase/migrations/20261122013203_bco_proposal_approval_tenant_guard.sql", import.meta.url), "utf8");
 
