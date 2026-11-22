@@ -79,3 +79,5 @@ A manual GitHub Actions workflow is prepared at `.github/workflows/cloudflare-st
 - GitHub Actions must have a repository secret named `CLOUDFLARE_API_TOKEN` with Workers Scripts Read/Write permissions. The token is never written to the repository or printed.
 
 The workflow is manual only. No automatic deployment is triggered by pushes.
+
+**GitHub dispatch limitation:** the manual workflow currently exists only on `bco/control-plane-v1`. GitHub only registers `workflow_dispatch` workflows that are also present on the repository's default branch. I verified that this workflow is not yet registered in the Actions UI. I did not copy or merge it into `main`, because that would cross the requested branch boundary. Therefore the workflow is prepared but cannot yet be manually triggered from GitHub.
