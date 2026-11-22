@@ -11,8 +11,8 @@ const projects={
   tepovani:{name:'TEPOVÁNÍ & ÚKLID',label:'LOCAL SERVICE WORKSPACE',theme:'service',signature:'SERVICE / LOCAL',context:'Lokální čištění sedaček, koberců a domácností. Důvěryhodně, reálné ukázky, jednoduché objednání.'}
 };
 const stages=['Nový','Kontaktován','Nabídka','Zakázka','Uzavřeno'];
-const SB_URL='https://vjzzvopwecmwuccdidzq.supabase.co';
-const SB_KEY='sb_publishable_XAa2FyYnSZE9_3iZrbhD3g_F3mn-wI5';
+const SB_URL='https://pflfbphulvutccvvhrot.supabase.co';
+const SB_KEY='sb_publishable_-hf4S_b-TUTmPQE0EnZHBA_xg5N3WHG';
 const SB_SESSION='bc81-sb-session';
 const STATE_KEY='bc81';
 const APP_SNAPSHOT_KEY='business-control-one-8.1';
@@ -57,14 +57,22 @@ async function ai(task,prompt='',context={},images=[],project=state.project){ret
 function showAuth(){const g=$('#authGate');g.classList.remove('hidden');}
 function hideAuth(){$('#authGate').classList.add('hidden');}
 async function sessionCheck(){
-  const r=await fetch('/api/session',{credentials:'same-origin'}),j=await r.json().catch(()=>({}));
-  if(j.authenticated){hideAuth();return true;}
-  const legacy=localStorage.getItem('bc7key')||localStorage.getItem('bc6key');
-  if(legacy){try{await loginPanel(legacy);localStorage.removeItem('bc7key');localStorage.removeItem('bc6key');return true;}catch{}}
-  showAuth();return false;
+  bcoRevenueSession=loadBcoRevenueSession();
+  if(!bcoRevenueSession?.access_token){showAuth();return false;}
+  const r=await fetch('/api/session',{headers:{Authorization:'Bearer '+bcoRevenueSession.access_token},credentials:'same-origin',cache:'no-store'});
+  const j=await r.json().catch(()=>({}));
+  if(r.ok&&j.authenticated){hideAuth();return true;}
+  saveBcoRevenueSession(null);showAuth();return false;
 }
-async function loginPanel(password){const r=await fetch('/api/session',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({password})}),j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===429){const sec=Number(j.retryAfterSeconds||r.headers.get('retry-after')||180);throw new Error(`Příliš mnoho pokusů. Zkus to za ${Math.max(1,Math.ceil(sec/60))} min.`);}if(r.status===401&&Number.isFinite(Number(j.remainingAttempts)))throw new Error(`Neplatné heslo · zbývá ${j.remainingAttempts} pokusů.`);throw new Error(j.error||'Přihlášení selhalo.');}hideAuth();setTimeout(()=>health(),0);return true;}
-async function logoutPanel(){await fetch('/api/session',{method:'DELETE',credentials:'same-origin'});showAuth();}
+async function loginPanel(email,password){
+  const session=await bcoRevenueRequest('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password})},false,false);
+  if(!session?.access_token)throw new Error('Staging Supabase nevrátil přihlašovací session.');
+  saveBcoRevenueSession(session);hideAuth();setTimeout(()=>health(),0);return true;
+}
+async function logoutPanel(){
+  try{if(bcoRevenueSession?.access_token)await bcoRevenueRequest('/auth/v1/logout',{method:'POST'},true,false);}catch{}
+  saveBcoRevenueSession(null);bcoRevenueOrganization=null;showAuth();
+}
 function initTabs(){const t=$('#tabs');t.innerHTML='';tabs.forEach(([id,n])=>{const b=document.createElement('button');b.textContent=n;b.dataset.tab=id;b.onclick=()=>activateTab(id);t.appendChild(b)});activateTab('today');}
 function activateTab(id){if(id==='proposals')renderRevenueProposals();if(id==='control')renderControlRoom();if(id==='autopilot')renderAutopilot();$$('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));$$('.section').forEach(x=>x.classList.toggle('active',x.id===id));if(id==='media')renderMedia();if(id==='content'||id==='inbox'||id==='reels')loadMetaStatus();if(id==='reels'){renderReelPlan();loadRecentReels();renderReelComposer();}if(id==='sales')renderSales();if(id==='jobs')renderJobs();if(id==='analytics')loadAnalytics();if(id==='comms'){loadCommStatus();loadOutbox();}if(id==='settings'){renderSettings();health();renderPwaState();}}
 function applyWorkspace(){const w=projects[state.project];document.body.dataset.workspace=w.theme||state.project;$('#workspaceName').textContent=w.name;$('#workspaceLabel').textContent=w.label||'WORKSPACE';$('#workspaceSignature').textContent=w.signature||w.name;$('#cmd').placeholder=`Např. vyber dnešní priority pro ${w.name}, připrav follow-up a návrh obsahu.`;document.title=`${w.name} · Business Control ONE`;}
@@ -368,7 +376,7 @@ function wire(){  $('#metaCheckNow')?.addEventListener('click',()=>metaDiagnosti
     try{await navigator.clipboard.writeText(diag);toast('Diagnostika zkopírována.','ok');}catch{toast('Diagnostiku se nepodařilo zkopírovat.','bad');}
   });
 
-  $('#loginBtn').onclick=async()=>{const m=$('#loginMsg');m.textContent='Přihlašuji…';try{await loginPanel($('#loginPassword').value);$('#loginPassword').value='';m.textContent='';}catch(e){m.textContent=e.message;m.className='status-line bad';}};$('#loginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')$('#loginBtn').click();});$('#logoutBtn').onclick=logoutPanel;
+  $('#loginBtn').onclick=async()=>{const m=$('#loginMsg');m.textContent='Přihlašuji do stagingu…';try{await loginPanel($('#loginEmail').value.trim(),$('#loginPassword').value);$('#loginPassword').value='';m.textContent='';}catch(e){m.textContent=e.message;m.className='status-line bad';}};$('#loginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')$('#loginBtn').click();});$('#logoutBtn').onclick=logoutPanel;
   $('#controlRefresh').onclick=renderControlRoom;$('#workerRun').onclick=runContentWorker;$('#workerRefresh').onclick=renderWorker;$('#workerExport').onclick=exportWorker;$('#controlBrief').onclick=dailyBrief;$('#runCmd').onclick=runCommand;$('#campaignGenerate').onclick=generateCampaign;$$('.quickContent').forEach(b=>b.onclick=()=>quickContent(b.dataset.format));$('#quickReel').onclick=()=>activateTab('reels');$('#dailyBrief').onclick=dailyBrief;$('#aiCrmAudit').onclick=()=>{activateTab('crm');crmAudit();};$('#week').onclick=week;$('#publish').onclick=()=>publish(false);$('#schedule').onclick=()=>publish(true);$('#reelVideoFile').onchange=e=>{const f=e.target.files?.[0];if(f)previewLocalReel(f);};$('#reelRefreshRecent').onclick=loadRecentReels;$('#reelGenerate').onclick=generateReel;$('#reelUsePhotos').onclick=useSelectedForReel;$('#reelAutoPhotos').onclick=autoSelectReelPhotos;$('#reelHooksBtn').onclick=generateReelHooks;$('#reelExportKit').onclick=exportReelKit;$('#reelPreviewBuild').onclick=buildReelPreview;$('#reelPreviewPlay').onclick=playReelPreview;$('#reelPreviewNext').onclick=nextReelPreview;$('#reelPreviewExport').onclick=exportReelStoryboard;$('#reelOpenMedia').onclick=()=>activateTab('media');$('#reelPublish').onclick=publishReel;$('#reelCopyPlan').onclick=copyReelPlan;$('#reelToPost').onclick=()=>{const p=pd().lastReelPlan;if(!p)return toast('Nejdřív vytvoř Reel plán.','bad');$('#postText').value=[p.caption,p.cta,(p.hashtags||[]).join(' ')].filter(Boolean).join('\n\n');pd().draft.postText=$('#postText').value;persist();activateTab('content');toast('Popisek přenesen do editoru.','ok');};$('#pickFolder').onclick=pickFolder;$('#analyze').onclick=analyzeSelected;$('#mediaTopAnalyzed').onclick=selectTopAnalyzed;$('#findMedia').onclick=findMedia;$('#mediaLoadMore').onclick=()=>{mediaVisibleLimit+=MEDIA_PAGE;renderMedia();};$('#mediaLocalSearch').oninput=e=>{mediaSearch=e.target.value.trim().toLowerCase();mediaVisibleLimit=MEDIA_PAGE;renderMedia();};$('#mediaFolderFallback').onchange=e=>{if(e.target.files?.length)useFallbackFiles(e.target.files);e.target.value='';};$('#commAi').onclick=commAi;$('#commSend').onclick=commSend;$('#commQueue').onclick=commQueue;$('#commRefresh').onclick=loadOutbox;$('#loadInbox').onclick=loadInbox;$('#addLead').onclick=addLead;$('#cancelLeadEdit').onclick=clearLeadForm;$('#crmAudit').onclick=crmAudit;$('#crmSearch').oninput=renderCRM;$('#crmStageFilter').onchange=renderCRM;$('#salesRefresh').onclick=renderSales;$('#salesBatchFollow').onclick=salesBatchFollow;$('#saveMonthlyTarget').onclick=saveMonthlyTarget;$('#dealCoachLead').onchange=renderSales;$('#dealCoachRun').onclick=dealCoachRun;$('#dealCoachToComms').onclick=dealCoachToComms;$('#dealCoachQuote').onclick=dealCoachQuote;$('#exportLeadsCsv').onclick=exportLeadsCsv;$('#importLeadsCsv').onchange=e=>{if(e.target.files?.[0])importLeadsCsv(e.target.files[0]);e.target.value='';};$('#quoteAiScope').onclick=quoteAiScope;$('#quoteSave').onclick=quoteSave;$('#quoteExportCurrent').onclick=quoteExportCurrent;$('#jobsRefresh').onclick=renderJobs;$('#jobFromLead').onclick=jobFromLead;$('#jobCreate').onclick=createJob;$('#jobStatusFilter').onchange=renderJobs;$('#jobLead').onchange=()=>{if($('#jobLead').value)jobFromLead();};$('#refreshAnalytics').onclick=loadAnalytics;$('#addProd').onclick=addProduct;$('#productAudit').onclick=productAudit;
   $('#saveRecovery').onclick=()=>{if(saveRecoveryPoint('Ruční recovery bod'))toast('Recovery bod uložen.','ok');};$('#cloudLogin').onclick=()=>cloudLogin(false);$('#cloudRegister').onclick=()=>cloudLogin(true);$('#cloudCreateOrg').onclick=cloudCreateOrg;$('#cloudPull').onclick=cloudPull;$('#cloudPush').onclick=()=>cloudPush(false,false);$('#cloudForcePush').onclick=()=>{if(confirm('Vynutit přepsání cloudové zálohy aktuálními lokálními daty?'))cloudPush(true,false);};$('#enableNotifications').onclick=enableNotifications;$('#requestPersistentStorage').onclick=requestPersistentStorage;$('#checkAppUpdate').onclick=checkAppUpdate;$('#exportBackup').onclick=exportBackup;$('#importBackup').onchange=e=>e.target.files?.[0]&&importBackup(e.target.files[0]);$('#installPwa').onclick=async()=>{if(!deferredInstall)return toast('Instalace není v tomto prohlížeči právě dostupná.','bad');deferredInstall.prompt();await deferredInstall.userChoice;deferredInstall=null;};
   for(const id of ['cmd','postText','commTo','commSubject','commText','mediaQuery','reelGoal','reelBrief','reelVideoUrl','reelCaption','campaignGoal','campaignOffer','campaignAudience'])$('#'+id)?.addEventListener('input',scheduleDraftSave);for(const id of ['postWhen','commChannel','commWhen','reelDuration','reelStyle','reelTemplate','reelShareFeed'])$('#'+id)?.addEventListener('change',captureDraft);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'){captureDraft();maybeAutoRecovery();clearThumbCache();}else{if($('.section.active')?.id==='media')renderMedia();if($('.section.active')?.id==='reels')renderReelComposer();maybeDueNotification();}});window.addEventListener('pagehide',()=>{captureDraft();maybeAutoRecovery();clearThumbCache();cleanupReelPreview();const v=$('#reelVideoPreview');if(v?.dataset.url){URL.revokeObjectURL(v.dataset.url);v.dataset.url='';}});window.addEventListener('pageshow',()=>{if($('.section.active')?.id==='media')renderMedia();});setInterval(()=>maybeAutoRecovery(),60000);
@@ -398,9 +406,17 @@ async function bcoRevenueRequest(path,options={},useSession=true,retry=true){
   return data;
 }
 async function bcoRevenueEdge(action,method='GET',payload={}){
-    return bcoRevenueRequest('/functions/v1/bco-command-center?action='+encodeURIComponent(action)+suffix,{
-    method, ...(method==='GET'?{}:{body:JSON.stringify({...payload,...(bcoRevenueOrganization?{organization_id:bcoRevenueOrganization}:{})})})
-  },true);
+  const query=new URLSearchParams({action});
+  if(method==='GET'&&bcoRevenueOrganization)query.set('organization_id',bcoRevenueOrganization);
+  const headers={'content-type':'application/json'};
+  if(bcoRevenueSession?.access_token)headers.Authorization='Bearer '+bcoRevenueSession.access_token;
+  const response=await fetch('/api/revenue?'+query.toString(),{
+    method,headers,credentials:'same-origin',cache:'no-store',
+    ...(method==='GET'?{}:{body:JSON.stringify({...payload,...(bcoRevenueOrganization?{organization_id:bcoRevenueOrganization}:{})})})
+  });
+  const raw=await response.text();let data={};try{data=raw?JSON.parse(raw):{};}catch{data={message:raw};}
+  if(!response.ok)throw new Error(data.message||data.error||('HTTP '+response.status));
+  return data;
 }
 function bcoProposalEscape(value){return esc(String(value??''));}
 function renderRevenueProposals(){
