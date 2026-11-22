@@ -10,6 +10,7 @@ const projects={
   boost:{name:'MERCH',label:'CUSTOM MERCH WORKSPACE',theme:'merch',signature:'MERCH / PRODUCTION',context:'Custom merch a B2B výroba. Praktický dopad, poptávky a konverze před vanity metrikami.'},
   tepovani:{name:'TEPOVÁNÍ & ÚKLID',label:'LOCAL SERVICE WORKSPACE',theme:'service',signature:'SERVICE / LOCAL',context:'Lokální čištění sedaček, koberců a domácností. Důvěryhodně, reálné ukázky, jednoduché objednání.'}
 };
+const canonicalProjectId=key=>({jihoceske:'fve',fve:'fve',merch:'nrsm',boost:'nrsm',nrsm:'nrsm',mazliprint:'mazliprint',localProof:'local-proof-factory','local-proof-factory':'local-proof-factory',tepovani:'unassigned',unassigned:'unassigned'}[String(key||'').trim()]||'unassigned');
 const stages=['Nový','Kontaktován','Nabídka','Zakázka','Uzavřeno'];
 const SB_URL='https://pflfbphulvutccvvhrot.supabase.co';
 const SB_KEY='sb_publishable_-hf4S_b-TUTmPQE0EnZHBA_xg5N3WHG';
@@ -312,8 +313,8 @@ function productToContent(id){const x=pd().products.find(y=>y.id===id);if(!x)ret
 async function productAudit(){const runProject=state.project,out=$('#productOut');out.textContent='AI analyzuje produkty…';try{const j=await ai('product','Najdi nejslabší místa nabídky a navrhni testy s nejvyšší obchodní hodnotou.',ctx(runProject),[],runProject);if(state.project===runProject)out.textContent=`[${j.provider}]\n${j.text}`;}catch(e){if(state.project===runProject)out.textContent=e.message;}}
 function renderProjects(){const box=$('#projectCards');box.innerHTML=Object.entries(projects).map(([k,v])=>`<div class="project-card ${k===state.project?'active':''}" data-project="${k}"><strong>${esc(v.name)}</strong><span class=muted>${esc(v.context)}</span><div class=meta-dot id="meta-dot-${k}">Meta: kontrola</div></div>`).join('');$$('.project-card').forEach(x=>x.onclick=()=>{$('#project').value=x.dataset.project;switchProject(x.dataset.project);});for(const k of Object.keys(projects))api(`/api/meta?action=status&project=${k}`).then(s=>{const e=$(`#meta-dot-${k}`);if(e){e.textContent=s.valid?'Meta připraveno':s.state==='expired'?'Meta token vypršel':s.configured?'Meta chyba':'Meta nenastaveno';e.style.color=s.valid?'var(--good)':s.state==='expired'?'var(--bad)':'var(--muted)';}}).catch(()=>{});}
 function renderSettings(){renderProjects();$('#aiProviderSettings').value=state.aiProvider;renderCloudState();renderRecovery();renderActivity();}
-function loadSbSession(){try{return JSON.parse(localStorage.getItem(SB_SESSION)||'null');}catch{return null;}}
-function saveSbSession(s){sbSession=s;s?localStorage.setItem(SB_SESSION,JSON.stringify(s)):localStorage.removeItem(SB_SESSION);}
+function loadSbSession(){try{const current=localStorage.getItem(SB_SESSION);if(current)return JSON.parse(current);const legacy=localStorage.getItem('bco-revenue-staging-session-v1');if(legacy){localStorage.setItem(SB_SESSION,legacy);localStorage.removeItem('bco-revenue-staging-session-v1');return JSON.parse(legacy);}return null;}catch{return null;}}
+function saveSbSession(s){sbSession=s;if(typeof bcoRevenueSession!=='undefined')bcoRevenueSession=s;s?localStorage.setItem(SB_SESSION,JSON.stringify(s)):localStorage.removeItem(SB_SESSION);localStorage.removeItem('bco-revenue-staging-session-v1');}
 async function sbFetch(path,opt={},retry=true){let s=sbSession,headers={apikey:SB_KEY,'content-type':'application/json',...(opt.headers||{})};if(s?.access_token)headers.Authorization=`Bearer ${s.access_token}`;let r=await fetch(SB_URL+path,{...opt,headers});if(r.status===401&&retry&&s?.refresh_token){s=await sbRefresh();if(s){headers.Authorization=`Bearer ${s.access_token}`;r=await fetch(SB_URL+path,{...opt,headers});}}const text=await r.text();let j;try{j=text?JSON.parse(text):null;}catch{j=text;}if(!r.ok)throw new Error(j?.msg||j?.message||j?.error_description||j?.error||`Cloud HTTP ${r.status}`);return j;}
 async function sbRefresh(){if(!sbSession?.refresh_token)return null;try{const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`,{method:'POST',headers:{apikey:SB_KEY,'content-type':'application/json'},body:JSON.stringify({refresh_token:sbSession.refresh_token})}),j=await r.json();if(!r.ok)throw new Error();saveSbSession(j);return j;}catch{saveSbSession(null);return null;}}
 async function cloudLogin(register=false){const email=$('#cloudEmail').value.trim(),password=$('#cloudPassword').value;if(!email||password.length<8)return toast('Cloud účet vyžaduje e-mail a heslo minimálně 8 znaků.','bad');try{const path=register?'/auth/v1/signup':'/auth/v1/token?grant_type=password',j=await sbFetch(path,{method:'POST',body:JSON.stringify({email,password})},false);if(j?.access_token){saveSbSession(j);toast('Cloud účet přihlášen.','ok');await cloudIdentity();}else toast('Registrace vytvořena. Pokud je zapnuté potvrzení e-mailu, potvrď zprávu a pak se přihlas.','ok');renderCloudState();}catch(e){toast(e.message,'bad');}}
@@ -384,14 +385,14 @@ function wire(){  $('#metaCheckNow')?.addEventListener('click',()=>metaDiagnosti
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;});
 }
 async function init(){if(!recoveryPoints().length)saveRecoveryPoint('Start 17 MAX');initTabs();initProjects();wire();loadDraft();renderAll();renderWorker();if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).then(r=>r.update().catch(()=>{})).catch(()=>{});const ok=await sessionCheck();if(ok)await health();if(sbSession)setTimeout(()=>cloudIdentity(),80);renderCloudState();renderPwaState();setTimeout(()=>maybeDueNotification(),1200);setAutosaveState('Auto-save aktivní','ok');}
-/* Isolated staging Revenue Engine UI. Never reuse the production Supabase session. */
-const BCO_REVENUE_STAGE_URL='https://pflfbphulvutccvvhrot.supabase.co';
-const BCO_REVENUE_STAGE_KEY='sb_publishable_-hf4S_b-TUTmPQE0EnZHBA_xg5N3WHG';
-const BCO_REVENUE_SESSION_KEY='bco-revenue-staging-session-v1';
+/* Revenue Engine shares the one staging Supabase Auth session and storage key. */
+const BCO_REVENUE_STAGE_URL=SB_URL;
+const BCO_REVENUE_STAGE_KEY=SB_KEY;
+const BCO_REVENUE_SESSION_KEY=SB_SESSION;
 let bcoRevenueSession=null;
 let bcoRevenueOrganization=null;
-function loadBcoRevenueSession(){try{return JSON.parse(localStorage.getItem(BCO_REVENUE_SESSION_KEY)||'null');}catch{return null;}}
-function saveBcoRevenueSession(value){bcoRevenueSession=value;if(value)localStorage.setItem(BCO_REVENUE_SESSION_KEY,JSON.stringify(value));else localStorage.removeItem(BCO_REVENUE_SESSION_KEY);}
+function loadBcoRevenueSession(){return sbSession||loadSbSession();}
+function saveBcoRevenueSession(value){saveSbSession(value);}
 async function bcoRevenueRequest(path,options={},useSession=true,retry=true){
   const headers={apikey:BCO_REVENUE_STAGE_KEY,'content-type':'application/json',...(options.headers||{})};
   if(useSession&&bcoRevenueSession?.access_token)headers.Authorization='Bearer '+bcoRevenueSession.access_token;
