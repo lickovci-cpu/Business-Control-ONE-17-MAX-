@@ -27,7 +27,7 @@ assert.match(migration, /finish_bco_automation_run/i);
 assert.match(worker, /body\.ok !== true/);
 assert.match(worker, /AUTOMATION_EXECUTOR_TOKEN/);
 assert.doesNotMatch(wrangler, /(?:SUPABASE_SERVICE_ROLE_KEY|AUTOMATION_EXECUTOR_TOKEN)\s*[:=]/);
-assert.match(wrangler, /\"secrets\"\s*:\s*\\{\s*\"required\"\s*:\s*\\[\s*\"AUTOMATION_EXECUTOR_TOKEN\"\s*,\s*\"SUPABASE_SERVICE_ROLE_KEY\"/);
+assert.deepEqual(JSON.parse(wrangler).secrets?.required, ["AUTOMATION_EXECUTOR_TOKEN", "SUPABASE_SERVICE_ROLE_KEY"]);
 assert.doesNotMatch(migration, /drop table|truncate table/i);
 assert.match(securityPatch, /private\.is_org_member\(organization_id\)/i);
 assert.match(securityPatch, /create or replace function public\.set_organization_slug\(\s*target_org_id uuid/i);
