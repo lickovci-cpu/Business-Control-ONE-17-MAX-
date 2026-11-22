@@ -24,6 +24,8 @@ jobs:
           npm --version
       - name: Install dependencies
         run: npm install --ignore-scripts
+      - name: Cloudflare Worker build dry-run (no upload)
+        run: npx --yes wrangler@latest deploy --dry-run --config workers/bco-automation/wrangler.jsonc --outdir /tmp/bco-worker-dry-run
       - name: npm run check
         run: npm run check
       - name: smoke
