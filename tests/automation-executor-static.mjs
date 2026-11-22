@@ -5,6 +5,7 @@ const source = readFileSync(new URL("../supabase/functions/automation-executor/i
 const migration = readFileSync(new URL("../supabase/migrations/20261121143116_bco_automation_claims.sql", import.meta.url), "utf8");
 const auditMigration = readFileSync(new URL("../supabase/migrations/20261122011100_bco_executor_audit_idempotency.sql", import.meta.url), "utf8");
 const proposalMigration = readFileSync(new URL("../supabase/migrations/20261122130000_bco_internal_task_proposals.sql", import.meta.url), "utf8");
+const proposalGuardMigration = readFileSync(new URL("../supabase/migrations/20261122134500_bco_proposal_approval_tenant_guard.sql", import.meta.url), "utf8");
 
 assert.match(source, /\.eq\("id", runId\)\.eq\("automation_id", automationId\)\.eq\("organization_id", organizationId\)/);
 assert.match(source, /\.eq\("id", automationId\)\.eq\("organization_id", organizationId\)/);
@@ -64,3 +65,6 @@ assert.match(proposalMigration, /for update/i);
 assert.match(proposalMigration, /insert into public\.tasks/i);
 assert.match(proposalMigration, /task_proposal_approved/i);
 assert.match(proposalMigration, /return v_proposal\.approved_task_id/i);
+
+assert.ok(proposalGuardMigration.includes("coalesce(v_role, '') not in"));
+assert.match(proposalGuardMigration, /PROPOSAL_APPROVAL_FORBIDDEN/);
