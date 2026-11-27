@@ -6,8 +6,11 @@ const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf
 const edge = readFileSync(new URL("../supabase/functions/bco-command-center/index.ts", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/20261122021357_bco_revenue_proposals_workspace.sql", import.meta.url), "utf8");
 
-assert.match(app, /BCO_REVENUE_STAGE_URL='https:\/\/pflfbphulvutccvvhrot\.supabase\.co'/);
-assert.match(app, /BCO_REVENUE_SESSION_KEY='bco-revenue-staging-session-v1'/);
+assert.match(app, /const SB_URL='https:\/\/pflfbphulvutccvvhrot\.supabase\.co'/);
+assert.match(app, /const BCO_REVENUE_STAGE_URL=SB_URL;/);
+assert.match(app, /const BCO_REVENUE_STAGE_KEY=SB_KEY;/);
+assert.match(app, /const SB_SESSION='bc81-sb-session'/);
+assert.match(app, /const BCO_REVENUE_SESSION_KEY=SB_SESSION;/);
 assert.match(app, /fetch\('\/api\/revenue\?'/);
 assert.match(app, /Authorization='Bearer '\+bcoRevenueSession\.access_token/);
 assert.match(app, /proposalSignIn/);
