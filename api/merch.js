@@ -1,12 +1,12 @@
-import {body,auth,noauth,sendError,projectKey} from './_lib.js';
+import {body,auth,noauth,sendError,projectKey,supabaseBaseUrl,supabaseServiceKey} from './_lib.js';
 
-const SB_URL=process.env.SUPABASE_URL||'https://vjzzvopwecmwuccdidzq.supabase.co';
-const SB_KEY=process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.SUPABASE_SERVICE_KEY||'';
+const SB_URL=()=>supabaseBaseUrl();
+const SB_KEY=()=>supabaseServiceKey();
 const ORG='d2751286-da99-42c0-b8ac-6a2da8ecdabf';
 const PROJECT='merch';
 
-function requireDb(){if(!SB_KEY){const e=new Error('CRM_DB_NOT_CONFIGURED');e.status=503;throw e;}}
-async function sb(path,opt={}){requireDb();const r=await fetch(`${SB_URL}/rest/v1/${path}`,{...opt,headers:{apikey:SB_KEY,Authorization:`Bearer ${SB_KEY}`,'content-type':'application/json',...(opt.headers||{})},signal:AbortSignal.timeout(15000)});const text=await r.text();let data={};try{data=text?JSON.parse(text):{}}catch{data={raw:text};}if(!r.ok){const e=new Error(data.message||data.error||`SUPABASE_HTTP_${r.status}`);e.status=502;throw e;}return data;}
+function requireDb(){if(!SB_KEY()){const e=new Error('CRM_DB_NOT_CONFIGURED');e.status=503;throw e;}}
+async function sb(path,opt={}){requireDb();const r=await fetch(`${SB_URL()}/rest/v1/${path}`,{...opt,headers:{apikey:SB_KEY(),Authorization:`Bearer ${SB_KEY()}`,'content-type':'application/json',...(opt.headers||{})},signal:AbortSignal.timeout(15000)});const text=await r.text();let data={};try{data=text?JSON.parse(text):{}}catch{data={raw:text};}if(!r.ok){const e=new Error(data.message||data.error||`SUPABASE_HTTP_${r.status}`);e.status=502;throw e;}return data;}
 function clean(v,max=500){return String(v??'').trim().slice(0,max);}
 function okProject(v){return projectKey(v||PROJECT)===PROJECT;}
 

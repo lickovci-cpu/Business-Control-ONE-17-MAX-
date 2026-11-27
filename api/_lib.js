@@ -13,25 +13,50 @@ export function isPrintableSecret(value){
   return /^[\x20-\x7E]+$/.test(s);
 }
 
+const DEFAULT_SUPABASE_URL='https://vjzzvopwecmwuccdidzq.supabase.co';
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY='sb_publishable_XAa2FyYnSZE9_3iZrbhD3g_F3mn-wI5';
+
+export function isPreviewRuntime(){
+  const mode=String(env('BCO_RUNTIME_ENV')).toLowerCase();
+  const host=String(env('VERCEL_ENV')).toLowerCase();
+  return ['preview','staging','development'].includes(mode)
+    || ['preview','development'].includes(host)
+    || env('NODE_ENV')==='development'
+    || !!env('BCO_EXPECTED_SUPABASE_REF');
+}
+
+export function getSupabaseRuntimeConfig(){
+  if(isPreviewRuntime()){
+    const projectRef=normalizeSecret(env('BCO_EXPECTED_SUPABASE_REF'));
+    const url=normalizeSecret(env('SUPABASE_URL')).replace(/\/$/,'');
+    const publishableKey=normalizeSecret(env('SUPABASE_PUBLISHABLE_KEY'));
+    if(!/^[a-z0-9]{20}$/.test(projectRef))throw new Error('PREVIEW_SUPABASE_REF_REQUIRED');
+    if(!url)throw new Error('PREVIEW_SUPABASE_URL_REQUIRED');
+    let parsed;
+    try{parsed=new URL(url);}catch{throw new Error('PREVIEW_SUPABASE_URL_INVALID');}
+    if(parsed.protocol!=='https:'||parsed.hostname!==projectRef+'.supabase.co'||parsed.pathname!=='/'||parsed.search||parsed.hash)throw new Error('PREVIEW_SUPABASE_PROJECT_MISMATCH');
+    if(!publishableKey.startsWith('sb_publishable_'))throw new Error('PREVIEW_SUPABASE_PUBLISHABLE_KEY_REQUIRED');
+    return {environment:'preview',projectRef,url,publishableKey};
+  }
+  const url=String(normalizeSecret(env('SUPABASE_URL',DEFAULT_SUPABASE_URL))).replace(/\/$/,'');
+  const publishableKey=normalizeSecret(env('SUPABASE_PUBLISHABLE_KEY')||env('SUPABASE_ANON_KEY')||DEFAULT_SUPABASE_PUBLISHABLE_KEY);
+  let projectRef='';
+  try{projectRef=new URL(url).hostname.split('.')[0];}catch{}
+  return {environment:'production',projectRef,url,publishableKey};
+}
+
 export function supabaseServiceKey(){
-  // Current Supabase server-side secret key (sb_secret_...) is preferred.
+  if(isPreviewRuntime())return '';
   const current=normalizeSecret(env('SUPABASE_SECRET_KEY'));
   if(isPrintableSecret(current))return current;
-  // Legacy names remain supported during the 2026 key migration.
   const primary=normalizeSecret(env('SUPABASE_SERVICE_ROLE_KEY'));
   if(isPrintableSecret(primary))return primary;
   const fallback=normalizeSecret(env('SUPABASE_SERVICE_KEY'));
   return isPrintableSecret(fallback)?fallback:'';
 }
 
-export function supabaseBaseUrl(){
-  return String(env('SUPABASE_URL','https://vjzzvopwecmwuccdidzq.supabase.co')).replace(/\/$/,'');
-}
-
-const DEFAULT_SUPABASE_PUBLISHABLE_KEY='sb_publishable_XAa2FyYnSZE9_3iZrbhD3g_F3mn-wI5';
-export function supabasePublishableKey(){
-  return normalizeSecret(env('SUPABASE_PUBLISHABLE_KEY')||env('SUPABASE_ANON_KEY')||DEFAULT_SUPABASE_PUBLISHABLE_KEY);
-}
+export function supabaseBaseUrl(){return getSupabaseRuntimeConfig().url;}
+export function supabasePublishableKey(){return getSupabaseRuntimeConfig().publishableKey;}
 export function supabaseBearerToken(req){
   const h=String(req?.headers?.authorization||'');
   return h.startsWith('Bearer ')?normalizeSecret(h.slice(7)):'';

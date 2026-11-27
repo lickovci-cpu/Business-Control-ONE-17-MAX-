@@ -50,8 +50,7 @@ const projects={
   tepovani:{name:'TEPOVÁNÍ & ÚKLID',label:'LOCAL SERVICE WORKSPACE',theme:'service',signature:'SERVICE / LOCAL',context:'Lokální čištění sedaček, koberců a domácností. Důvěryhodně, reálné ukázky, jednoduché objednání.'}
 };
 const stages=['Nový','Kontaktován','Nabídka','Zakázka','Uzavřeno'];
-const SB_URL='https://vjzzvopwecmwuccdidzq.supabase.co';
-const SB_KEY='sb_publishable_XAa2FyYnSZE9_3iZrbhD3g_F3mn-wI5';
+let SB_URL='',SB_KEY='';
 const SB_SESSION='bc81-sb-session';
 const STATE_KEY='bc81';
 const APP_SNAPSHOT_KEY='business-control-one-8.1';
@@ -443,7 +442,14 @@ function renderProjects(){const box=$('#projectCards');box.innerHTML=Object.entr
 function renderSettings(){renderProjects();$('#aiProviderSettings').value=state.aiProvider;renderCloudState();renderRecovery();renderActivity();}
 function loadSbSession(){try{return JSON.parse(localStorage.getItem(SB_SESSION)||'null');}catch{return null;}}
 function saveSbSession(s){sbSession=s;s?localStorage.setItem(SB_SESSION,JSON.stringify(s)):localStorage.removeItem(SB_SESSION);}
-async function sbFetch(path,opt={},retry=true){let s=sbSession,headers={apikey:SB_KEY,'content-type':'application/json',...(opt.headers||{})};if(s?.access_token)headers.Authorization=`Bearer ${s.access_token}`;let r=await fetch(SB_URL+path,{...opt,headers});if(r.status===401&&retry&&s?.refresh_token){s=await sbRefresh();if(s){headers.Authorization=`Bearer ${s.access_token}`;r=await fetch(SB_URL+path,{...opt,headers});}}const text=await r.text();let j;try{j=text?JSON.parse(text):null;}catch{j=text;}if(!r.ok)throw new Error(j?.msg||j?.message||j?.error_description||j?.error||`Cloud HTTP ${r.status}`);return j;}
+async function loadSupabaseRuntimeConfig(){
+  const r=await fetch('/api/runtime-config',{credentials:'same-origin',cache:'no-store'});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||!j.ok||!j.url||!j.publishableKey)throw new Error(j.error||'SUPABASE_RUNTIME_CONFIG_UNAVAILABLE');
+  if(j.environment==='preview'&&(!/^[a-z0-9]{20}$/.test(String(j.projectRef||''))||new URL(j.url).hostname!==j.projectRef+'.supabase.co'||!String(j.publishableKey).startsWith('sb_publishable_')))throw new Error('PREVIEW_SUPABASE_RUNTIME_IDENTITY_INVALID');
+  SB_URL=String(j.url).replace(/\/$/,'');SB_KEY=String(j.publishableKey);return j;
+}
+async function sbFetch(path,opt={},retry=true){if(!SB_URL||!SB_KEY)throw new Error('SUPABASE_RUNTIME_CONFIG_UNAVAILABLE');let s=sbSession,headers={apikey:SB_KEY,'content-type':'application/json',...(opt.headers||{})};if(s?.access_token)headers.Authorization=`Bearer ${s.access_token}`;let r=await fetch(SB_URL+path,{...opt,headers});if(r.status===401&&retry&&s?.refresh_token){s=await sbRefresh();if(s){headers.Authorization=`Bearer ${s.access_token}`;r=await fetch(SB_URL+path,{...opt,headers});}}const text=await r.text();let j;try{j=text?JSON.parse(text):null;}catch{j=text;}if(!r.ok)throw new Error(j?.msg||j?.message||j?.error_description||j?.error||`Cloud HTTP ${r.status}`);return j;}
 async function sbRefresh(){if(!sbSession?.refresh_token)return null;try{const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`,{method:'POST',headers:{apikey:SB_KEY,'content-type':'application/json'},body:JSON.stringify({refresh_token:sbSession.refresh_token})}),j=await r.json();if(!r.ok)throw new Error();saveSbSession(j);return j;}catch{saveSbSession(null);return null;}}
 async function cloudLogin(register=false){const email=$('#cloudEmail').value.trim(),password=$('#cloudPassword').value;if(!email||password.length<8)return toast('Cloud účet vyžaduje e-mail a heslo minimálně 8 znaků.','bad');try{const path=register?'/auth/v1/signup':'/auth/v1/token?grant_type=password',j=await sbFetch(path,{method:'POST',body:JSON.stringify({email,password})},false);if(j?.access_token){saveSbSession(j);toast('Cloud účet přihlášen.','ok');await cloudIdentity();}else toast('Registrace vytvořena. Pokud je zapnuté potvrzení e-mailu, potvrď zprávu a pak se přihlas.','ok');renderCloudState();}catch(e){toast(e.message,'bad');}}
 async function cloudIdentity(){if(!sbSession?.access_token){currentCloudUser=currentOrg=null;renderCloudState();return null;}try{currentCloudUser=await sbFetch('/auth/v1/user');const m=await sbFetch('/rest/v1/memberships?select=organization_id,role,organizations(id,name,slug)&order=created_at.asc&limit=50');const rows=Array.isArray(m)?m:[];const map={jihoceske:'fve',merch:'ne-e-m',nrsm:'ne-e-m',mazliprint:'mazliprint'};const wanted=map[state.project];currentOrg=(rows.find(x=>x?.organizations?.slug===wanted)||rows.find(x=>x?.organizations?.id===wanted)||rows[0])?.organizations||null;renderCloudState();return {user:currentCloudUser,org:currentOrg,memberships:rows};}catch(e){currentCloudUser=currentOrg=null;renderCloudState();return null;}}
@@ -605,6 +611,9 @@ async function init(){
   window.__BCO_READY=true;
   window.__BCO_BOOT_PHASE='network-start';
   if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).then(r=>r.update().catch(()=>{})).catch(e=>console.warn('BCO_SW_UPDATE',e));
+  try{
+    await loadSupabaseRuntimeConfig();
+  }catch(e){SB_URL='';SB_KEY='';console.warn('BCO_SUPABASE_RUNTIME_CONFIG',e);}
   try{
     const ok=await sessionCheck();
     if(ok)await health();

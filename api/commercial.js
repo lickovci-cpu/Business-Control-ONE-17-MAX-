@@ -1,14 +1,13 @@
 import {createHash} from 'node:crypto';
-import {auth,noauth,projectKey,sendError,body,supabaseRequestCredentials} from './_lib.js';
+import {auth,noauth,projectKey,sendError,body,supabaseBaseUrl,supabaseRequestCredentials} from './_lib.js';
 import {authOrCloud} from './_cloud-auth.js';
 import {createTask,getTask,blockTask,consumeApproval,startAttempt,completeTask,failAttempt} from './_control.js';
 
-const SB_URL=process.env.SUPABASE_URL||'https://vjzzvopwecmwuccdidzq.supabase.co';
 const ORGS={jihoceske:'09fb6fc9-7ea9-46ac-a84b-bd9952784c0c',merch:'d2751286-da99-42c0-b8ac-6a2da8ecdabf'};
 const ACTIONS=new Set(['create-quote','create-job','create-financial']);
 function requireDb(req){if(!supabaseRequestCredentials(req)){const e=new Error('COMMERCIAL_DB_NOT_CONFIGURED_OR_CLOUD_LOGIN_REQUIRED');e.status=503;throw e;}}
 function org(project){const id=ORGS[project];if(!id)throw new Error('COMMERCIAL_PROJECT_ORG_NOT_CONFIGURED');return id;}
-async function sb(req,path,opt={}){requireDb(req);const creds=supabaseRequestCredentials(req);const r=await fetch(`${SB_URL}/rest/v1/${path}`,{...opt,headers:{apikey:creds.apikey,Authorization:creds.authorization,'content-type':'application/json',...(opt.headers||{})},signal:AbortSignal.timeout(15000)});const text=await r.text();let data={};try{data=text?JSON.parse(text):{}}catch{data={raw:text}}if(!r.ok){const e=new Error(data.message||data.error||`SUPABASE_HTTP_${r.status}`);e.status=502;throw e;}return data;}
+async function sb(req,path,opt={}){requireDb(req);const creds=supabaseRequestCredentials(req);const base=supabaseBaseUrl();const r=await fetch(`${base}/rest/v1/${path}`,{...opt,headers:{apikey:creds.apikey,Authorization:creds.authorization,'content-type':'application/json',...(opt.headers||{})},signal:AbortSignal.timeout(15000)});const text=await r.text();let data={};try{data=text?JSON.parse(text):{}}catch{data={raw:text}}if(!r.ok){const e=new Error(data.message||data.error||`SUPABASE_HTTP_${r.status}`);e.status=502;throw e;}return data;}
 function stable(v){if(Array.isArray(v))return '['+v.map(stable).join(',')+']';if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}';return JSON.stringify(v);}
 function fingerprint(v){return createHash('sha256').update(stable(v)).digest('hex');}
 function actionName(a){return `commercial:${a}`;}

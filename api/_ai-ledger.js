@@ -37,7 +37,7 @@ async function resolveOrganizationId(project){
 async function insertRun(row){
   const key=supabaseServiceKey();
   if(!key)return false;
-  const base=String(env('SUPABASE_URL','https://vjzzvopwecmwuccdidzq.supabase.co')).replace(/\/$/,'');
+  const base=supabaseBaseUrl();
   const r=await fetch(base+'/rest/v1/ai_runs',{
     method:'POST',
     headers:{
